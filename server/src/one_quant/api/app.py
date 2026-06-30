@@ -130,6 +130,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.warning("数据库连接池初始化失败（降级为无数据库模式）: %s", exc)
         db_engine = None
 
+    # ── 初始化健康检查器 ──
+    logger.info("初始化健康检查器...")
+    from one_quant.api.routes.health import init_health_checker
+
+    init_health_checker(
+        db_engine=db_engine,
+        event_bus=event_bus_instance,
+    )
+
     # 将资源挂到 app.state 供路由使用
     app.state.event_bus = event_bus_instance
     app.state.db_engine = db_engine

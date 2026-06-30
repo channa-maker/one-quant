@@ -1,0 +1,243 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: one-quant
+  labels:
+    app: one-quant
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: one-quant-config
+  namespace: one-quant
+data:
+  ONE_ENV: "production"
+  ONE_LOG_LEVEL: "info"
+  ONE_REDIS_URL: "redis://redis:6379"
+  ONE_DATABASE_URL: "postgresql+asyncpg://one_quant:***@postgres:5432/one_quant"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: one-quant-secrets
+  namespace: one-quant
+type: Opaque
+stringData:
+  BINANCE_API_KEY: ""
+  BINANCE_SECRET: ""
+  OKX_API_KEY: ""
+  OKX_SECRET: ""
+  ANTHROPIC_API_KEY: ""
+  DEEPSEEK_API_KEY: ""
+  JWT_SECRET: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: one-quant
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: one-quant
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: one-api
+  namespace: one-quant
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: one-api
+  template:
+    metadata:
+      labels:
+        app: one-api
+    spec:
+      containers:
+        - name: one-api
+          image: one-quant:latest
+          command: ["uvicorn", "one_quant.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: one-quant-config
+            - secretRef:
+                name: one-quant-secrets
+          resources:
+            requests: { cpu: "500m", memory: "512Mi" }
+            limits: { cpu: "2000m", memory: "2Gi" }
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: one-runner
+  namespace: one-quant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: one-runner
+  template:
+    metadata:
+      labels:
+        app: one-runner
+    spec:
+      containers:
+        - name: one-runner
+          image: one-quant:latest
+          command: ["python", "-m", "one_quant.runner.main"]
+          envFrom:
+            - configMapRef:
+                name: one-quant-config
+            - secretRef:
+                name: one-quant-secrets
+          resources:
+            requests: { cpu: "1000m", memory: "1Gi" }
+            limits: { cpu: "4000m", memory: "4Gi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: one-risk
+  namespace: one-quant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: one-risk
+  template:
+    metadata:
+      labels:
+        app: one-risk
+    spec:
+      containers:
+        - name: one-risk
+          image: one-quant:latest
+          command: ["python", "-m", "one_quant.risk.main"]
+          envFrom:
+            - configMapRef:
+                name: one-quant-config
+            - secretRef:
+                name: one-quant-secrets
+          resources:
+            requests: { cpu: "500m", memory: "512Mi" }
+            limits: { cpu: "2000m", memory: "2Gi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: one-collector
+  namespace: one-quant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: one-collector
+  template:
+    metadata:
+      labels:
+        app: one-collector
+    spec:
+      containers:
+        - name: one-collector
+          image: one-quant:latest
+          command: ["python", "-m", "one_quant.data.collector_main"]
+          envFrom:
+            - configMapRef:
+                name: one-quant-config
+            - secretRef:
+                name: one-quant-secrets
+          resources:
+            requests: { cpu: "500m", memory: "512Mi" }
+            limits: { cpu: "2000m", memory: "2Gi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: one-ai
+  namespace: one-quant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: one-ai
+  template:
+    metadata:
+      labels:
+        app: one-ai
+    spec:
+      containers:
+        - name: one-ai
+          image: one-quant:latest
+          command: ["python", "-m", "one_quant.agents.main"]
+          envFrom:
+            - configMapRef:
+                name: one-quant-config
+            - secretRef:
+                name: one-quant-secrets
+          resources:
+            requests: { cpu: "500m", memory: "512Mi" }
+            limits: { cpu: "2000m", memory: "2Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: one-api
+  namespace: one-quant
+spec:
+  selector:
+    app: one-api
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: one-quant-ingress
+  namespace: one-quant
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+    - host: api.one-quant.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: one-api
+                port:
+                  number: 8000

@@ -39,6 +39,24 @@ from one_quant.infra.change_management import ChangeManager, ChangeType, RiskLev
 from one_quant.infra.incident import IncidentManager, IncidentStatus
 from one_quant.infra.capacity import CapacityManager
 
+# ── 密钥管理 ──────────────────────────────────────────────────
+from one_quant.infra.vault import (
+    SecretProvider,
+    VaultProvider,
+    OnePasswordProvider,
+    EnvProvider,
+    SecretManager,
+    create_secret_manager,
+)
+
+# ── 健康检查 ──────────────────────────────────────────────────
+from one_quant.infra.healthcheck import (
+    HealthStatus,
+    ComponentHealth,
+    SystemHealth,
+    HealthChecker,
+)
+
 __all__ = [
     # 配置
     "AISettings",
@@ -96,4 +114,16 @@ __all__ = [
     "IncidentStatus",
     # 运维成熟度 - 容量管理
     "CapacityManager",
+    # 密钥管理
+    "SecretProvider",
+    "VaultProvider",
+    "OnePasswordProvider",
+    "EnvProvider",
+    "SecretManager",
+    "create_secret_manager",
+    # 健康检查
+    "HealthStatus",
+    "ComponentHealth",
+    "SystemHealth",
+    "HealthChecker",
 ]

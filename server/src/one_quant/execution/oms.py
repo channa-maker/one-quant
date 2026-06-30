@@ -158,11 +158,13 @@ class OrderManager:
         current = self._positions.get(symbol)
 
         if current is None:
-            # 新持仓
+            # 新持仓：从关联订单获取市场类型，订单不存在则降级为现货
+            order = self._orders.get(fill.order_id)
+            market = order.market if order is not None else Market.SPOT
             side = "long" if fill.side == "buy" else "short"
             self._positions[symbol] = PositionState(
                 symbol=symbol,
-                market=Market.SPOT,  # TODO: 从 fill 获取
+                market=market,
                 side=side,
                 quantity=fill.quantity,
                 entry_price=fill.price,
