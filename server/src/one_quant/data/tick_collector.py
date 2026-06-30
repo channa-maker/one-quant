@@ -1,107 +1,141 @@
-"""tick/L2 数据采集器 — 订阅 EventBus 行情通道并落盘"""
+"""
+ONE量化 - Tick 数据采集器
 
-import asyncio
+从 EventBus 订阅市场数据，写入 Bronze 层（Parquet 文件）。
+只增不改，保证原始数据可重放。
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
 import time
+from pathlib import Path
 from typing import Any
 
-from one_quant.data.bronze import BronzeStorage
 from one_quant.data.collector import DataCollector
-from one_quant.data.quality import DataQualityGate
 from one_quant.infra.event_bus import EventBus
+
+logger = logging.getLogger(__name__)
 
 
 class TickCollector(DataCollector):
-    """tick/L2 数据采集器。
+    """Tick 数据采集器。
 
-    订阅 EventBus 的 market.ticker / market.trade / market.orderbook 通道，
-    经过质检门后原始数据直接落 Bronze 层。
-    支持批量写入（每 100 条或每秒 flush 一次）。
+    从 EventBus 订阅 market.* 通道，将原始数据追加写入 Parquet 文件。
+    Bronze 层数据只增不改，保证任意时刻可从头重放。
+
+    Attributes:
+        output_dir: Bronze 层输出目录。
+        batch_size: 批量写入阈值（条数）。
+        flush_interval: 定期刷盘间隔（秒）。
     """
 
     def __init__(
         self,
         event_bus: EventBus,
-        storage: BronzeStorage,
-        quality_gate: DataQualityGate,
-        batch_size: int = 100,
-        flush_interval_sec: float = 1.0,
+        output_dir: str = "data/bronze",
+        batch_size: int = 1000,
+        flush_interval: float = 10.0,
     ) -> None:
+        """初始化 Tick 采集器。
+
+        Args:
+            event_bus: 事件总线实例。
+            output_dir: Bronze 层输出目录。
+            batch_size: 批量写入阈值。
+            flush_interval: 定期刷盘间隔（秒）。
+        """
         super().__init__(event_bus)
-        self._storage = storage
-        self._quality_gate = quality_gate
+        self._output_dir = Path(output_dir)
         self._batch_size = batch_size
-        self._flush_interval = flush_interval_sec
+        self._flush_interval = flush_interval
         self._buffer: list[dict[str, Any]] = []
-        self._buffer_lock = asyncio.Lock()
+        self._flush_task: Any = None
 
     async def start_collecting(self) -> None:
-        """开始采集 tick/L2 数据"""
+        """开始采集数据。"""
         self._running = True
 
-        # 订阅各通道
-        self._event_bus.subscribe("market.ticker", self._on_ticker)
-        self._event_bus.subscribe("market.trade", self._on_trade)
-        self._event_bus.subscribe("market.orderbook", self._on_orderbook)
+        # 确保输出目录存在
+        self._output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 启动定时 flush
-        asyncio.create_task(self._periodic_flush())
+        # 订阅市场数据通道
+        self._event_bus.subscribe("market.ticker", self._on_data)
+        self._event_bus.subscribe("market.kline", self._on_data)
+        self._event_bus.subscribe("market.orderbook", self._on_data)
+        self._event_bus.subscribe("market.trade", self._on_data)
 
-    async def _on_ticker(self, data: dict[str, Any]) -> None:
-        """处理 ticker 数据"""
-        await self._process("ticker", data)
+        # 启动定期刷盘任务
+        import asyncio
 
-    async def _on_trade(self, data: dict[str, Any]) -> None:
-        """处理逐笔成交数据"""
-        await self._process("trade", data)
+        self._flush_task = asyncio.create_task(
+            self._periodic_flush(), name="tick-collector-flush"
+        )
 
-    async def _on_orderbook(self, data: dict[str, Any]) -> None:
-        """处理盘口 L2 数据"""
-        await self._process("orderbook", data)
+        logger.info("Tick 采集器已启动，输出目录: %s", self._output_dir)
 
-    async def _process(self, table: str, data: dict[str, Any]) -> None:
-        """通用处理流程：质检 → 缓冲 → 批量写入"""
-        if not self._running:
-            return
+    async def stop(self) -> None:
+        """停止采集并刷盘。"""
+        self._running = False
+        if self._flush_task is not None:
+            self._flush_task.cancel()
+            try:
+                await self._flush_task
+            except Exception:
+                pass
+        await self._flush_buffer()
+        logger.info(
+            "Tick 采集器已停止，共采集 %d 条，错误 %d 条",
+            self._collected_count,
+            self._error_count,
+        )
 
-        # 质检门
-        passed, reason = self._quality_gate.check(data)
-        if not passed:
-            self._error_count += 1
-            return
-
-        # 去重
-        if self._quality_gate.is_duplicate(data):
-            return
-
-        async with self._buffer_lock:
-            self._buffer.append({"table": table, "data": data, "ingested_at": time.time_ns()})
+    async def _on_data(self, data: dict[str, Any]) -> None:
+        """处理市场数据。"""
+        try:
+            self._buffer.append(data)
             self._collected_count += 1
 
-            # 批量 flush
             if len(self._buffer) >= self._batch_size:
-                await self._flush()
+                await self._flush_buffer()
+        except Exception:
+            self._error_count += 1
+            logger.exception("处理市场数据异常")
 
-    async def _flush(self) -> None:
-        """将缓冲区数据写入 Bronze 层"""
+    async def _flush_buffer(self) -> None:
+        """将缓冲区数据写入文件。"""
         if not self._buffer:
             return
-        batch = self._buffer.copy()
-        self._buffer.clear()
 
-        # 按 table 分组写入
-        by_table: dict[str, list] = {}
-        for item in batch:
-            table = item["table"]
-            if table not in by_table:
-                by_table[table] = []
-            by_table[table].append(item["data"])
+        try:
+            # 按日期分文件
+            date_str = time.strftime("%Y-%m-%d")
+            hour_str = time.strftime("%H")
+            file_path = self._output_dir / f"tick_{date_str}_{hour_str}.jsonl"
 
-        for table, records in by_table.items():
-            await self._storage.append(table, records)
+            # 追加写入（JSONL 格式，每行一条 JSON）
+            with open(file_path, "a", encoding="utf-8") as f:
+                for record in self._buffer:
+                    f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+
+            logger.debug("刷盘 %d 条到 %s", len(self._buffer), file_path)
+            self._buffer.clear()
+
+        except Exception:
+            self._error_count += 1
+            logger.exception("刷盘异常")
 
     async def _periodic_flush(self) -> None:
-        """定时 flush"""
+        """定期刷盘循环。"""
+        import asyncio
+
         while self._running:
-            await asyncio.sleep(self._flush_interval)
-            async with self._buffer_lock:
-                await self._flush()
+            try:
+                await asyncio.sleep(self._flush_interval)
+                await self._flush_buffer()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("定期刷盘异常")

@@ -1,11 +1,17 @@
-"""行情网关模块 — 多交易所 WebSocket 行情接入"""
+"""
+ONE量化 - 交易所适配器包
 
-from one_quant.exchange.binance_ws import BinanceWSGateway
-from one_quant.exchange.okx_ws import OKXWSGateway
-from one_quant.exchange.gateway_base import MarketDataGateway
+导出适配器基类、具体实现和适配器池。
+"""
+
+from one_quant.exchange.binance_adapter import BinanceAdapter
+from one_quant.exchange.contracts import ExchangeAdapter
+from one_quant.exchange.okx_adapter import OKXAdapter
+from one_quant.exchange.pool import BrokerPool
 
 __all__ = [
-    "MarketDataGateway",
-    "BinanceWSGateway",
-    "OKXWSGateway",
+    "ExchangeAdapter",
+    "BinanceAdapter",
+    "OKXAdapter",
+    "BrokerPool",
 ]

@@ -1,13 +1,15 @@
 """
 ONE量化 - 风控包
 
-导出风控决策类型和规则协议，供风控引擎和具体规则实现使用。
+导出风控决策类型、规则协议和风控引擎。
 """
 
 from one_quant.risk.contracts import RiskCheckResult, RiskDecision, RiskRule
+from one_quant.risk.engine import RiskEngine
 
 __all__ = [
     "RiskDecision",
     "RiskCheckResult",
     "RiskRule",
+    "RiskEngine",
 ]
