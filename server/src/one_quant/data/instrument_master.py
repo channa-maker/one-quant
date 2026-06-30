@@ -194,10 +194,10 @@ class InstrumentMaster:
         """获取指定时刻的活跃标的池（用于回测，避免幸存者偏差）。
 
         遍历变更历史，重建截止到 timestamp_ns 时的状态。
+        注意：返回的 Instrument 对象反映历史状态（is_active 可能为 False）。
         """
         # 构建截止时刻的活跃集合
         active_ids: set[str] = set()
-        deactivated_ids: set[str] = set()
 
         for change in self._history:
             if change["timestamp_ns"] > timestamp_ns:
@@ -208,12 +208,11 @@ class InstrumentMaster:
                 active_ids.add(iid)
             elif action == "deactivate":
                 active_ids.discard(iid)
-                deactivated_ids.add(iid)
 
         results = []
         for iid in active_ids:
             inst = self._instruments.get(iid)
-            if inst and inst.is_active:
+            if inst:
                 if exchange and inst.exchange != exchange:
                     continue
                 results.append(inst)

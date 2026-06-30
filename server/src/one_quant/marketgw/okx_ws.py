@@ -1,10 +1,18 @@
 """
-ONE量化 - OKX WebSocket 行情网关
+ONE量化 - OKX WebSocket 行情接入
 
-接入 OKX WebSocket API，接收 tick/K线/盘口/成交数据，
-归一化为统一领域类型后发布到 EventBus。
+实现 OKX 交易所的 WebSocket 实时行情接入。
 
-OKX 使用单 WebSocket 连接 + subscribe/unsubscribe 消息模式。
+连接地址: wss://ws.okx.com:8443/ws/v5/public
+
+支持的数据流:
+- tickers         → market.ticker
+- candles<period> → market.kline
+- books / books5  → market.orderbook
+- trades          → market.trade
+
+OKX WebSocket 文档:
+https://www.okx.com/docs-v5/en/#websocket-api-public-channel
 """
 
 from __future__ import annotations
@@ -27,311 +35,326 @@ from one_quant.core.types import (
     Ticker,
     Trade,
 )
+from one_quant.infra.event_bus import EventBus
 from one_quant.marketgw.base import MarketGateway
+from one_quant.marketgw.reconnect import ReconnectManager
 
 logger = logging.getLogger(__name__)
 
+# ── OKX WebSocket 端点 ────────────────────────────────────────────────
+
 OKX_WS_PUBLIC = "wss://ws.okx.com:8443/ws/v5/public"
 
+# 心跳配置
+PING_INTERVAL = 25
+PING_TIMEOUT = 10
 
-class OKXWSGateway(MarketGateway):
-    """OKX WebSocket 行情网关。
+# OKX K 线周期映射
+OKX_INTERVAL_MAP = {
+    "1m": "1m", "3m": "3m", "5m": "5m", "15m": "15m", "30m": "30m",
+    "1h": "1H", "2h": "2H", "4h": "4H", "6h": "6H", "12h": "12H",
+    "1d": "1D", "1w": "1W", "1M": "1M",
+}
 
-    使用 OKX v5 WebSocket API，支持多频道订阅。
-    自动处理断线重连和心跳保活。
 
-    Example::
+def _to_okx_inst_id(internal: str) -> str:
+    """内部统一命名 → OKX instId。BTC/USDT → BTC-USDT"""
+    return internal.replace("/", "-")
 
-        gw = OKXWSGateway(event_bus)
+
+def _from_okx_inst_id(inst_id: str) -> str:
+    """OKX instId → 内部统一命名。BTC-USDT → BTC/USDT"""
+    parts = inst_id.split("-")
+    if len(parts) >= 2:
+        return f"{parts[0]}/{parts[1]}"
+    return inst_id
+
+
+class OKXMarketGateway(MarketGateway):
+    """
+    OKX WebSocket 行情网关。
+
+    使用示例::
+
+        from one_quant.infra.event_bus import InMemoryEventBus
+        from one_quant.marketgw import OKXMarketGateway
+
+        bus = InMemoryEventBus()
+        await bus.start()
+
+        gw = OKXMarketGateway(event_bus=bus)
         await gw.start()
-        await gw.subscribe_ticker("BTC-USDT")
+        await gw.connect()
+        await gw.subscribe_ticker(["BTC/USDT", "ETH/USDT"])
     """
 
-    name = "okx"
-
-    def __init__(
-        self,
-        event_bus: Any,
-        reconnect_delay_min: float = 1.0,
-        reconnect_delay_max: float = 60.0,
-    ) -> None:
-        """初始化 OKX 行情网关。
+    def __init__(self, event_bus: EventBus) -> None:
+        """
+        初始化 OKX 行情网关。
 
         Args:
-            event_bus: 事件总线实例。
-            reconnect_delay_min: 最小重连间隔（秒）。
-            reconnect_delay_max: 最大重连间隔（秒）。
+            event_bus: 事件总线实例
         """
         super().__init__(event_bus)
-        self._ws: Any = None
-        self._reconnect_delay_min = reconnect_delay_min
-        self._reconnect_delay_max = reconnect_delay_max
-        self._receive_task: asyncio.Task[None] | None = None
+        self._ws_url = OKX_WS_PUBLIC
+        self._ws: websockets.WebSocketClientProtocol | None = None
+        self._reconnect = ReconnectManager(initial_delay=1.0, max_delay=60.0)
+        self._subscribed_args: list[dict[str, str]] = []  # 已订阅参数（重连用）
+        self._recv_task: asyncio.Task[None] | None = None
         self._heartbeat_task: asyncio.Task[None] | None = None
-        self._pending_subscribes: list[dict[str, Any]] = []
-
-    # ──────────── 连接管理 ────────────
 
     async def connect(self) -> None:
-        """建立 WebSocket 连接。"""
-        await self._connect_ws()
-
-    async def _connect_ws(self) -> None:
-        """内部连接实现。"""
-        try:
-            self._ws = await websockets.connect(
-                OKX_WS_PUBLIC,
-                ping_interval=20,
-                ping_timeout=10,
-                close_timeout=5,
-            )
-            logger.info("OKX WebSocket 已连接")
-
-            # 启动接收和心跳任务
-            if self._receive_task is None or self._receive_task.done():
-                self._receive_task = asyncio.create_task(
-                    self._receive_loop(), name="okx-ws-receive"
-                )
-            if self._heartbeat_task is None or self._heartbeat_task.done():
-                self._heartbeat_task = asyncio.create_task(
-                    self._heartbeat_loop(), name="okx-ws-heartbeat"
-                )
-
-            # 重新订阅之前的频道
-            for sub_msg in self._pending_subscribes:
-                await self._send(sub_msg)
-
-        except Exception as exc:
-            logger.error("OKX WebSocket 连接失败: %s", exc)
-            raise
+        """建立 WebSocket 连接并启动接收循环"""
+        logger.info("OKX网关: 正在连接 %s", self._ws_url)
+        self._ws = await websockets.connect(
+            self._ws_url,
+            ping_interval=PING_INTERVAL,
+            ping_timeout=PING_TIMEOUT,
+            close_timeout=5,
+        )
+        logger.info("OKX网关: WebSocket 连接成功")
+        self._recv_task = asyncio.create_task(self._receive_loop())
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def disconnect(self) -> None:
-        """断开连接。"""
-        self._running = False
-        for task in (self._receive_task, self._heartbeat_task):
-            if task is not None:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-        self._receive_task = None
-        self._heartbeat_task = None
-
-        if self._ws is not None:
+        """断开 WebSocket 连接"""
+        if self._heartbeat_task and not self._heartbeat_task.done():
+            self._heartbeat_task.cancel()
+            try:
+                await self._heartbeat_task
+            except asyncio.CancelledError:
+                pass
+        if self._recv_task and not self._recv_task.done():
+            self._recv_task.cancel()
+            try:
+                await self._recv_task
+            except asyncio.CancelledError:
+                pass
+        if self._ws:
             await self._ws.close()
             self._ws = None
-        logger.info("OKX WebSocket 已断开")
-
-    async def _send(self, msg: dict[str, Any]) -> None:
-        """发送消息到 WebSocket。"""
-        if self._ws is not None and not self._ws.closed:
-            await self._ws.send(json.dumps(msg))
-
-    # ──────────── 订阅 ────────────
-
-    async def subscribe_ticker(self, symbol: str) -> None:
-        """订阅实时行情。
-
-        Args:
-            symbol: OKX 符号（如 "BTC-USDT"）。
-        """
-        sub_msg = {
-            "op": "subscribe",
-            "args": [{"channel": "tickers", "instId": symbol}],
-        }
-        self._pending_subscribes.append(sub_msg)
-        self._subscribed_symbols.add(symbol)
-        await self._send(sub_msg)
-        logger.info("订阅 OKX 行情: %s", symbol)
-
-    async def subscribe_kline(self, symbol: str, interval: str) -> None:
-        """订阅K线。
-
-        Args:
-            symbol: OKX 符号。
-            interval: K线周期（如 "1m", "5m", "1H"）。
-        """
-        # OKX K线频道: candle1m, candle5m, candle1H 等
-        okx_interval = interval.replace("m", "m").replace("h", "H").replace("d", "D")
-        sub_msg = {
-            "op": "subscribe",
-            "args": [{"channel": f"candle{okx_interval}", "instId": symbol}],
-        }
-        self._pending_subscribes.append(sub_msg)
-        await self._send(sub_msg)
-        logger.info("订阅 OKX K线: %s %s", symbol, interval)
-
-    async def subscribe_orderbook(self, symbol: str, depth: int = 20) -> None:
-        """订阅盘口深度。
-
-        Args:
-            symbol: OKX 符号。
-            depth: 深度档位（5/20/400）。
-        """
-        channel = "books5" if depth <= 5 else "books"
-        sub_msg = {
-            "op": "subscribe",
-            "args": [{"channel": channel, "instId": symbol}],
-        }
-        self._pending_subscribes.append(sub_msg)
-        await self._send(sub_msg)
-        logger.info("订阅 OKX 盘口: %s depth=%d", symbol, depth)
-
-    async def subscribe_trades(self, symbol: str) -> None:
-        """订阅逐笔成交。
-
-        Args:
-            symbol: OKX 符号。
-        """
-        sub_msg = {
-            "op": "subscribe",
-            "args": [{"channel": "trades", "instId": symbol}],
-        }
-        self._pending_subscribes.append(sub_msg)
-        await self._send(sub_msg)
-        logger.info("订阅 OKX 成交: %s", symbol)
-
-    # ──────────── 接收循环 ────────────
+        logger.info("OKX网关: 已断开连接")
 
     async def _receive_loop(self) -> None:
-        """带指数退避重连的接收循环。"""
-        delay = self._reconnect_delay_min
-
-        while self._running:
-            try:
-                if self._ws is None or self._ws.closed:
-                    await self._connect_ws()
-                    delay = self._reconnect_delay_min
-
-                async for raw_msg in self._ws:
-                    if not self._running:
-                        break
-                    try:
-                        msg = json.loads(raw_msg)
-                        await self._dispatch(msg)
-                    except json.JSONDecodeError:
-                        logger.warning("收到无法解析的消息: %s", raw_msg[:200])
-                    except Exception:
-                        logger.exception("处理消息时异常")
-
-            except asyncio.CancelledError:
-                break
-            except ConnectionClosed as exc:
-                logger.warning("OKX WebSocket 断开 (code=%s), %.1fs 后重连", exc.code, delay)
-            except Exception as exc:
-                logger.error("OKX WebSocket 异常: %s, %.1fs 后重连", exc, delay)
-
-            if not self._running:
-                break
-
-            await asyncio.sleep(delay)
-            delay = min(delay * 2, self._reconnect_delay_max)
+        """WebSocket 消息接收循环"""
+        assert self._ws is not None
+        try:
+            async for raw_msg in self._ws:
+                if not self._running:
+                    break
+                # OKX 心跳: 服务端发送 "ping" 文本，需回复 "pong"
+                if raw_msg == "ping":
+                    await self._ws.send("pong")
+                    continue
+                try:
+                    msg = json.loads(raw_msg)
+                    await self._dispatch(msg)
+                except json.JSONDecodeError:
+                    logger.warning("OKX网关: 无法解析消息: %s", raw_msg[:200])
+                except Exception:
+                    logger.exception("OKX网关: 消息处理异常")
+        except ConnectionClosed as exc:
+            logger.warning("OKX网关: 连接断开 code=%s reason=%s", exc.code, exc.reason)
+            raise
+        except asyncio.CancelledError:
+            raise
 
     async def _heartbeat_loop(self) -> None:
-        """心跳保活循环（每 25 秒发送 ping）。"""
+        """客户端心跳定时器（每 25 秒发送 ping）"""
         while self._running:
             try:
-                await asyncio.sleep(25)
-                await self._send("ping")
+                await asyncio.sleep(PING_INTERVAL)
+                if self._ws:
+                    await self._ws.send("ping")
             except asyncio.CancelledError:
                 break
             except Exception:
-                logger.debug("OKX 心跳发送异常", exc_info=True)
+                logger.debug("OKX网关: 心跳发送失败")
 
-    # ──────────── 消息分发 ────────────
-
-    async def _dispatch(self, msg: Any) -> None:
-        """分发 OKX 消息。
-
-        Args:
-            msg: OKX WebSocket 原始消息（dict 或 str）。
+    async def _dispatch(self, msg: dict[str, Any]) -> None:
         """
-        if isinstance(msg, str):
-            # pong 响应
+        分发消息到对应的归一化处理函数。
+
+        OKX 消息格式:
+        - 数据推送: {"arg": {"channel": "...", "instId": "..."}, "data": [...]}
+        - 事件响应: {"event": "subscribe" | "error" | ...}
+        """
+        # 事件响应
+        event = msg.get("event")
+        if event:
+            if event == "error":
+                logger.error(
+                    "OKX网关: 错误 code=%s msg=%s",
+                    msg.get("code"), msg.get("msg"),
+                )
+            elif event == "subscribe":
+                logger.debug("OKX网关: 订阅确认 %s", msg.get("arg"))
             return
 
-        if not isinstance(msg, dict):
+        # 数据推送
+        arg = msg.get("arg")
+        if arg is None:
             return
 
-        arg = msg.get("arg", {})
         channel = arg.get("channel", "")
         data_list = msg.get("data", [])
+        if not data_list:
+            return
 
         for data in data_list:
             if channel == "tickers":
                 await self._handle_ticker(data)
             elif channel.startswith("candle"):
-                await self._handle_kline(data, channel)
+                interval = channel.replace("candle", "")
+                await self._handle_candle(data, interval, arg.get("instId", ""))
             elif channel in ("books", "books5"):
-                await self._handle_orderbook(data)
+                await self._handle_book(data, arg.get("instId", ""))
             elif channel == "trades":
                 await self._handle_trade(data)
 
     async def _handle_ticker(self, data: dict[str, Any]) -> None:
-        """处理实时行情。"""
+        """归一化 tickers → Ticker"""
+        symbol = _from_okx_inst_id(data["instId"])
         ticker = Ticker(
-            symbol=data["instId"],
+            symbol=symbol,
             market=Market.SPOT,
             exchange="okx",
             last_price=Decimal(data["last"]),
-            bid=Decimal(data["bidPx"]),
-            ask=Decimal(data["askPx"]),
-            volume_24h=Decimal(data["vol24h"]),
-            timestamp_ns=int(data["ts"]) * 1_000_000,
+            bid=Decimal(data.get("bidPx", "0")),
+            ask=Decimal(data.get("askPx", "0")),
+            volume_24h=Decimal(data.get("vol24h", "0")),
+            timestamp_ns=int(data.get("ts", time.time_ns() // 1_000_000)) * 1_000_000,
         )
         await self._event_bus.publish(
-            "market.ticker",
-            ticker.model_dump(mode="json"),
+            "market.ticker", ticker.model_dump(mode="json")
         )
 
-    async def _handle_kline(self, data: dict[str, Any], channel: str) -> None:
-        """处理K线。"""
-        # OKX K线数据: [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
-        interval = channel.replace("candle", "")
+    async def _handle_candle(
+        self, data: list[Any], interval: str, inst_id: str
+    ) -> None:
+        """
+        归一化 candles → Kline
+
+        OKX K线数组: [ts, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
+        """
+        if len(data) < 6:
+            return
+        symbol = _from_okx_inst_id(inst_id)
         kline = Kline(
-            symbol=data["instId"],
+            symbol=symbol,
             market=Market.SPOT,
             exchange="okx",
             interval=interval,
-            open=Decimal(data["o"]),
-            high=Decimal(data["h"]),
-            low=Decimal(data["l"]),
-            close=Decimal(data["c"]),
-            volume=Decimal(data["vol"]),
-            timestamp_ns=int(data["ts"]) * 1_000_000,
+            open=Decimal(data[1]),
+            high=Decimal(data[2]),
+            low=Decimal(data[3]),
+            close=Decimal(data[4]),
+            volume=Decimal(data[5]),
+            timestamp_ns=int(data[0]) * 1_000_000,
         )
         await self._event_bus.publish(
-            "market.kline",
-            kline.model_dump(mode="json"),
+            "market.kline", kline.model_dump(mode="json")
         )
 
-    async def _handle_orderbook(self, data: dict[str, Any]) -> None:
-        """处理盘口深度。"""
+    async def _handle_book(self, data: dict[str, Any], inst_id: str) -> None:
+        """归一化 books/books5 → OrderBook"""
+        symbol = _from_okx_inst_id(inst_id)
+        bids = [
+            OrderBookLevel(price=Decimal(lv[0]), quantity=Decimal(lv[1]))
+            for lv in data.get("bids", [])
+        ]
+        asks = [
+            OrderBookLevel(price=Decimal(lv[0]), quantity=Decimal(lv[1]))
+            for lv in data.get("asks", [])
+        ]
         orderbook = OrderBook(
-            symbol=data["instId"],
+            symbol=symbol,
             exchange="okx",
-            bids=[OrderBookLevel(price=Decimal(b[0]), quantity=Decimal(b[1])) for b in data.get("bids", [])],
-            asks=[OrderBookLevel(price=Decimal(a[0]), quantity=Decimal(a[1])) for a in data.get("asks", [])],
-            timestamp_ns=int(data["ts"]) * 1_000_000,
+            bids=bids,
+            asks=asks,
+            timestamp_ns=int(data.get("ts", time.time_ns() // 1_000_000)) * 1_000_000,
         )
         await self._event_bus.publish(
-            "market.orderbook",
-            orderbook.model_dump(mode="json"),
+            "market.orderbook", orderbook.model_dump(mode="json")
         )
 
     async def _handle_trade(self, data: dict[str, Any]) -> None:
-        """处理逐笔成交。"""
+        """归一化 trades → Trade"""
+        symbol = _from_okx_inst_id(data["instId"])
+        side_raw = data.get("side", "buy")
         trade = Trade(
-            symbol=data["instId"],
+            symbol=symbol,
             exchange="okx",
             price=Decimal(data["px"]),
             quantity=Decimal(data["sz"]),
-            side=data["side"],  # OKX 直接给 "buy"/"sell"
-            trade_id=data["tradeId"],
-            timestamp_ns=int(data["ts"]) * 1_000_000,
+            side=side_raw if side_raw in ("buy", "sell") else "buy",
+            trade_id=data.get("tradeId", ""),
+            timestamp_ns=int(data.get("ts", time.time_ns() // 1_000_000)) * 1_000_000,
         )
         await self._event_bus.publish(
-            "market.trade",
-            trade.model_dump(mode="json"),
+            "market.trade", trade.model_dump(mode="json")
         )
+
+    async def _send_subscribe(self, args: list[dict[str, str]]) -> None:
+        """发送订阅请求"""
+        if self._ws is None:
+            raise RuntimeError("WebSocket 未连接")
+        msg = json.dumps({"op": "subscribe", "args": args})
+        await self._ws.send(msg)
+        logger.info("OKX网关: 订阅 %d 个通道", len(args))
+
+    async def subscribe_ticker(self, symbols: list[str]) -> None:
+        """订阅 tickers"""
+        args = [{"channel": "tickers", "instId": _to_okx_inst_id(s)} for s in symbols]
+        self._subscribed_args.extend(args)
+        await self._send_subscribe(args)
+
+    async def subscribe_kline(self, symbols: list[str], interval: str = "1m") -> None:
+        """订阅 candles"""
+        okx_interval = OKX_INTERVAL_MAP.get(interval, interval)
+        args = [
+            {"channel": f"candle{okx_interval}", "instId": _to_okx_inst_id(s)}
+            for s in symbols
+        ]
+        self._subscribed_args.extend(args)
+        await self._send_subscribe(args)
+
+    async def subscribe_orderbook(self, symbols: list[str], depth: int = 20) -> None:
+        """订阅 books / books5"""
+        channel = "books5" if depth <= 5 else "books"
+        args = [{"channel": channel, "instId": _to_okx_inst_id(s)} for s in symbols]
+        self._subscribed_args.extend(args)
+        await self._send_subscribe(args)
+
+    async def subscribe_trades(self, symbols: list[str]) -> None:
+        """订阅 trades"""
+        args = [{"channel": "trades", "instId": _to_okx_inst_id(s)} for s in symbols]
+        self._subscribed_args.extend(args)
+        await self._send_subscribe(args)
+
+    async def start(self) -> None:
+        """启动网关（含断线重连）"""
+        self._running = True
+        logger.info("OKX网关: 启动")
+
+        async def _connect_and_run():
+            await self.connect()
+            # 等待接收循环结束
+            if self._recv_task:
+                await self._recv_task
+
+        async def _on_connected():
+            if self._subscribed_args:
+                await self._send_subscribe(self._subscribed_args)
+
+        await self._reconnect.run_forever(
+            connect_fn=_connect_and_run,
+            on_connected=_on_connected,
+            should_continue=lambda: self._running,
+        )
+
+    async def stop(self) -> None:
+        """停止网关"""
+        self._running = False
+        await self.disconnect()
+        logger.info("OKX网关: 已停止")

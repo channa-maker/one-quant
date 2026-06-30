@@ -1,65 +1,53 @@
-"""测试：插件注册表"""
+"""
+ONE量化 - 注册表测试
+
+验证策略/因子/算法注册表的注册和查询。
+"""
 
 import pytest
 
 from one_quant.infra.registry import Registry
 
 
-def test_register_and_get() -> None:
-    """注册并查询"""
-    registry = Registry[str]()
+class TestRegistry:
+    """通用注册表测试"""
 
-    @registry.register("my_item")
-    class MyItem:
-        pass
+    def test_register_and_get(self) -> None:
+        reg = Registry[str]("test")
 
-    assert registry.get("my_item") is MyItem
-    assert registry.get("nonexistent") is None
+        @reg.register("hello")
+        def greet() -> str:
+            return "hello"
 
+        assert reg.get("hello") is greet
+        assert "hello" in reg
+        assert len(reg) == 1
 
-def test_get_or_raise() -> None:
-    """get_or_raise 找不到时抛异常"""
-    registry = Registry[str]()
-    with pytest.raises(KeyError, match="not_found"):
-        registry.get_or_raise("not_found")
+    def test_duplicate_raises(self) -> None:
+        reg = Registry[str]("test")
 
+        @reg.register("hello")
+        def greet() -> str:
+            return "hello"
 
-def test_list_keys() -> None:
-    """列出所有注册名"""
-    registry = Registry[str]()
+        with pytest.raises(ValueError, match="已注册"):
+            @reg.register("hello")
+            def greet2() -> str:
+                return "hello2"
 
-    @registry.register("a")
-    class A:
-        pass
+    def test_get_or_raise(self) -> None:
+        reg = Registry[str]("test")
 
-    @registry.register("b")
-    class B:
-        pass
+        @reg.register("hello")
+        def greet() -> str:
+            return "hello"
 
-    assert sorted(registry.list_keys()) == ["a", "b"]
+        assert reg.get_or_raise("hello") is greet
+        with pytest.raises(KeyError, match="未注册"):
+            reg.get_or_raise("nonexistent")
 
-
-def test_duplicate_register_raises() -> None:
-    """重复注册抛异常"""
-    registry = Registry[str]()
-
-    @registry.register("dup")
-    class First:
-        pass
-
-    with pytest.raises(ValueError, match="已注册"):
-
-        @registry.register("dup")
-        class Second:
-            pass
-
-
-def test_decorator_returns_class() -> None:
-    """装饰器返回原类（不吞掉）"""
-    registry = Registry[str]()
-
-    @registry.register("my_class")
-    class MyClass:
-        pass
-
-    assert MyClass.__name__ == "MyClass"
+    def test_list_keys(self) -> None:
+        reg = Registry[str]("test")
+        reg.register("a")("value_a")
+        reg.register("b")("value_b")
+        assert sorted(reg.list_keys()) == ["a", "b"]

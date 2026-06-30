@@ -1,67 +1,65 @@
-"""基础设施模块 — 配置、日志、EventBus、注册表、消息信封、持久化、指标"""
+"""
+ONE量化 - 基础设施层
 
-from one_quant.infra.config import Settings, get_settings
-from one_quant.infra.event_bus import EventBus, InMemoryEventBus, RedisEventBus
-from one_quant.infra.logging import get_logger, setup_logging
-from one_quant.infra.message_envelope import MessageEnvelope, create_envelope
-from one_quant.infra.metrics import (
-    DATA_BRONZE_WRITES,
-    DATA_QUALITY_ALERTS,
-    DATA_QUALITY_CHECKS,
-    EVENTBUS_CONSUME_LATENCY,
-    EVENTBUS_CONSUME_TOTAL,
-    EVENTBUS_PUBLISH_TOTAL,
-    FILLS_TOTAL,
-    MARKET_DATA_AGE_SECONDS,
-    MARKET_GATEWAY_CONNECTED,
-    MARKET_GATEWAY_RECONNECTS,
-    MARKET_MESSAGES_TOTAL,
-    ORDERS_TOTAL,
-    PORTFOLIO_VALUE,
-    RISK_DECISION_LATENCY,
-    RISK_DECISIONS_TOTAL,
-    UNREALIZED_PNL,
+提供配置、日志、消息信封、插件注册表等基础组件。
+"""
+
+from one_quant.infra.config import (
+    AISettings,
+    DatabaseSettings,
+    ExchangeSettings,
+    RedisSettings,
+    RiskSettings,
+    Settings,
+    get_settings,
 )
+from one_quant.infra.event_bus import EventBus, InMemoryEventBus, RedisEventBus
+from one_quant.infra.logging import get_logger, log_mask, setup_logging
+from one_quant.infra.message_envelope import MessageEnvelope, create_envelope
 from one_quant.infra.registry import (
+    ALGO_REGISTRY,
+    AGENT_REGISTRY,
     FACTOR_REGISTRY,
+    SOURCE_REGISTRY,
     STRATEGY_REGISTRY,
     Registry,
+    register_agent,
+    register_algo,
     register_factor,
+    register_source,
     register_strategy,
 )
-from one_quant.infra.stream_persistence import StreamPersistence
 
 __all__ = [
+    # 配置
+    "AISettings",
+    "DatabaseSettings",
+    "ExchangeSettings",
+    "RedisSettings",
+    "RiskSettings",
     "Settings",
     "get_settings",
-    "setup_logging",
-    "get_logger",
+    # 事件总线
     "EventBus",
     "InMemoryEventBus",
     "RedisEventBus",
-    "StreamPersistence",
+    # 日志
+    "get_logger",
+    "log_mask",
+    "setup_logging",
+    # 消息信封
     "MessageEnvelope",
     "create_envelope",
-    "Registry",
-    "STRATEGY_REGISTRY",
+    # 注册表
+    "ALGO_REGISTRY",
+    "AGENT_REGISTRY",
     "FACTOR_REGISTRY",
-    "register_strategy",
+    "SOURCE_REGISTRY",
+    "STRATEGY_REGISTRY",
+    "Registry",
+    "register_agent",
+    "register_algo",
     "register_factor",
-    # metrics
-    "MARKET_MESSAGES_TOTAL",
-    "MARKET_DATA_AGE_SECONDS",
-    "MARKET_GATEWAY_CONNECTED",
-    "MARKET_GATEWAY_RECONNECTS",
-    "EVENTBUS_PUBLISH_TOTAL",
-    "EVENTBUS_CONSUME_TOTAL",
-    "EVENTBUS_CONSUME_LATENCY",
-    "DATA_BRONZE_WRITES",
-    "DATA_QUALITY_CHECKS",
-    "DATA_QUALITY_ALERTS",
-    "RISK_DECISIONS_TOTAL",
-    "RISK_DECISION_LATENCY",
-    "ORDERS_TOTAL",
-    "FILLS_TOTAL",
-    "PORTFOLIO_VALUE",
-    "UNREALIZED_PNL",
+    "register_source",
+    "register_strategy",
 ]

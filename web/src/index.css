@@ -1,0 +1,27 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+/* 暗色主题变量 */
+:root {
+  --bg-primary: #141414;
+  --bg-secondary: #1f1f1f;
+  --text-primary: #ffffffd9;
+  --text-secondary: #ffffff73;
+  --accent: #1677ff;
+  --success: #52c41a;
+  --danger: #ff4d4f;
+  --warning: #faad14;
+}

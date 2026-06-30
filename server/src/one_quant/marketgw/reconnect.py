@@ -21,7 +21,7 @@ ONE量化 - 断线重连管理器
         # 重连成功后的回调（如重新订阅）
         ...
 
-    await manager.execute_with_reconnect(connect, on_reconnect)
+    await manager.run_forever(connect, on_reconnect, should_continue=lambda: running)
 """
 
 from __future__ import annotations
@@ -86,97 +86,85 @@ class ReconnectManager:
         )
         self._retry_count += 1
 
-    async def execute_with_reconnect(
+    async def execute_once(
         self,
         connect_fn: Callable[[], Awaitable[None]],
-        on_reconnect: Callable[[], Awaitable[None]] | None = None,
+        on_connected: Callable[[], Awaitable[None]] | None = None,
         should_continue: Callable[[], bool] | None = None,
     ) -> None:
         """
-        执行连接函数，断线时自动重连。
+        执行一次连接（含重试）。
 
-        该方法会持续运行，直到:
-        - should_continue() 返回 False
-        - 被外部取消（CancelledError）
+        连接成功后返回；连接失败则按退避策略重试，直到成功或 should_continue 返回 False。
 
         Args:
-            connect_fn: 异步连接函数，建立 WebSocket 连接
-            on_reconnect: 重连成功后的回调（如重新订阅），可选
-            should_continue: 判断是否继续重连的回调，可选。
-                             返回 False 时退出重连循环。
-                             默认始终返回 True。
+            connect_fn: 异步连接函数
+            on_connected: 连接成功后的回调（如重新订阅）
+            should_continue: 是否继续重试的判断回调
         """
-        # 默认永远继续
         if should_continue is None:
             should_continue = lambda: True
 
         while should_continue():
             try:
-                logger.info(
-                    "重连管理器: 尝试连接 (第 %d 次, 延迟 %.1fs)",
-                    self._retry_count + 1,
-                    self._current_delay if self._retry_count > 0 else 0,
-                )
-
-                # 首次不延迟，后续按退避策略延迟
                 if self._retry_count > 0:
+                    logger.info(
+                        "重连管理器: 第 %d 次重试，延迟 %.1fs",
+                        self._retry_count,
+                        self._current_delay,
+                    )
                     await asyncio.sleep(self._current_delay)
 
-                # 执行连接
                 await connect_fn()
 
-                # 连接成功，重置退避状态
+                # 连接成功
                 self.reset()
-                logger.info("重连管理器: 连接成功，退避状态已重置")
+                logger.info("重连管理器: 连接成功")
 
-                # 执行重连回调（如重新订阅）
-                if on_reconnect is not None:
-                    await on_reconnect()
-                    logger.info("重连管理器: 重连回调执行完成")
+                if on_connected is not None:
+                    await on_connected()
 
-                # 连接成功后退出循环（由调用方控制是否需要再次进入）
                 return
 
             except asyncio.CancelledError:
-                # 被外部取消，直接退出
-                logger.info("重连管理器: 收到取消信号，退出重连循环")
                 raise
 
             except Exception as exc:
                 self._increase_delay()
                 logger.warning(
-                    "重连管理器: 连接失败 (%s), "
-                    "将在 %.1fs 后重试 (第 %d 次)",
+                    "重连管理器: 连接失败 (%s), %.1fs 后重试",
                     type(exc).__name__,
                     self._current_delay,
-                    self._retry_count,
                 )
 
     async def run_forever(
         self,
         connect_fn: Callable[[], Awaitable[None]],
-        on_reconnect: Callable[[], Awaitable[None]] | None = None,
+        on_connected: Callable[[], Awaitable[None]] | None = None,
         should_continue: Callable[[], bool] | None = None,
     ) -> None:
         """
         永久运行连接-断线-重连循环。
 
-        与 execute_with_reconnect 不同，此方法在连接断开后会重新进入重连循环，
-        直到 should_continue 返回 False 或被取消。
+        连接断开后会重新进入重连循环，直到 should_continue 返回 False 或被取消。
 
         Args:
-            connect_fn: 异步连接函数
-            on_reconnect: 重连成功后的回调
+            connect_fn: 异步连接函数（应包含消息接收循环）
+            on_connected: 连接成功后的回调
             should_continue: 是否继续的判断回调
         """
         if should_continue is None:
             should_continue = lambda: True
 
         while should_continue():
-            await self.execute_with_reconnect(
-                connect_fn=connect_fn,
-                on_reconnect=on_reconnect,
-                should_continue=should_continue,
-            )
-            # 连接断开后重置退避（因为已成功连接过）
-            self.reset()
+            try:
+                await self.execute_once(
+                    connect_fn=connect_fn,
+                    on_connected=on_connected,
+                    should_continue=should_continue,
+                )
+                # execute_once 返回说明连接成功且已断开（接收循环结束）
+                # 重置退避后重新连接
+                self.reset()
+            except asyncio.CancelledError:
+                break

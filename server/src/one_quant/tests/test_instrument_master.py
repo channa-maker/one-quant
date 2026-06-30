@@ -98,7 +98,6 @@ class TestInstrumentMaster:
 
     def test_point_in_time_query(self, master: InstrumentMaster) -> None:
         import time
-        t1 = time.time_ns()
         inst = Instrument(
             internal_id="binance:T1/USDT",
             symbol="T1USDT",
@@ -111,14 +110,20 @@ class TestInstrumentMaster:
             lot_size=Decimal("0.00001"),
         )
         master.register(inst)
+        t_after_register = time.time_ns()  # 注册之后的时间戳
 
-        t2 = time.time_ns()
         master.deactivate("binance:T1/USDT")
+        t_after_deactivate = time.time_ns()  # 下架之后的时间戳
 
-        # t1 时刻应该活跃
-        active_at_t1 = master.get_active_at(t1 + 1)
+        # 注册之后、下架之前，应该活跃
+        active_at_t1 = master.get_active_at(t_after_register + 1)
         ids_at_t1 = [i.internal_id for i in active_at_t1]
         assert "binance:T1/USDT" in ids_at_t1
+
+        # 下架之后，应该不活跃
+        active_at_t2 = master.get_active_at(t_after_deactivate + 1)
+        ids_at_t2 = [i.internal_id for i in active_at_t2]
+        assert "binance:T1/USDT" not in ids_at_t2
 
     def test_stats(self, master: InstrumentMaster) -> None:
         inst = Instrument(
