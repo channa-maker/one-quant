@@ -96,9 +96,9 @@ class SymbolValidator:
 
         passed = all(checks.values())
         if passed:
-            logger.info("标的校验通过", internal_id=instrument.internal_id)
+            logger.info("标的校验通过: %s", instrument.internal_id)
         else:
-            logger.warning("标的校验未通过", internal_id=instrument.internal_id, reasons=reasons)
+            logger.warning("标的校验未通过: %s, 原因: %s", instrument.internal_id, reasons)
 
         return ValidationResult(passed=passed, checks=checks, reasons=reasons)
 

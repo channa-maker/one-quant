@@ -33,7 +33,7 @@ dev = [
 packages = ["src/one_quant"]
 
 [tool.pytest.ini_options]
-testpaths = ["src/one_quant/tests"]
+testpaths = ["src/one_quant/tests", "src/one_quant/risk/tests", "src/one_quant/screener/tests"]
 asyncio_mode = "auto"
 
 [tool.ruff]

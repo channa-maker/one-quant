@@ -5,7 +5,6 @@ from __future__ import annotations
 from one_quant.ai.llm_provider import (
     ClaudeProvider,
     DeepSeekProvider,
-    DocumentType,
     LLMProvider,
     LLMResponse,
     LLMRouter,
@@ -17,6 +16,7 @@ from one_quant.ai.llm_provider import (
 )
 from one_quant.ai.memory import (
     Document,
+    DocumentType,
     InstitutionalMemory,
     SearchResult,
     SimpleVectorizer,
