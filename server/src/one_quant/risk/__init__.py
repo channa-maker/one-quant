@@ -13,6 +13,7 @@ ONE量化 - 风控包
 from one_quant.risk.audit import RiskAuditLog
 from one_quant.risk.contracts import RiskCheckResult, RiskDecision, RiskRule
 from one_quant.risk.engine import RiskEngine
+from one_quant.risk.portfolio_optimizer import CapitalAllocator, PortfolioOptimizer
 from one_quant.risk.rules import (
     CircuitBreakerState,
     L1StaticLimitRule,
@@ -20,6 +21,7 @@ from one_quant.risk.rules import (
     L3DrawdownRule,
     L4CircuitBreaker,
 )
+from one_quant.risk.stress_test import CrisisScenario, StressResult, StressTestEngine
 
 __all__ = [
     # 合约
@@ -36,4 +38,11 @@ __all__ = [
     "CircuitBreakerState",
     # 审计
     "RiskAuditLog",
+    # 压力测试
+    "CrisisScenario",
+    "StressResult",
+    "StressTestEngine",
+    # 组合优化
+    "CapitalAllocator",
+    "PortfolioOptimizer",
 ]

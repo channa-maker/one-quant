@@ -18,6 +18,13 @@ from one_quant.accounting.settlement import (
     SettlementError,
     SettlementMonitor,
 )
+from one_quant.accounting.tax import (
+    DisposalRecord,
+    TaxLot,
+    TaxLotAccounting,
+    TaxReportGenerator,
+    WashSaleDetector,
+)
 
 __all__ = [
     "AccountLedger",
@@ -30,4 +37,10 @@ __all__ = [
     "InsufficientBalanceError",
     "InvalidFillError",
     "SettlementMonitor",
+    # 税务
+    "WashSaleDetector",
+    "TaxLotAccounting",
+    "TaxReportGenerator",
+    "TaxLot",
+    "DisposalRecord",
 ]
