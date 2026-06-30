@@ -12,9 +12,7 @@ ONE量化 - 组合优化器 + 资金分配引擎
 
 from __future__ import annotations
 
-import time
-from collections import defaultdict
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 import numpy as np
@@ -110,10 +108,12 @@ class PortfolioOptimizer:
 
         # 如指定目标收益，添加收益约束
         if target_return is not None:
-            constraints.append({
-                "type": "ineq",
-                "fun": lambda w: w @ mu - target_return,
-            })
+            constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: w @ mu - target_return,
+                }
+            )
 
         # 边界
         bounds = [(lb, ub)] * n
@@ -203,6 +203,7 @@ class PortfolioOptimizer:
             inv_vols = 1.0 / vols
             w = inv_vols / inv_vols.sum()
         else:
+
             def objective(w: np.ndarray) -> float:
                 w = np.abs(w)  # 确保正权重
                 sigma_w = sigma @ w
@@ -308,8 +309,8 @@ class PortfolioOptimizer:
                 "optimization_status": "no_views_market_equilibrium",
             }
 
-        P = np.zeros((k, n))
-        Q = np.zeros(k)
+        P = np.zeros((k, n))  # noqa: N806
+        Q = np.zeros(k)  # noqa: N806
         omega_diag = np.zeros(k)
 
         for i, idx in enumerate(view_indices):
@@ -319,14 +320,14 @@ class PortfolioOptimizer:
             # Ω = diag(P × (τΣ) × P^T) / conf
             omega_diag[i] = float(P[i] @ (tau * sigma) @ P[i]) / max(conf, 0.01)
 
-        Omega = np.diag(omega_diag)
+        Omega = np.diag(omega_diag)  # noqa: N806
 
         # ── 第三步：计算调整后收益 ──
         tau_sigma_inv = np.linalg.inv(tau * sigma)
         omega_inv = np.linalg.inv(Omega)
 
         # E[R] = [(τΣ)^{-1} + P^T Ω^{-1} P]^{-1} [(τΣ)^{-1} π + P^T Ω^{-1} Q]
-        A = tau_sigma_inv + P.T @ omega_inv @ P
+        A = tau_sigma_inv + P.T @ omega_inv @ P  # noqa: N806
         b = tau_sigma_inv @ pi + P.T @ omega_inv @ Q
         adjusted_returns = np.linalg.solve(A, b)
 
@@ -548,20 +549,24 @@ class CapitalAllocator:
                 continue
 
             action = "buy" if diff > 0 else "sell"
-            trades.append({
-                "name": key,
-                "action": action,
-                "amount": abs(diff),
-                "current": current_amt,
-                "target": target_amt,
-            })
+            trades.append(
+                {
+                    "name": key,
+                    "action": action,
+                    "amount": abs(diff),
+                    "current": current_amt,
+                    "target": target_amt,
+                }
+            )
 
         # 先卖后买（释放资金再分配）
         trades.sort(key=lambda t: (0 if t["action"] == "sell" else 1, -float(t["amount"])))
 
-        logger.info("再平衡交易 %d 笔: %s", len(trades), [
-            f"{t['name']}: {t['action']} {t['amount']}" for t in trades
-        ])
+        logger.info(
+            "再平衡交易 %d 笔: %s",
+            len(trades),
+            [f"{t['name']}: {t['action']} {t['amount']}" for t in trades],
+        )
         return trades
 
     # ── 内部权重计算 ──

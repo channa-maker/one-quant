@@ -117,8 +117,7 @@ class L4CircuitBreaker:
             self._open_since = time.time()
             self._half_open_probes = 0
             logger.error(
-                "L4 熔断器：半开状态探测失败，重新熔断，"
-                "%d 秒后再次试探",
+                "L4 熔断器：半开状态探测失败，重新熔断，%d 秒后再次试探",
                 RECOVERY_TIMEOUT_SEC,
             )
             return
@@ -128,8 +127,7 @@ class L4CircuitBreaker:
             self._open_since = time.time()
             self._half_open_probes = 0
             logger.error(
-                "L4 熔断器：连续 %d 次失败，触发熔断，"
-                "%d 秒后进入半开状态",
+                "L4 熔断器：连续 %d 次失败，触发熔断，%d 秒后进入半开状态",
                 self._failure_count,
                 RECOVERY_TIMEOUT_SEC,
             )
@@ -160,16 +158,12 @@ class L4CircuitBreaker:
             self._state = CircuitBreakerState.OPEN
             self._open_since = time.time()
             self._half_open_probes = 0
-            logger.error(
-                "L4 熔断器：半开状态探测次数用完，重新熔断"
-            )
+            logger.error("L4 熔断器：半开状态探测次数用完，重新熔断")
             return False
 
         return False
 
-    def check(
-        self, order: Order, positions: list[PositionState]
-    ) -> RiskCheckResult:
+    def check(self, order: Order, positions: list[PositionState]) -> RiskCheckResult:
         """L4 熔断器检查。
 
         Args:
@@ -206,10 +200,7 @@ class L4CircuitBreaker:
             return RiskCheckResult(
                 decision=RiskDecision.FLATTEN,
                 rule_name=self.name,
-                reason=(
-                    f"熔断器已开启，连续 {self._failure_count} 次异常，"
-                    f"强制平仓"
-                ),
+                reason=(f"熔断器已开启，连续 {self._failure_count} 次异常，强制平仓"),
                 timestamp_ns=ts,
             )
 
@@ -220,8 +211,7 @@ class L4CircuitBreaker:
                     decision=RiskDecision.APPROVE,
                     rule_name=self.name,
                     reason=(
-                        f"熔断器半开状态，探测 "
-                        f"{self._half_open_probes}/{HALF_OPEN_MAX_PROBES}"
+                        f"熔断器半开状态，探测 {self._half_open_probes}/{HALF_OPEN_MAX_PROBES}"
                     ),
                     timestamp_ns=ts,
                 )

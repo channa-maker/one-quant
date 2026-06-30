@@ -7,12 +7,12 @@ ONE量化 - 风控引擎测试
 import time
 from decimal import Decimal
 
-from one_quant.core.types import Market, Order, PositionState
+from one_quant.core.types import Market, Order
 from one_quant.risk.contracts import RiskDecision
 from one_quant.risk.engine import RiskEngine
-from one_quant.risk.rules.l1_static import L1StaticLimitRule, TRADABLE_SYMBOLS
+from one_quant.risk.rules.l1_static import L1StaticLimitRule
 from one_quant.risk.rules.l3_drawdown import L3DrawdownRule
-from one_quant.risk.rules.l4_circuit_breaker import L4CircuitBreaker, FAILURE_THRESHOLD
+from one_quant.risk.rules.l4_circuit_breaker import FAILURE_THRESHOLD, L4CircuitBreaker
 
 
 def _make_order(
@@ -133,3 +133,119 @@ class TestRiskEngine:
         stats = engine.stats
         assert stats["checks"] == 1
         assert stats["rejects"] == 0
+
+    # ── L3 风控集成测试 ──
+
+    def test_l3_max_drawdown_triggers_flatten(self) -> None:
+        """L3: 最大回撤 15% 触发 FLATTEN"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        order = _make_order()
+        # 回撤 15000/100000 = 15% → 触发 FLATTEN
+        result = engine.check(
+            order,
+            [],
+            total_equity=Decimal("85000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("-15000"),
+        )
+        assert result.decision in [
+            RiskDecision.FLATTEN,
+            RiskDecision.REDUCE,
+            RiskDecision.REJECT,
+        ]
+
+    def test_l3_daily_loss_limit_triggers_halt(self) -> None:
+        """L3: 日内亏损 5% 触发 halt"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        order = _make_order()
+        # 日内亏损 5000/100000 = 5% → 触发 FLATTEN
+        result = engine.check(
+            order,
+            [],
+            total_equity=Decimal("95000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("-5000"),
+        )
+        # 应该返回非 APPROVE
+        assert result.decision != RiskDecision.APPROVE
+
+    def test_l3_within_limits_approves(self) -> None:
+        """L3: 在限额内返回 APPROVE"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        order = _make_order()
+        # 小幅波动 1000/100000 = 1% 回撤，不触发 L3
+        result = engine.check(
+            order,
+            [],
+            total_equity=Decimal("98000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("-1000"),
+        )
+        # L3 不应触发，L1/L2 也应通过 → APPROVE
+        assert result.decision == RiskDecision.APPROVE
+
+    def test_l3_exact_15pct_drawdown_triggers_flatten(self) -> None:
+        """L3: 精确 15% 回撤边界值触发 FLATTEN"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        order = _make_order()
+        # 精确 15%: (100000 - 85000) / 100000 = 0.15
+        result = engine.check(
+            order,
+            [],
+            total_equity=Decimal("85000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("0"),
+        )
+        assert result.decision != RiskDecision.APPROVE
+
+    def test_l3_near_limit_no_trigger(self) -> None:
+        """L3: 接近但未达阈值不触发"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        order = _make_order()
+        # 14% 回撤 + 4.9% 日亏 → 不触发
+        result = engine.check(
+            order,
+            [],
+            total_equity=Decimal("86000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("-4900"),
+        )
+        assert result.decision == RiskDecision.APPROVE
+
+    def test_l3_halt_all_blocks_subsequent_checks(self) -> None:
+        """L3: halt_all 后所有后续 check 都返回 FLATTEN"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        engine.halt_all()
+        order = _make_order()
+        result = engine.check(
+            order,
+            [],
+            total_equity=Decimal("100000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("0"),
+        )
+        assert result.decision == RiskDecision.FLATTEN
+
+    def test_l3_stats_tracks_flattens(self) -> None:
+        """L3: stats 正确记录 flatten 次数"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        order = _make_order()
+        # 触发一次 flatten
+        engine.check(
+            order,
+            [],
+            total_equity=Decimal("80000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("-20000"),
+        )
+        stats = engine.stats
+        assert stats["checks"] == 1
+        assert stats["rejects"] == 1
+        assert stats["flattens"] >= 1

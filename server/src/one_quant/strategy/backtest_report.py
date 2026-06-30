@@ -21,8 +21,8 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 from one_quant.infra.logging import get_logger
@@ -229,7 +229,7 @@ class BacktestReport:
         # 按自然月分组：{ "YYYY-MM": [(ts, equity), ...] }
         monthly_data: dict[str, list[tuple[int, Decimal]]] = defaultdict(list)
         for ts_ns, equity in curve:
-            dt = datetime.fromtimestamp(ts_ns / 1_000_000_000, tz=timezone.utc)
+            dt = datetime.fromtimestamp(ts_ns / 1_000_000_000, tz=UTC)
             month_key = dt.strftime("%Y-%m")
             monthly_data[month_key].append((ts_ns, equity))
 
@@ -250,9 +250,7 @@ class BacktestReport:
 
             if base > 0:
                 ret = (month_end_equity - base) / base
-                monthly_returns[month_key] = ret.quantize(
-                    Decimal("0.0001"), rounding=ROUND_HALF_UP
-                )
+                monthly_returns[month_key] = ret.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
             else:
                 monthly_returns[month_key] = Decimal("0")
 
@@ -472,8 +470,8 @@ class BacktestReport:
         if not curve:
             return None, None
 
-        start_dt = datetime.fromtimestamp(curve[0][0] / 1_000_000_000, tz=timezone.utc)
-        end_dt = datetime.fromtimestamp(curve[-1][0] / 1_000_000_000, tz=timezone.utc)
+        start_dt = datetime.fromtimestamp(curve[0][0] / 1_000_000_000, tz=UTC)
+        end_dt = datetime.fromtimestamp(curve[-1][0] / 1_000_000_000, tz=UTC)
         return start_dt, end_dt
 
     @staticmethod

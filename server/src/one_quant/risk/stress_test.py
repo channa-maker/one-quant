@@ -20,14 +20,13 @@ ONE量化 - 历史危机场景压力测试引擎
 from __future__ import annotations
 
 import time
-from collections import defaultdict
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
 
-from one_quant.core.types import Fill, Kline, Ticker
+from one_quant.core.types import Ticker
 from one_quant.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -115,8 +114,8 @@ class StressTestEngine:
     CRISIS_SCENARIOS: list[CrisisScenario] = [
         CrisisScenario(
             name="2020新冠闪崩",
-            start_time=1583971200000000000,   # 2020-03-12 00:00 UTC
-            end_time=1584144000000000000,     # 2020-03-14 00:00 UTC
+            start_time=1583971200000000000,  # 2020-03-12 00:00 UTC
+            end_time=1584144000000000000,  # 2020-03-14 00:00 UTC
             description=(
                 "2020年3月12日，新冠恐慌引发全球资产抛售。"
                 "BTC 从 ~$7,900 暴跌至 ~$3,800，单日跌幅超 40%。"
@@ -134,8 +133,8 @@ class StressTestEngine:
         ),
         CrisisScenario(
             name="LUNA崩盘",
-            start_time=1652140800000000000,   # 2022-05-10 00:00 UTC
-            end_time=1652745600000000000,     # 2022-05-17 00:00 UTC
+            start_time=1652140800000000000,  # 2022-05-10 00:00 UTC
+            end_time=1652745600000000000,  # 2022-05-17 00:00 UTC
             description=(
                 "2022年5月，UST 算法稳定币脱锚引发死亡螺旋。"
                 "LUNA 从 ~$80 在一周内归零，UST 从 $1 跌至 $0.10。"
@@ -153,8 +152,8 @@ class StressTestEngine:
         ),
         CrisisScenario(
             name="FTX暴雷",
-            start_time=1668124800000000000,   # 2022-11-11 00:00 UTC
-            end_time=1668729600000000000,     # 2022-11-18 00:00 UTC
+            start_time=1668124800000000000,  # 2022-11-11 00:00 UTC
+            end_time=1668729600000000000,  # 2022-11-18 00:00 UTC
             description=(
                 "2022年11月，FTX 交易所被曝挪用客户资金，引发信用危机。"
                 "FTT 代币从 ~$22 暴跌至 ~$1，FTX 申请破产保护。"
@@ -172,8 +171,8 @@ class StressTestEngine:
         ),
         CrisisScenario(
             name="美股熔断日",
-            start_time=1583971200000000000,   # 2020-03-12（与新冠闪崩重叠）
-            end_time=1585008000000000000,     # 2020-03-24
+            start_time=1583971200000000000,  # 2020-03-12（与新冠闪崩重叠）
+            end_time=1585008000000000000,  # 2020-03-24
             description=(
                 "2020年3月，美股在10天内触发4次熔断机制。"
                 "3月12日标普500暴跌9.5%，触发本月第2次熔断。"
@@ -191,8 +190,8 @@ class StressTestEngine:
         ),
         CrisisScenario(
             name="312/519",
-            start_time=1589241600000000000,   # 2020-05-11 00:00 UTC
-            end_time=1590105600000000000,     # 2020-05-22 00:00 UTC
+            start_time=1589241600000000000,  # 2020-05-11 00:00 UTC
+            end_time=1590105600000000000,  # 2020-05-22 00:00 UTC
             description=(
                 "加密市场两大黑天鹅事件的统称。"
                 "312（2020.3.12）：新冠恐慌 + 杠杆连环清算，BTC 单日 -40%。"
@@ -252,7 +251,11 @@ class StressTestEngine:
 
         # ── 回放计算 ──
         return self._replay_scenario(
-            scenario, strategy_name, tick_data, initial_equity, strategy_callback,
+            scenario,
+            strategy_name,
+            tick_data,
+            initial_equity,
+            strategy_callback,
         )
 
     async def run_all_scenarios(
@@ -274,7 +277,10 @@ class StressTestEngine:
         results: list[StressResult] = []
         for scenario in self.CRISIS_SCENARIOS:
             result = await self.run_scenario(
-                scenario, strategy_name, strategy_callback, initial_equity,
+                scenario,
+                strategy_name,
+                strategy_callback,
+                initial_equity,
             )
             results.append(result)
             self._results_history.append(result)
@@ -315,7 +321,7 @@ class StressTestEngine:
 
         # 对每个场景，计算组合损失
         scenario_losses: list[Decimal] = []
-        total_value = sum(Decimal(str(p.get("value", 0))) for p in portfolio)
+        _total_value = sum(Decimal(str(p.get("value", 0))) for p in portfolio)  # noqa: F841
 
         for scenario in scenarios:
             impact = scenario.expected_impact
@@ -323,7 +329,7 @@ class StressTestEngine:
             # 组合损失 = Σ(weight × max_drawdown)
             portfolio_loss = Decimal("0")
             for pos in portfolio:
-                weight = Decimal(str(pos.get("weight", 0)))
+                _weight = Decimal(str(pos.get("weight", 0)))  # noqa: F841
                 value = Decimal(str(pos.get("value", 0)))
                 # 区分主币和山寨币的回撤幅度
                 symbol = pos.get("symbol", "")
@@ -342,7 +348,9 @@ class StressTestEngine:
 
         logger.info(
             "压力 VaR (置信度=%.0f%%): %s, 基于 %d 个危机场景",
-            confidence * 100, stress_var, len(scenarios),
+            confidence * 100,
+            stress_var,
+            len(scenarios),
         )
         return stress_var.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -363,17 +371,17 @@ class StressTestEngine:
         data_path = self._data_root / scenario.tick_data_path
         if not data_path.exists():
             logger.warning(
-                "tick 数据文件不存在: %s, 将使用模拟数据", data_path,
+                "tick 数据文件不存在: %s, 将使用模拟数据",
+                data_path,
             )
             return None
 
         try:
-            import numpy as np
-
             # 支持 Parquet 和 CSV
             if data_path.suffix == ".parquet":
                 try:
                     import pyarrow.parquet as pq
+
                     table = pq.read_table(str(data_path))
                     df = table.to_pandas()
                 except ImportError:
@@ -381,21 +389,24 @@ class StressTestEngine:
                     return None
             else:
                 import pandas as pd
+
                 df = pd.read_csv(str(data_path))
 
             # 标准化列名
             tickers: list[Ticker] = []
             for _, row in df.iterrows():
-                tickers.append(Ticker(
-                    symbol=str(row.get("symbol", "BTC/USDT")),
-                    market="FUTURES",
-                    exchange=str(row.get("exchange", "binance")),
-                    last_price=Decimal(str(row.get("last_price", row.get("close", 0)))),
-                    bid=Decimal(str(row.get("bid", row.get("close", 0) * 0.999))),
-                    ask=Decimal(str(row.get("ask", row.get("close", 0) * 1.001))),
-                    volume_24h=Decimal(str(row.get("volume_24h", row.get("volume", 0)))),
-                    timestamp_ns=int(row.get("timestamp_ns", row.get("timestamp", 0))),
-                ))
+                tickers.append(
+                    Ticker(
+                        symbol=str(row.get("symbol", "BTC/USDT")),
+                        market="FUTURES",
+                        exchange=str(row.get("exchange", "binance")),
+                        last_price=Decimal(str(row.get("last_price", row.get("close", 0)))),
+                        bid=Decimal(str(row.get("bid", row.get("close", 0) * 0.999))),
+                        ask=Decimal(str(row.get("ask", row.get("close", 0) * 1.001))),
+                        volume_24h=Decimal(str(row.get("volume_24h", row.get("volume", 0)))),
+                        timestamp_ns=int(row.get("timestamp_ns", row.get("timestamp", 0))),
+                    )
+                )
 
             logger.info("加载 tick 数据: %s, 共 %d 条", data_path, len(tickers))
             return tickers
@@ -537,10 +548,11 @@ class StressTestEngine:
                     returns.append((curr - prev) / abs(prev))
             if returns:
                 import numpy as np
+
                 arr = np.array(returns)
                 mean_r = arr.mean()
                 std_r = arr.std()
-                sharpe = (mean_r / std_r * (365 ** 0.5)) if std_r > 0 else 0.0
+                sharpe = (mean_r / std_r * (365**0.5)) if std_r > 0 else 0.0
             else:
                 sharpe = 0.0
         else:

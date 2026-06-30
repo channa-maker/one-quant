@@ -6,21 +6,19 @@ ONE量化 - EMS 执行算法测试
 
 from __future__ import annotations
 
-import asyncio
-import pytest
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
-from one_quant.core.types import Fill, Market, Order
+import pytest
+
+from one_quant.core.types import Market, Order
 from one_quant.execution.ems import (
     ExecutionManager,
     POVAlgo,
     TWAPAlgo,
     VWAPAlgo,
-    _InstantAlgo,
     _round_to_lot,
 )
-
 
 # ──────────────────── 辅助函数 ────────────────────
 
@@ -47,11 +45,21 @@ def make_order(
     )
 
 
-def make_adapter() -> AsyncMock:
+def make_adapter(kline_count: int = 20) -> AsyncMock:
     """创建模拟适配器。"""
     adapter = AsyncMock()
     adapter.submit_order = AsyncMock(return_value="exchange-order-123")
     adapter.cancel_order = AsyncMock(return_value=True)
+    # 配置 get_klines 返回正确的 K 线数据（带 volume 属性）
+    klines = [
+        type("Kline", (), {"volume": Decimal(str(1000 * (i + 1)))})() for i in range(kline_count)
+    ]
+    adapter.get_klines = AsyncMock(return_value=klines)
+    # POV: 禁用 WebSocket 路径，配置 get_trades 返回成交量数据
+    adapter.ws = None
+    adapter._ws = None
+    trade = type("Trade", (), {"quantity": Decimal("500")})()
+    adapter.get_trades = AsyncMock(return_value=[trade])
     return adapter
 
 
@@ -128,7 +136,7 @@ class TestTWAPAlgo:
         order = make_order(quantity="0.2")
         adapter = make_adapter()
 
-        fills = await algo.execute(order, adapter)
+        fills = await algo.execute(order, adapter)  # noqa: F841
 
         assert adapter.submit_order.call_count == 2
         # 验证子单是限价单
@@ -168,10 +176,11 @@ class TestVWAPAlgo:
         """基本 VWAP 执行。"""
         algo = VWAPAlgo(lookback_intervals=5, participation_rate=0.1)
         order = make_order(quantity="0.5")
-        adapter = make_adapter()
+        adapter = make_adapter(kline_count=5)
 
         fills = await algo.execute(order, adapter)
 
+        # 应该有成交
         assert len(fills) == 5
         assert adapter.submit_order.call_count == 5
 
@@ -197,7 +206,7 @@ class TestVWAPAlgo:
         """VWAP 数量守恒。"""
         algo = VWAPAlgo(lookback_intervals=10, participation_rate=0.1)
         order = make_order(quantity="2.0")
-        adapter = make_adapter()
+        adapter = make_adapter(kline_count=10)
 
         fills = await algo.execute(order, adapter)
 

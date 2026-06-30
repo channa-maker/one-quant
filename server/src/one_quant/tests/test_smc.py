@@ -13,11 +13,8 @@ ONE量化 - SMC (Smart Money Concepts) 测试
 
 from decimal import Decimal
 
-import pytest
-
 from one_quant.core.types import Kline, Market
-from one_quant.strategy.smc import SMCAnalyzer, SmartMoneyIndex
-
+from one_quant.strategy.smc import SmartMoneyIndex, SMCAnalyzer
 
 # ──────────────────────────── 辅助工具 ────────────────────────────
 
@@ -51,13 +48,15 @@ def _make_trending_up_klines(n: int = 20) -> list[Kline]:
     base_ts = 1_000_000_000_000
     for i in range(n):
         base = 100 + i * 2
-        klines.append(_make_kline(
-            open_=str(base),
-            high=str(base + 5),
-            low=str(base - 2),
-            close=str(base + 3),
-            timestamp_ns=base_ts + i * 3_600_000_000_000,
-        ))
+        klines.append(
+            _make_kline(
+                open_=str(base),
+                high=str(base + 5),
+                low=str(base - 2),
+                close=str(base + 3),
+                timestamp_ns=base_ts + i * 3_600_000_000_000,
+            )
+        )
     return klines
 
 
@@ -67,13 +66,15 @@ def _make_trending_down_klines(n: int = 20) -> list[Kline]:
     base_ts = 1_000_000_000_000
     for i in range(n):
         base = 200 - i * 2
-        klines.append(_make_kline(
-            open_=str(base),
-            high=str(base + 2),
-            low=str(base - 5),
-            close=str(base - 3),
-            timestamp_ns=base_ts + i * 3_600_000_000_000,
-        ))
+        klines.append(
+            _make_kline(
+                open_=str(base),
+                high=str(base + 2),
+                low=str(base - 5),
+                close=str(base - 3),
+                timestamp_ns=base_ts + i * 3_600_000_000_000,
+            )
+        )
     return klines
 
 
@@ -82,18 +83,58 @@ def _make_swing_data() -> tuple[list[Decimal], list[Decimal]]:
     # 高点: 110, 120, 115, 130
     # 低点: 90, 95, 85, 100
     highs = [
-        Decimal("100"), Decimal("105"), Decimal("110"), Decimal("108"), Decimal("105"),
-        Decimal("102"), Decimal("100"), Decimal("105"), Decimal("110"), Decimal("115"),
-        Decimal("120"), Decimal("118"), Decimal("115"), Decimal("110"), Decimal("108"),
-        Decimal("105"), Decimal("110"), Decimal("115"), Decimal("120"), Decimal("125"),
-        Decimal("130"), Decimal("128"), Decimal("125"), Decimal("120"), Decimal("118"),
+        Decimal("100"),
+        Decimal("105"),
+        Decimal("110"),
+        Decimal("108"),
+        Decimal("105"),
+        Decimal("102"),
+        Decimal("100"),
+        Decimal("105"),
+        Decimal("110"),
+        Decimal("115"),
+        Decimal("120"),
+        Decimal("118"),
+        Decimal("115"),
+        Decimal("110"),
+        Decimal("108"),
+        Decimal("105"),
+        Decimal("110"),
+        Decimal("115"),
+        Decimal("120"),
+        Decimal("125"),
+        Decimal("130"),
+        Decimal("128"),
+        Decimal("125"),
+        Decimal("120"),
+        Decimal("118"),
     ]
     lows = [
-        Decimal("95"), Decimal("92"), Decimal("90"), Decimal("95"), Decimal("98"),
-        Decimal("97"), Decimal("95"), Decimal("93"), Decimal("90"), Decimal("88"),
-        Decimal("85"), Decimal("87"), Decimal("90"), Decimal("93"), Decimal("95"),
-        Decimal("98"), Decimal("95"), Decimal("92"), Decimal("90"), Decimal("88"),
-        Decimal("90"), Decimal("93"), Decimal("95"), Decimal("98"), Decimal("100"),
+        Decimal("95"),
+        Decimal("92"),
+        Decimal("90"),
+        Decimal("95"),
+        Decimal("98"),
+        Decimal("97"),
+        Decimal("95"),
+        Decimal("93"),
+        Decimal("90"),
+        Decimal("88"),
+        Decimal("85"),
+        Decimal("87"),
+        Decimal("90"),
+        Decimal("93"),
+        Decimal("95"),
+        Decimal("98"),
+        Decimal("95"),
+        Decimal("92"),
+        Decimal("90"),
+        Decimal("88"),
+        Decimal("90"),
+        Decimal("93"),
+        Decimal("95"),
+        Decimal("98"),
+        Decimal("100"),
     ]
     return highs, lows
 
@@ -193,15 +234,15 @@ class TestOrderBlock:
         """看跌K线后紧接强势看涨吞没K线时检测到看涨 OB。"""
         analyzer = SMCAnalyzer()
         klines = [
-            _make_kline(open_="100", high="102", low="98", close="99"),   # 看跌
-            _make_kline(open_="99", high="101", low="97", close="98"),    # 看跌
-            _make_kline(open_="98", high="100", low="96", close="97"),    # 被吞没
-            _make_kline(open_="96", high="105", low="95", close="104"),   # 强势看涨吞没
-            _make_kline(open_="104", high="108", low="103", close="106"), # 后续
+            _make_kline(open_="100", high="102", low="98", close="99"),  # 看跌
+            _make_kline(open_="99", high="101", low="97", close="98"),  # 看跌
+            _make_kline(open_="98", high="100", low="96", close="97"),  # 被吞没
+            _make_kline(open_="96", high="105", low="95", close="104"),  # 强势看涨吞没
+            _make_kline(open_="104", high="108", low="103", close="106"),  # 后续
         ]
         obs = analyzer.find_order_blocks(klines)
         # 应该能找到看涨 OB
-        bullish_obs = [ob for ob in obs if ob["type"] == "bullish_ob"]
+        _bullish_obs = [ob for ob in obs if ob["type"] == "bullish_ob"]  # noqa: F841
         # 不一定都能检测到，但不应崩溃
         assert isinstance(obs, list)
 
@@ -220,12 +261,15 @@ class TestOrderBlock:
         """OB 结果最多 10 个。"""
         analyzer = SMCAnalyzer()
         # 生成大量K线
-        klines = [_make_kline(
-            open_=str(100 + (i % 3)),
-            high=str(105 + (i % 3)),
-            low=str(95 + (i % 3)),
-            close=str(102 + (i % 3) * (1 if i % 2 == 0 else -1)),
-        ) for i in range(100)]
+        klines = [
+            _make_kline(
+                open_=str(100 + (i % 3)),
+                high=str(105 + (i % 3)),
+                low=str(95 + (i % 3)),
+                close=str(102 + (i % 3) * (1 if i % 2 == 0 else -1)),
+            )
+            for i in range(100)
+        ]
         obs = analyzer.find_order_blocks(klines)
         assert len(obs) <= 10
 
@@ -258,8 +302,10 @@ class TestFVG:
         analyzer = SMCAnalyzer()
         klines = [
             _make_kline(open_="100", high="105", low="98", close="103"),  # K1: high=105
-            _make_kline(open_="103", high="108", low="102", close="106"), # K2
-            _make_kline(open_="108", high="115", low="110", close="113"), # K3: low=110 > K1 high=105
+            _make_kline(open_="103", high="108", low="102", close="106"),  # K2
+            _make_kline(
+                open_="108", high="115", low="110", close="113"
+            ),  # K3: low=110 > K1 high=105
         ]
         fvgs = analyzer.find_fvg(klines)
         assert len(fvgs) > 0
@@ -269,9 +315,9 @@ class TestFVG:
         """第 3 根K线 high < 第 1 根K线 low 时检测到看跌 FVG。"""
         analyzer = SMCAnalyzer()
         klines = [
-            _make_kline(open_="110", high="112", low="105", close="107"), # K1: low=105
-            _make_kline(open_="107", high="108", low="100", close="102"), # K2
-            _make_kline(open_="100", high="102", low="95", close="98"),   # K3: high=102 < K1 low=105
+            _make_kline(open_="110", high="112", low="105", close="107"),  # K1: low=105
+            _make_kline(open_="107", high="108", low="100", close="102"),  # K2
+            _make_kline(open_="100", high="102", low="95", close="98"),  # K3: high=102 < K1 low=105
         ]
         fvgs = analyzer.find_fvg(klines)
         assert len(fvgs) > 0
@@ -318,18 +364,58 @@ class TestLiquidityPools:
         analyzer = SMCAnalyzer()
         # 创建多个接近的高点
         highs = [
-            Decimal("100"), Decimal("105"), Decimal("110"), Decimal("105"), Decimal("100"),
-            Decimal("100"), Decimal("105"), Decimal("110"), Decimal("105"), Decimal("100"),
-            Decimal("100"), Decimal("105"), Decimal("110.1"), Decimal("105"), Decimal("100"),
-            Decimal("100"), Decimal("105"), Decimal("109.9"), Decimal("105"), Decimal("100"),
-            Decimal("100"), Decimal("105"), Decimal("110"), Decimal("105"), Decimal("100"),
+            Decimal("100"),
+            Decimal("105"),
+            Decimal("110"),
+            Decimal("105"),
+            Decimal("100"),
+            Decimal("100"),
+            Decimal("105"),
+            Decimal("110"),
+            Decimal("105"),
+            Decimal("100"),
+            Decimal("100"),
+            Decimal("105"),
+            Decimal("110.1"),
+            Decimal("105"),
+            Decimal("100"),
+            Decimal("100"),
+            Decimal("105"),
+            Decimal("109.9"),
+            Decimal("105"),
+            Decimal("100"),
+            Decimal("100"),
+            Decimal("105"),
+            Decimal("110"),
+            Decimal("105"),
+            Decimal("100"),
         ]
         lows = [
-            Decimal("90"), Decimal("92"), Decimal("95"), Decimal("92"), Decimal("90"),
-            Decimal("90"), Decimal("92"), Decimal("95"), Decimal("92"), Decimal("90"),
-            Decimal("90"), Decimal("92"), Decimal("95"), Decimal("92"), Decimal("90"),
-            Decimal("90"), Decimal("92"), Decimal("95"), Decimal("92"), Decimal("90"),
-            Decimal("90"), Decimal("92"), Decimal("95"), Decimal("92"), Decimal("90"),
+            Decimal("90"),
+            Decimal("92"),
+            Decimal("95"),
+            Decimal("92"),
+            Decimal("90"),
+            Decimal("90"),
+            Decimal("92"),
+            Decimal("95"),
+            Decimal("92"),
+            Decimal("90"),
+            Decimal("90"),
+            Decimal("92"),
+            Decimal("95"),
+            Decimal("92"),
+            Decimal("90"),
+            Decimal("90"),
+            Decimal("92"),
+            Decimal("95"),
+            Decimal("92"),
+            Decimal("90"),
+            Decimal("90"),
+            Decimal("92"),
+            Decimal("95"),
+            Decimal("92"),
+            Decimal("90"),
         ]
         pools = analyzer.find_liquidity_pools(highs, lows)
         # 不一定能检测到（取决于 swing 识别），但不应崩溃
@@ -368,7 +454,9 @@ class TestLiquidityGrab:
             _make_kline(open_="103", high="115", low="102", close="104"),  # 突破到115
             _make_kline(open_="104", high="106", low="100", close="101"),  # 回落到101
         ]
-        pools = [{"type": "sell_side_liquidity", "price": "110", "touch_count": 2, "indices": [0, 1]}]
+        pools = [
+            {"type": "sell_side_liquidity", "price": "110", "touch_count": 2, "indices": [0, 1]}
+        ]
         result = analyzer.detect_liquidity_grab(klines, pools)
         assert result is not None
         assert result["type"] == "sell_side_grab"
@@ -379,7 +467,7 @@ class TestLiquidityGrab:
         analyzer = SMCAnalyzer()
         klines = [
             _make_kline(open_="100", high="102", low="95", close="97"),
-            _make_kline(open_="97", high="98", low="85", close="96"),   # 跌破到85
+            _make_kline(open_="97", high="98", low="85", close="96"),  # 跌破到85
             _make_kline(open_="96", high="100", low="94", close="99"),  # 反弹到99
         ]
         pools = [{"type": "buy_side_liquidity", "price": "90", "touch_count": 2, "indices": [0, 1]}]
@@ -417,12 +505,14 @@ class TestPremiumDiscount:
         klines = []
         for i in range(20):
             price = 100 + i * 5
-            klines.append(_make_kline(
-                open_=str(price),
-                high=str(price + 2),
-                low=str(price - 2),
-                close=str(price + 1),
-            ))
+            klines.append(
+                _make_kline(
+                    open_=str(price),
+                    high=str(price + 2),
+                    low=str(price - 2),
+                    close=str(price + 1),
+                )
+            )
         zone = analyzer.premium_discount(klines)
         assert zone in ("premium", "discount", "equilibrium")
 
@@ -450,18 +540,58 @@ class TestTrendManagement:
         analyzer = SMCAnalyzer()
         # 上升趋势：高点递增，低点递增
         highs = [
-            Decimal("100"), Decimal("105"), Decimal("110"), Decimal("108"), Decimal("105"),
-            Decimal("102"), Decimal("100"), Decimal("105"), Decimal("110"), Decimal("115"),
-            Decimal("120"), Decimal("118"), Decimal("115"), Decimal("110"), Decimal("108"),
-            Decimal("105"), Decimal("110"), Decimal("115"), Decimal("120"), Decimal("125"),
-            Decimal("130"), Decimal("128"), Decimal("125"), Decimal("120"), Decimal("118"),
+            Decimal("100"),
+            Decimal("105"),
+            Decimal("110"),
+            Decimal("108"),
+            Decimal("105"),
+            Decimal("102"),
+            Decimal("100"),
+            Decimal("105"),
+            Decimal("110"),
+            Decimal("115"),
+            Decimal("120"),
+            Decimal("118"),
+            Decimal("115"),
+            Decimal("110"),
+            Decimal("108"),
+            Decimal("105"),
+            Decimal("110"),
+            Decimal("115"),
+            Decimal("120"),
+            Decimal("125"),
+            Decimal("130"),
+            Decimal("128"),
+            Decimal("125"),
+            Decimal("120"),
+            Decimal("118"),
         ]
         lows = [
-            Decimal("90"), Decimal("92"), Decimal("95"), Decimal("93"), Decimal("92"),
-            Decimal("91"), Decimal("90"), Decimal("92"), Decimal("95"), Decimal("98"),
-            Decimal("100"), Decimal("98"), Decimal("95"), Decimal("93"), Decimal("92"),
-            Decimal("91"), Decimal("93"), Decimal("95"), Decimal("98"), Decimal("100"),
-            Decimal("102"), Decimal("100"), Decimal("98"), Decimal("96"), Decimal("95"),
+            Decimal("90"),
+            Decimal("92"),
+            Decimal("95"),
+            Decimal("93"),
+            Decimal("92"),
+            Decimal("91"),
+            Decimal("90"),
+            Decimal("92"),
+            Decimal("95"),
+            Decimal("98"),
+            Decimal("100"),
+            Decimal("98"),
+            Decimal("95"),
+            Decimal("93"),
+            Decimal("92"),
+            Decimal("91"),
+            Decimal("93"),
+            Decimal("95"),
+            Decimal("98"),
+            Decimal("100"),
+            Decimal("102"),
+            Decimal("100"),
+            Decimal("98"),
+            Decimal("96"),
+            Decimal("95"),
         ]
         trend = analyzer.update_trend("BTCUSDT", highs, lows)
         assert trend in ("bullish", "bearish")

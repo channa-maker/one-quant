@@ -29,7 +29,7 @@ from __future__ import annotations
 import base64
 import io
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -40,23 +40,26 @@ logger = get_logger(__name__)
 
 # ──────────────────── matplotlib 全局配置 ────────────────────
 
+
 def _setup_matplotlib():
     """配置 matplotlib 中文支持和全局样式。"""
     import matplotlib
+
     matplotlib.use("Agg")  # 无头模式，适合服务器环境
     import matplotlib.pyplot as plt
 
     # 尝试配置中文字体（按优先级尝试）
     font_candidates = [
-        "SimHei",           # Windows 黑体
+        "SimHei",  # Windows 黑体
         "Microsoft YaHei",  # Windows 微软雅黑
         "WenQuanYi Micro Hei",  # Linux 文泉驿
-        "Noto Sans CJK SC",     # Google Noto
-        "PingFang SC",      # macOS 苹方
-        "Arial Unicode MS", # macOS 通用
+        "Noto Sans CJK SC",  # Google Noto
+        "PingFang SC",  # macOS 苹方
+        "Arial Unicode MS",  # macOS 通用
     ]
 
     import matplotlib.font_manager as fm
+
     available_fonts = {f.name for f in fm.fontManager.ttflist}
     chosen_font = None
     for candidate in font_candidates:
@@ -73,14 +76,16 @@ def _setup_matplotlib():
     plt.rcParams["axes.unicode_minus"] = False  # 解决负号显示问题
 
     # 全局样式
-    plt.rcParams.update({
-        "figure.facecolor": "#ffffff",
-        "axes.facecolor": "#fafafa",
-        "axes.grid": True,
-        "grid.alpha": 0.3,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-    })
+    plt.rcParams.update(
+        {
+            "figure.facecolor": "#ffffff",
+            "axes.facecolor": "#fafafa",
+            "axes.grid": True,
+            "grid.alpha": 0.3,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+        }
+    )
 
     return plt
 
@@ -96,12 +101,12 @@ class BacktestVisualizer:
     """
 
     # 配色方案
-    _COLOR_EQUITY = "#1976D2"      # 权益曲线：蓝色
-    _COLOR_BENCHMARK = "#9E9E9E"   # 基准线：灰色
-    _COLOR_DRAWDOWN = "#E53935"    # 回撤：红色
-    _COLOR_POSITIVE = "#4CAF50"    # 正收益：绿色
-    _COLOR_NEGATIVE = "#F44336"    # 负收益：红色
-    _COLOR_NEUTRAL = "#BDBDBD"     # 无数据：灰色
+    _COLOR_EQUITY = "#1976D2"  # 权益曲线：蓝色
+    _COLOR_BENCHMARK = "#9E9E9E"  # 基准线：灰色
+    _COLOR_DRAWDOWN = "#E53935"  # 回撤：红色
+    _COLOR_POSITIVE = "#4CAF50"  # 正收益：绿色
+    _COLOR_NEGATIVE = "#F44336"  # 负收益：红色
+    _COLOR_NEUTRAL = "#BDBDBD"  # 无数据：灰色
 
     def __init__(self, result: BacktestResult) -> None:
         """初始化可视化器。
@@ -137,7 +142,7 @@ class BacktestVisualizer:
             return fig
 
         # 提取时间和权益
-        timestamps = [datetime.fromtimestamp(ts / 1e9, tz=timezone.utc) for ts, _ in curve]
+        timestamps = [datetime.fromtimestamp(ts / 1e9, tz=UTC) for ts, _ in curve]
         equities = [float(e) for _, e in curve]
 
         # 归一化为净值（初始值 = 1.0）
@@ -145,48 +150,87 @@ class BacktestVisualizer:
         nav = [e / initial for e in equities]
 
         # 绘制策略净值曲线
-        ax.plot(timestamps, nav, color=self._COLOR_EQUITY, linewidth=1.5, label="策略净值", zorder=3)
+        ax.plot(
+            timestamps,
+            nav,
+            color=self._COLOR_EQUITY,
+            linewidth=1.5,
+            label="策略净值",
+            zorder=3,
+        )
 
         # 绘制基准曲线（如有）
         if benchmark_curve:
-            bm_timestamps = [datetime.fromtimestamp(ts / 1e9, tz=timezone.utc) for ts, _ in benchmark_curve]
+            bm_timestamps = [datetime.fromtimestamp(ts / 1e9, tz=UTC) for ts, _ in benchmark_curve]
             bm_equities = [float(e) for _, e in benchmark_curve]
             bm_initial = bm_equities[0] if bm_equities[0] != 0 else 1.0
             bm_nav = [e / bm_initial for e in bm_equities]
-            ax.plot(bm_timestamps, bm_nav, color=self._COLOR_BENCHMARK, linewidth=1.0,
-                    linestyle="--", label="基准", zorder=2)
+            ax.plot(
+                bm_timestamps,
+                bm_nav,
+                color=self._COLOR_BENCHMARK,
+                linewidth=1.0,
+                linestyle="--",
+                label="基准",
+                zorder=2,
+            )
 
         # 填充正收益区域
-        ax.fill_between(timestamps, 1.0, nav,
-                        where=[n >= 1.0 for n in nav],
-                        color=self._COLOR_POSITIVE, alpha=0.08, interpolate=True)
+        ax.fill_between(
+            timestamps,
+            1.0,
+            nav,
+            where=[n >= 1.0 for n in nav],
+            color=self._COLOR_POSITIVE,
+            alpha=0.08,
+            interpolate=True,
+        )
         # 填充负收益区域
-        ax.fill_between(timestamps, 1.0, nav,
-                        where=[n < 1.0 for n in nav],
-                        color=self._COLOR_NEGATIVE, alpha=0.08, interpolate=True)
+        ax.fill_between(
+            timestamps,
+            1.0,
+            nav,
+            where=[n < 1.0 for n in nav],
+            color=self._COLOR_NEGATIVE,
+            alpha=0.08,
+            interpolate=True,
+        )
 
         # 基准线
         ax.axhline(y=1.0, color="#888888", linewidth=0.8, linestyle="-", alpha=0.5)
 
         # 标注起止净值
-        ax.annotate(f"{nav[0]:.3f}", xy=(timestamps[0], nav[0]),
-                    fontsize=8, color="#666", ha="left", va="bottom")
-        ax.annotate(f"{nav[-1]:.3f}", xy=(timestamps[-1], nav[-1]),
-                    fontsize=8, color="#666", ha="right",
-                    va="bottom" if nav[-1] >= 1.0 else "top")
+        ax.annotate(
+            f"{nav[0]:.3f}",
+            xy=(timestamps[0], nav[0]),
+            fontsize=8,
+            color="#666",
+            ha="left",
+            va="bottom",
+        )
+        ax.annotate(
+            f"{nav[-1]:.3f}",
+            xy=(timestamps[-1], nav[-1]),
+            fontsize=8,
+            color="#666",
+            ha="right",
+            va="bottom" if nav[-1] >= 1.0 else "top",
+        )
 
         # 添加指标文本框
         total_ret = float(self._result.total_return) * 100
         max_dd = float(self._result.max_drawdown) * 100
         sharpe = self._result.sharpe_ratio
-        info_text = (
-            f"总收益: {total_ret:+.2f}%\n"
-            f"最大回撤: {max_dd:.2f}%\n"
-            f"夏普比率: {sharpe:.2f}"
+        info_text = f"总收益: {total_ret:+.2f}%\n最大回撤: {max_dd:.2f}%\n夏普比率: {sharpe:.2f}"
+        ax.text(
+            0.02,
+            0.97,
+            info_text,
+            transform=ax.transAxes,
+            fontsize=9,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="white", alpha=0.8, edgecolor="#ddd"),
         )
-        ax.text(0.02, 0.97, info_text, transform=ax.transAxes,
-                fontsize=9, verticalalignment="top",
-                bbox=dict(boxstyle="round,pad=0.5", facecolor="white", alpha=0.8, edgecolor="#ddd"))
 
         ax.set_title("策略权益曲线", fontsize=14, fontweight="bold", pad=15)
         ax.set_xlabel("日期", fontsize=10)
@@ -238,7 +282,7 @@ class BacktestVisualizer:
             return fig
 
         # 计算逐点回撤
-        timestamps = [datetime.fromtimestamp(ts / 1e9, tz=timezone.utc) for ts, _ in curve]
+        timestamps = [datetime.fromtimestamp(ts / 1e9, tz=UTC) for ts, _ in curve]
         equities = [float(e) for _, e in curve]
 
         drawdowns: list[float] = []
@@ -259,8 +303,11 @@ class BacktestVisualizer:
         ax.annotate(
             f"最大回撤: {max_dd_val:.2f}%",
             xy=(timestamps[min_dd_idx], max_dd_val),
-            xytext=(15, -15), textcoords="offset points",
-            fontsize=9, color=self._COLOR_DRAWDOWN, fontweight="bold",
+            xytext=(15, -15),
+            textcoords="offset points",
+            fontsize=9,
+            color=self._COLOR_DRAWDOWN,
+            fontweight="bold",
             arrowprops=dict(arrowstyle="->", color=self._COLOR_DRAWDOWN, lw=1.5),
         )
 
@@ -309,7 +356,7 @@ class BacktestVisualizer:
 
         # 按年份和月份组织数据
         years = sorted(set(k[:4] for k in monthly.keys()))
-        months = list(range(1, 13))
+        _months = list(range(1, 13))  # noqa: F841
 
         # 构建矩阵（行=年份，列=月份）
         matrix = np.full((len(years), 12), np.nan)
@@ -322,6 +369,7 @@ class BacktestVisualizer:
 
         # 自定义配色：红（负）→ 白（零）→ 绿（正）
         from matplotlib.colors import LinearSegmentedColormap
+
         colors = ["#F44336", "#FFCDD2", "#FFFFFF", "#C8E6C9", "#4CAF50"]
         cmap = LinearSegmentedColormap.from_list("pnl", colors, N=256)
 
@@ -349,8 +397,16 @@ class BacktestVisualizer:
                     continue
                 # 根据背景深浅选择文字颜色
                 text_color = "#ffffff" if abs(val) > vmax * 0.6 else "#333333"
-                ax.text(j, i, f"{val:+.1f}%", ha="center", va="center",
-                        fontsize=8, color=text_color, fontweight="bold")
+                ax.text(
+                    j,
+                    i,
+                    f"{val:+.1f}%",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color=text_color,
+                    fontweight="bold",
+                )
 
         # 添加颜色条
         cbar = fig.colorbar(im, ax=ax, shrink=0.8, pad=0.02)
@@ -572,7 +628,7 @@ class BacktestVisualizer:
 
         monthly_data: dict[str, list[tuple[int, Decimal]]] = defaultdict(list)
         for ts_ns, equity in curve:
-            dt = datetime.fromtimestamp(ts_ns / 1_000_000_000, tz=timezone.utc)
+            dt = datetime.fromtimestamp(ts_ns / 1_000_000_000, tz=UTC)
             month_key = dt.strftime("%Y-%m")
             monthly_data[month_key].append((ts_ns, equity))
 

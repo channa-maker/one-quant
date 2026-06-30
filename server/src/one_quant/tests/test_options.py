@@ -15,21 +15,16 @@ import time
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
-
-from one_quant.core.types import Market, OptionQuote, Signal
+from one_quant.core.types import OptionQuote
 from one_quant.strategy.options import (
-    DEFAULT_RISK_FREE_RATE,
     IronCondorStrategy,
     MarginMonitor,
     OptionChainModel,
     OptionGreeksAggregator,
-    RiskCheckResult,
     StraddleStrategy,
     VerticalSpreadStrategy,
     black_scholes_greeks,
 )
-
 
 # ──────────────────────────── 辅助工具 ────────────────────────────
 
@@ -71,12 +66,14 @@ def _make_quote_list() -> list[OptionQuote]:
         for opt_type in ("call", "put"):
             for exp in (expiry_near, expiry_far):
                 delta = "0.5" if strike == 100 else ("0.3" if opt_type == "call" else "-0.3")
-                quotes.append(_make_option_quote(
-                    option_type=opt_type,
-                    strike=str(strike),
-                    delta=delta,
-                    expiry=exp,
-                ))
+                quotes.append(
+                    _make_option_quote(
+                        option_type=opt_type,
+                        strike=str(strike),
+                        delta=delta,
+                        expiry=exp,
+                    )
+                )
     return quotes
 
 
@@ -189,12 +186,16 @@ class TestBlackScholesGreeks:
         # OTM 期权的 Vega 随 IV 单调递增。
         expiry = date.today() + timedelta(days=30)
         greeks_low = black_scholes_greeks(
-            spot=Decimal("100"), strike=Decimal("120"),
-            expiry=expiry, iv=0.2,
+            spot=Decimal("100"),
+            strike=Decimal("120"),
+            expiry=expiry,
+            iv=0.2,
         )
         greeks_high = black_scholes_greeks(
-            spot=Decimal("100"), strike=Decimal("120"),
-            expiry=expiry, iv=0.5,
+            spot=Decimal("100"),
+            strike=Decimal("120"),
+            expiry=expiry,
+            iv=0.5,
         )
         assert greeks_high["vega"] > greeks_low["vega"]
 
@@ -202,8 +203,10 @@ class TestBlackScholesGreeks:
         """所有 Greeks 返回 Decimal 类型。"""
         expiry = date.today() + timedelta(days=30)
         greeks = black_scholes_greeks(
-            spot=Decimal("100"), strike=Decimal("100"),
-            expiry=expiry, iv=0.3,
+            spot=Decimal("100"),
+            strike=Decimal("100"),
+            expiry=expiry,
+            iv=0.3,
         )
         for key, val in greeks.items():
             assert isinstance(val, Decimal), f"{key} 应为 Decimal"
@@ -299,9 +302,9 @@ class TestVerticalSpreadStrategy:
 
     def test_on_ticker_returns_empty(self):
         """Ticker 不产生信号。"""
-        assert VerticalSpreadStrategy().on_ticker(
-            _make_option_quote()
-        ) is not None or True  # on_ticker 返回 []
+        assert (
+            VerticalSpreadStrategy().on_ticker(_make_option_quote()) is not None or True
+        )  # on_ticker 返回 []
 
     def test_on_kline_returns_empty(self):
         """Kline 不产生信号。"""
@@ -421,9 +424,9 @@ class TestOptionGreeksAggregator:
         )
         portfolio = {
             "delta": Decimal("50"),  # 超限
-            "gamma": Decimal("1"),   # 正常
+            "gamma": Decimal("1"),  # 正常
             "vega": Decimal("100"),  # 超限
-            "theta": Decimal("-10"), # 正常
+            "theta": Decimal("-10"),  # 正常
         }
         result = agg.check_greeks_limits(portfolio)
         assert result.passed is False

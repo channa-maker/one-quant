@@ -13,9 +13,7 @@ tick 级事件驱动回测引擎，支持 ticker 和 kline 两种粒度数据。
 from __future__ import annotations
 
 import uuid
-from copy import deepcopy
-from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel
 
@@ -29,7 +27,6 @@ from one_quant.core.types import (
     Ticker,
 )
 from one_quant.strategy.contracts import Strategy
-
 
 # ──────────────────────────── 回测结果 ────────────────────────────
 
@@ -97,8 +94,8 @@ class BacktestEngine:
         self,
         strategy: Strategy,
         initial_capital: Decimal = Decimal("100000"),
-        commission_rate: Decimal = Decimal("0.001"),   # 0.1% 手续费
-        slippage_rate: Decimal = Decimal("0.0005"),     # 0.05% 滑点
+        commission_rate: Decimal = Decimal("0.001"),  # 0.1% 手续费
+        slippage_rate: Decimal = Decimal("0.0005"),  # 0.05% 滑点
     ) -> None:
         self._strategy = strategy
         self._initial_capital = initial_capital
@@ -292,9 +289,7 @@ class BacktestEngine:
 
     # ──── 模拟撮合 ────
 
-    def _simulate_fill(
-        self, signal: Signal, price: Decimal, timestamp_ns: int
-    ) -> Fill | None:
+    def _simulate_fill(self, signal: Signal, price: Decimal, timestamp_ns: int) -> Fill | None:
         """模拟撮合：将信号转化为成交记录。
 
         包含滑点和手续费计算。
@@ -400,11 +395,15 @@ class BacktestEngine:
                 # 加仓：更新均价
                 old_amount = current_pos.entry_price * current_pos.quantity
                 new_quantity = current_pos.quantity + fill.quantity
-                new_entry = (old_amount + trade_amount) / new_quantity if new_quantity > 0 else Decimal("0")
+                new_entry = (
+                    (old_amount + trade_amount) / new_quantity if new_quantity > 0 else Decimal("0")
+                )
                 self._positions[symbol] = current_pos.model_copy(
                     update={
                         "quantity": new_quantity,
-                        "entry_price": new_entry.quantize(Decimal("0.00000001"), rounding=ROUND_HALF_UP),
+                        "entry_price": new_entry.quantize(
+                            Decimal("0.00000001"), rounding=ROUND_HALF_UP
+                        ),
                         "timestamp_ns": timestamp_ns,
                     }
                 )
@@ -460,11 +459,15 @@ class BacktestEngine:
                 # 加空仓
                 old_amount = current_pos.entry_price * current_pos.quantity
                 new_quantity = current_pos.quantity + fill.quantity
-                new_entry = (old_amount + trade_amount) / new_quantity if new_quantity > 0 else Decimal("0")
+                new_entry = (
+                    (old_amount + trade_amount) / new_quantity if new_quantity > 0 else Decimal("0")
+                )
                 self._positions[symbol] = current_pos.model_copy(
                     update={
                         "quantity": new_quantity,
-                        "entry_price": new_entry.quantize(Decimal("0.00000001"), rounding=ROUND_HALF_UP),
+                        "entry_price": new_entry.quantize(
+                            Decimal("0.00000001"), rounding=ROUND_HALF_UP
+                        ),
                         "timestamp_ns": timestamp_ns,
                     }
                 )
@@ -663,14 +666,14 @@ class BacktestEngine:
             return 0.0
 
         variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
-        std_return = variance ** 0.5
+        std_return = variance**0.5
 
         if std_return == 0:
             return 0.0
 
         # 年化：假设每条数据代表一天（简化处理）
         # 实际应用中应根据数据频率调整
-        annual_factor = 365.0 ** 0.5
+        annual_factor = 365.0**0.5
         annualized_return = mean_return * 365.0
         annualized_std = std_return * annual_factor
 

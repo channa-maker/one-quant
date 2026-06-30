@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from one_quant.core.types import Signal
-
 
 @runtime_checkable
 class Factor(Protocol):

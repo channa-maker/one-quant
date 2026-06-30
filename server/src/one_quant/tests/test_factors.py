@@ -7,7 +7,6 @@ ONE量化 - 因子库测试
 import pytest
 
 from one_quant.ml.factors import (
-    FactorResult,
     MomentumFactor,
     RSIFactor,
     VolatilityStdFactor,

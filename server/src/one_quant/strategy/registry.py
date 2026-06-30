@@ -20,16 +20,13 @@ ONE量化 - 策略注册表
 
 from __future__ import annotations
 
-from typing import Type
-
 from one_quant.strategy.contracts import Strategy
 
-
 # 全局策略注册表：{策略名称: 策略类}
-STRATEGY_REGISTRY: dict[str, Type[Strategy]] = {}
+STRATEGY_REGISTRY: dict[str, type[Strategy]] = {}
 
 
-def register_strategy(cls: Type[Strategy]) -> Type[Strategy]:
+def register_strategy(cls: type[Strategy]) -> type[Strategy]:
     """策略注册装饰器。
 
     将策略类注册到全局注册表中。策略类必须有 ``name`` 属性。
@@ -57,15 +54,14 @@ def register_strategy(cls: Type[Strategy]) -> Type[Strategy]:
         existing = STRATEGY_REGISTRY[cls.name]
         if existing is not cls:
             raise ValueError(
-                f"策略名称 '{cls.name}' 已注册（{existing.__name__}），"
-                f"无法注册 {cls.__name__}"
+                f"策略名称 '{cls.name}' 已注册（{existing.__name__}），无法注册 {cls.__name__}"
             )
 
     STRATEGY_REGISTRY[cls.name] = cls
     return cls
 
 
-def get_strategy(name: str) -> Type[Strategy] | None:
+def get_strategy(name: str) -> type[Strategy] | None:
     """根据名称获取已注册的策略类。
 
     Args:

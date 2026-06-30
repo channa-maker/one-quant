@@ -8,8 +8,8 @@ import pytest
 
 from one_quant.agents.base import BaseAgent
 from one_quant.agents.briefer import BrieferAgent
-from one_quant.agents.watcher import WatcherAgent
 from one_quant.agents.sentiment import SentimentAgent
+from one_quant.agents.watcher import WatcherAgent
 
 
 class TestAgentRegistry:
@@ -36,6 +36,7 @@ class TestAgentLifecycle:
     @pytest.mark.asyncio
     async def test_safe_run_catches_exceptions(self):
         """safe_run 捕获异常。"""
+
         class FailingAgent(BaseAgent):
             name = "failing"
             description = "总是失败"
@@ -68,12 +69,14 @@ class TestBrieferAgent:
     async def test_report_structure(self):
         """研报结构完整性。"""
         agent = BrieferAgent()
-        result = await agent.safe_run({
-            "market_data": {"BTC/USDT": {"change_24h": 3.0}},
-            "positions": [{"symbol": "BTC/USDT", "unrealized_pnl": 100}],
-            "signals": [],
-            "ai_analysis": {},
-        })
+        result = await agent.safe_run(
+            {
+                "market_data": {"BTC/USDT": {"change_24h": 3.0}},
+                "positions": [{"symbol": "BTC/USDT", "unrealized_pnl": 100}],
+                "signals": [],
+                "ai_analysis": {},
+            }
+        )
         assert "📊" in result["report"]
         assert "💼" in result["report"]
         assert "📡" in result["report"]
@@ -88,11 +91,13 @@ class TestWatcherAgent:
     async def test_latency_alert(self):
         """高延迟告警。"""
         agent = WatcherAgent()
-        result = await agent.safe_run({
-            "tickers": {},
-            "positions": [],
-            "system_metrics": {"market_latency_ms": 5000},
-        })
+        result = await agent.safe_run(
+            {
+                "tickers": {},
+                "positions": [],
+                "system_metrics": {"market_latency_ms": 5000},
+            }
+        )
         assert result["alert_count"] >= 1
         assert any(a["type"] == "high_latency" for a in result["alerts"])
 
@@ -104,9 +109,11 @@ class TestSentimentAgent:
     async def test_mixed_sentiment(self):
         """混合情绪。"""
         agent = SentimentAgent()
-        result = await agent.safe_run({
-            "texts": ["利好消息", "利空消息"],
-            "symbol": "BTC/USDT",
-        })
+        result = await agent.safe_run(
+            {
+                "texts": ["利好消息", "利空消息"],
+                "symbol": "BTC/USDT",
+            }
+        )
         assert result["success"] is True
         assert -1 <= result["sentiment_score"] <= 1

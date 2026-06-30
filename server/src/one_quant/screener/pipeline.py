@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import UTC
 from decimal import Decimal
 from typing import Any, Protocol
 
@@ -199,9 +200,7 @@ class DefaultFactorLibrary:
         factors["buy_volume_ratio"] = buy_ratio
 
         # 链上因子：活跃地址数变化（如有）
-        active_addr_change = Decimal(
-            str(ticker.get("active_address_change", "0"))
-        )
+        active_addr_change = Decimal(str(ticker.get("active_address_change", "0")))
         factors["active_address_change"] = active_addr_change
 
         return factors
@@ -290,7 +289,7 @@ class DefaultLLMProvider:
             parts.append(f"24h变动{momentum:.1f}%，表现平稳")
 
         if volume > 0:
-            parts.append(f"成交量活跃")
+            parts.append("成交量活跃")
 
         if buy_ratio > 0.6:
             parts.append("买盘占优")
@@ -499,11 +498,11 @@ class ScreenerPipeline:
                 if isinstance(listing_date, (int, float)):
                     age_days = (now_ts - listing_date) / 86400
                 else:
-                    from datetime import datetime, timezone
+                    from datetime import datetime
 
                     dt = datetime.fromisoformat(str(listing_date))
                     if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=UTC)
                     age_days = (now_ts - dt.timestamp()) / 86400
                 if age_days >= self.min_listing_days:
                     age_ok.append(sym)
@@ -545,9 +544,7 @@ class ScreenerPipeline:
             raw_factors = self._factor_lib.compute(sym, market_data)
             if raw_factors:
                 # Decimal → float，供 ML 模型消费
-                features[sym] = {
-                    k: float(v) for k, v in raw_factors.items()
-                }
+                features[sym] = {k: float(v) for k, v in raw_factors.items()}
         return features
 
     def _ml_score(
@@ -646,9 +643,7 @@ class ScreenerPipeline:
             通过风险约束的候选标的列表。
         """
         # 按最终得分降序排列
-        candidates = sorted(
-            candidates, key=lambda c: c.final_score, reverse=True
-        )
+        candidates = sorted(candidates, key=lambda c: c.final_score, reverse=True)
 
         # 1. 分散化约束：行业 / 市场
         candidates = self._apply_diversification(candidates)

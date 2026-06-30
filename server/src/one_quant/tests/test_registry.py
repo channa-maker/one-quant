@@ -31,6 +31,7 @@ class TestRegistry:
             return "hello"
 
         with pytest.raises(ValueError, match="已注册"):
+
             @reg.register("hello")
             def greet2() -> str:
                 return "hello2"

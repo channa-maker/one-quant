@@ -5,14 +5,13 @@ ONE量化 - 基础设施层综合测试
 """
 
 import asyncio
-import time
 
 import pytest
 
-from one_quant.infra.event_bus import InMemoryEventBus, BackpressurePolicy
-from one_quant.infra.registry import Registry, STRATEGY_REGISTRY, register_strategy
+from one_quant.infra.event_bus import InMemoryEventBus
+from one_quant.infra.logging import log_mask
 from one_quant.infra.message_envelope import MessageEnvelope, create_envelope
-from one_quant.infra.logging import log_mask, setup_logging
+from one_quant.infra.registry import Registry
 
 
 class TestEventBusIntegration:

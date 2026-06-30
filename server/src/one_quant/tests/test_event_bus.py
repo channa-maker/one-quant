@@ -10,7 +10,6 @@ import pytest
 
 from one_quant.infra.event_bus import (
     BackpressurePolicy,
-    EventBusFullError,
     InMemoryEventBus,
 )
 
@@ -91,7 +90,6 @@ async def test_backpressure_raise() -> None:
     bus = InMemoryEventBus(max_queue_size=2, backpressure=BackpressurePolicy.RAISE)
     # 不启动总线，这样消息只入队不消费，队列会满
     # 手动创建队列来模拟
-    import asyncio
     queue = bus._get_or_create_queue("test.raise")
 
     # 填满队列

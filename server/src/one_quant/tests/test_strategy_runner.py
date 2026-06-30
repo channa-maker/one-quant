@@ -6,11 +6,10 @@ ONE量化 - 策略运行引擎测试
 
 import asyncio
 import time
-from decimal import Decimal
 
 import pytest
 
-from one_quant.core.types import Kline, Market, Signal, Ticker
+from one_quant.core.types import Kline, Signal, Ticker
 from one_quant.infra.event_bus import InMemoryEventBus
 from one_quant.runner.engine import StrategyRunner
 from one_quant.strategy.contracts import Strategy
@@ -75,16 +74,19 @@ async def test_signal_emission() -> None:
     await runner.start()
 
     # 发布行情
-    await bus.publish("market.ticker", {
-        "symbol": "BTCUSDT",
-        "market": "SPOT",
-        "exchange": "binance",
-        "last_price": "50000",
-        "bid": "49999",
-        "ask": "50001",
-        "volume_24h": "1000",
-        "timestamp_ns": time.time_ns(),
-    })
+    await bus.publish(
+        "market.ticker",
+        {
+            "symbol": "BTCUSDT",
+            "market": "SPOT",
+            "exchange": "binance",
+            "last_price": "50000",
+            "bid": "49999",
+            "ask": "50001",
+            "volume_24h": "1000",
+            "timestamp_ns": time.time_ns(),
+        },
+    )
 
     await asyncio.sleep(0.2)
 

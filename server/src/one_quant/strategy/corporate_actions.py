@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import time
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from typing import Any, Literal
 
@@ -98,9 +98,7 @@ class CorporateActionEngine:
             action.effective_date,
         )
 
-    def get_actions(
-        self, symbol: str, start: date, end: date
-    ) -> list[CorporateAction]:
+    def get_actions(self, symbol: str, start: date, end: date) -> list[CorporateAction]:
         """查询指定标的在指定时段内的公司行为
 
         Args:
@@ -112,18 +110,14 @@ class CorporateActionEngine:
             该时段内的公司行为列表，按生效日期排序
         """
         result = [
-            a
-            for a in self._actions
-            if a.symbol == symbol and start <= a.effective_date <= end
+            a for a in self._actions if a.symbol == symbol and start <= a.effective_date <= end
         ]
         result.sort(key=lambda a: a.effective_date)
         return result
 
     # ── 价格复权 ──────────────────────────────────────────────────
 
-    def adjust_price(
-        self, price: Decimal, action: CorporateAction
-    ) -> Decimal:
+    def adjust_price(self, price: Decimal, action: CorporateAction) -> Decimal:
         """对单个价格进行复权调整
 
         拆股: price / ratio
@@ -173,9 +167,7 @@ class CorporateActionEngine:
 
     # ── 数量调整 ──────────────────────────────────────────────────
 
-    def adjust_quantity(
-        self, quantity: Decimal, action: CorporateAction
-    ) -> Decimal:
+    def adjust_quantity(self, quantity: Decimal, action: CorporateAction) -> Decimal:
         """对持仓数量进行调整（拆股/合股）
 
         拆股: quantity * ratio
@@ -462,9 +454,7 @@ class DelistingHandler:
         future = date.fromordinal(today.toordinal() + 30)
         actions = self._engine.get_actions(symbol, today, future)
 
-        delistings = [
-            a for a in actions if a.action_type == CorporateActionType.DELISTING
-        ]
+        delistings = [a for a in actions if a.action_type == CorporateActionType.DELISTING]
         if not delistings:
             return None
 

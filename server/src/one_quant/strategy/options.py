@@ -20,17 +20,16 @@ IV 曲面拟合支持 SVI 和 SABR 模型。
 from __future__ import annotations
 
 import math
-from collections import defaultdict
-from datetime import date, datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 from one_quant.core.types import (
+    Kline,
     Market,
     OptionQuote,
     Signal,
     Ticker,
-    Kline,
 )
 from one_quant.infra.logging import get_logger
 from one_quant.strategy.contracts import Strategy
@@ -49,10 +48,10 @@ DEFAULT_RISK_FREE_RATE: float = 0.05
 DAYS_PER_YEAR: int = 365
 
 # Greeks 限额默认值
-DEFAULT_DELTA_LIMIT = Decimal("1000")   # 总 Delta 限额
-DEFAULT_GAMMA_LIMIT = Decimal("500")    # 总 Gamma 限额
-DEFAULT_VEGA_LIMIT = Decimal("2000")    # 总 Vega 限额
-DEFAULT_THETA_LIMIT = Decimal("5000")   # 总 Theta 限额（绝对值）
+DEFAULT_DELTA_LIMIT = Decimal("1000")  # 总 Delta 限额
+DEFAULT_GAMMA_LIMIT = Decimal("500")  # 总 Gamma 限额
+DEFAULT_VEGA_LIMIT = Decimal("2000")  # 总 Vega 限额
+DEFAULT_THETA_LIMIT = Decimal("5000")  # 总 Theta 限额（绝对值）
 
 
 def _norm_cdf(x: float) -> float:
@@ -73,6 +72,7 @@ def _dec(v: float, prec: str = "0.000001") -> Decimal:
 # ═══════════════════════════════════════════════════════════════
 #  数据模型
 # ═══════════════════════════════════════════════════════════════
+
 
 class RiskCheckResult:
     """风控检查结果。
@@ -95,6 +95,7 @@ class RiskCheckResult:
 # ═══════════════════════════════════════════════════════════════
 #  Black-Scholes Greeks 计算
 # ═══════════════════════════════════════════════════════════════
+
 
 def black_scholes_greeks(
     spot: Decimal,
@@ -121,14 +122,14 @@ def black_scholes_greeks(
         Greeks 字典，键为 delta/gamma/theta/vega/rho，值为 Decimal。
         theta 为每日衰减值，vega/rho 已除以 100（对应 1% 变动）。
     """
-    S = float(spot)
-    K = float(strike)
-    T = max((expiry - date.today()).days / float(DAYS_PER_YEAR), 0.001)
+    S = float(spot)  # noqa: N806
+    K = float(strike)  # noqa: N806
+    T = max((expiry - date.today()).days / float(DAYS_PER_YEAR), 0.001)  # noqa: N806
     r = risk_free_rate
     sigma = max(iv, 0.001)  # 防止除零
 
     # d1, d2
-    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
+    d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
     d2 = d1 - sigma * math.sqrt(T)
 
     nd1 = _norm_cdf(d1)
@@ -146,13 +147,11 @@ def black_scholes_greeks(
     # Theta（每日）
     if option_type == "call":
         theta = (
-            -S * npd1 * sigma / (2.0 * math.sqrt(T))
-            - r * K * math.exp(-r * T) * _norm_cdf(d2)
+            -S * npd1 * sigma / (2.0 * math.sqrt(T)) - r * K * math.exp(-r * T) * _norm_cdf(d2)
         ) / float(DAYS_PER_YEAR)
     else:
         theta = (
-            -S * npd1 * sigma / (2.0 * math.sqrt(T))
-            + r * K * math.exp(-r * T) * _norm_cdf(-d2)
+            -S * npd1 * sigma / (2.0 * math.sqrt(T)) + r * K * math.exp(-r * T) * _norm_cdf(-d2)
         ) / float(DAYS_PER_YEAR)
 
     # Vega（对应 1% IV 变动）
@@ -177,6 +176,7 @@ def black_scholes_greeks(
 #  OptionChainModel - 期权链建模
 # ═══════════════════════════════════════════════════════════════
 
+
 class OptionChainModel:
     """期权链建模。
 
@@ -186,7 +186,9 @@ class OptionChainModel:
       3. fit_iv_surface: IV 曲面拟合（SVI / SABR）
     """
 
-    def build_chain(self, quotes: list[OptionQuote]) -> dict[date, dict[Decimal, dict[str, OptionQuote | None]]]:
+    def build_chain(
+        self, quotes: list[OptionQuote]
+    ) -> dict[date, dict[Decimal, dict[str, OptionQuote | None]]]:
         """构建期权链：按到期日 × 行权价组织。
 
         将扁平的期权报价列表转化为嵌套字典结构，方便按到期日和行权价快速查找。
@@ -239,7 +241,9 @@ class OptionChainModel:
         """
         return black_scholes_greeks(spot, strike, expiry, iv, option_type, risk_free_rate)
 
-    def fit_iv_surface(self, chain: dict[date, dict[Decimal, dict[str, OptionQuote | None]]]) -> dict[date, dict[Decimal, float]]:
+    def fit_iv_surface(
+        self, chain: dict[date, dict[Decimal, dict[str, OptionQuote | None]]]
+    ) -> dict[date, dict[Decimal, float]]:
         """IV 曲面拟合。
 
         对期权链中每个到期日的波动率微笑进行拟合。
@@ -304,7 +308,7 @@ class OptionChainModel:
         atm_iv = ivs[len(ivs) // 2]
 
         # SVI 参数初始猜测
-        a = atm_iv ** 2
+        a = atm_iv**2
         b = 0.1
         rho = -0.3  # 典型偏度为负
         m = 0.0
@@ -318,13 +322,9 @@ class OptionChainModel:
         result: dict[float, float] = {}
         for k_val in strikes:
             k = math.log(k_val / mid_strike) if mid_strike > 0 else 0.0
-            w = (
-                best_params["a"]
-                + best_params["b"]
-                * (
-                    best_params["rho"] * (k - best_params["m"])
-                    + math.sqrt((k - best_params["m"]) ** 2 + best_params["sigma"] ** 2)
-                )
+            w = best_params["a"] + best_params["b"] * (
+                best_params["rho"] * (k - best_params["m"])
+                + math.sqrt((k - best_params["m"]) ** 2 + best_params["sigma"] ** 2)
             )
             iv_fitted = math.sqrt(max(w, 0.0001))
             result[k_val] = iv_fitted
@@ -357,8 +357,8 @@ class OptionChainModel:
         if len(data_points) < 2:
             return {k: v for k, v in data_points}
 
-        T = max((expiry - date.today()).days / float(DAYS_PER_YEAR), 0.001)
-        F = spot  # 远期价格近似
+        T = max((expiry - date.today()).days / float(DAYS_PER_YEAR), 0.001)  # noqa: N806
+        F = spot  # 远期价格近似  # noqa: N806
 
         # 从 ATM IV 估计初始 alpha
         strikes = [p[0] for p in data_points]
@@ -372,7 +372,7 @@ class OptionChainModel:
 
         # Hagan 近似公式计算 SABR IV
         result: dict[float, float] = {}
-        for K in strikes:
+        for K in strikes:  # noqa: N806
             iv_sabr = self._sabr_hagan_iv(F, K, T, alpha, beta, rho)
             result[K] = iv_sabr
 
@@ -380,7 +380,12 @@ class OptionChainModel:
 
     @staticmethod
     def _sabr_hagan_iv(
-        F: float, K: float, T: float, alpha: float, beta: float, rho: float
+        F: float,
+        K: float,
+        T: float,
+        alpha: float,
+        beta: float,
+        rho: float,  # noqa: N803
     ) -> float:
         """Hagan et al. (2002) SABR 隐含波动率近似公式。
 
@@ -416,9 +421,9 @@ class OptionChainModel:
             #           + (1-beta)^4/1920 * ln^4(F/K)) + ... )
             # ATM 时 ln(F/K) ≈ 0，修正项简化为：
             vol_correction = (
-                ((1 - beta) ** 2 / 24.0) * (alpha ** 2 / (fk_geom ** 2))
+                ((1 - beta) ** 2 / 24.0) * (alpha**2 / (fk_geom**2))
                 + (rho * beta * alpha / (4.0 * fk_geom))
-                + (2 - 3 * rho ** 2) / 24.0 * (alpha ** 2)
+                + (2 - 3 * rho**2) / 24.0 * (alpha**2)
             ) * T
             iv = (alpha / fk_geom) * (1.0 + vol_correction)
             return max(iv, 0.001)
@@ -447,9 +452,9 @@ class OptionChainModel:
             xz = math.log(max(numerator_inner / denominator_inner, eps)) / z
 
         # 一阶修正项
-        p1 = ((1 - beta) ** 2 / 24.0) * (alpha ** 2 / (fk_geom ** 2))
-        p2 = (rho * beta * alpha / (4.0 * fk_geom))
-        p3 = (2.0 - 3.0 * rho ** 2) / 24.0
+        p1 = ((1 - beta) ** 2 / 24.0) * (alpha**2 / (fk_geom**2))
+        p2 = rho * beta * alpha / (4.0 * fk_geom)
+        p3 = (2.0 - 3.0 * rho**2) / 24.0
         correction = 1.0 + (p1 + p2 + p3) * T
 
         # SABR 隐含波动率
@@ -457,7 +462,11 @@ class OptionChainModel:
         if abs(denominator) < eps:
             return 0.3
 
-        iv = (alpha * z / log_fk) * correction / xz if abs(log_fk) > eps else (alpha / fk_geom) * correction
+        iv = (
+            (alpha * z / log_fk) * correction / xz
+            if abs(log_fk) > eps
+            else (alpha / fk_geom) * correction
+        )
 
         # 对极小 z 的回退
         if abs(z) < eps:
@@ -466,12 +475,10 @@ class OptionChainModel:
         return max(iv, 0.001)
 
 
-
-
-
 # ═══════════════════════════════════════════════════════════════
 #  OptionGreeksAggregator - 组合层 Greeks 聚合
 # ═══════════════════════════════════════════════════════════════
+
 
 class OptionGreeksAggregator:
     """组合层 Greeks 聚合与风控。
@@ -561,6 +568,7 @@ class OptionGreeksAggregator:
 #  期权策略实现
 # ═══════════════════════════════════════════════════════════════
 
+
 class VerticalSpreadStrategy(Strategy):
     """垂直价差策略。
 
@@ -623,7 +631,10 @@ class VerticalSpreadStrategy(Strategy):
                     side="buy",
                     strength=strength,
                     strategy_name=self.name,
-                    reason=f"Bull Call Spread：Delta={delta}，行权价={q.strike}，到期={q.expiry}，预期温和上涨",
+                    reason=(
+                        f"Bull Call Spread：Delta={delta}，行权价={q.strike}，"
+                        f"到期={q.expiry}，预期温和上涨"
+                    ),
                     metadata={
                         "spread_type": "bull_call",
                         "strike": str(q.strike),
@@ -645,7 +656,10 @@ class VerticalSpreadStrategy(Strategy):
                     side="sell",
                     strength=strength,
                     strategy_name=self.name,
-                    reason=f"Bear Put Spread：Delta={delta}，行权价={q.strike}，到期={q.expiry}，预期温和下跌",
+                    reason=(
+                        f"Bear Put Spread：Delta={delta}，行权价={q.strike}，"
+                        f"到期={q.expiry}，预期温和下跌"
+                    ),
                     metadata={
                         "spread_type": "bear_put",
                         "strike": str(q.strike),
@@ -741,7 +755,10 @@ class StraddleStrategy(Strategy):
 
         # 卖出跨式：IV 高位，预期波动率下降
         if iv > self.iv_percentile_high:
-            strength = max(0.0, min(1.0, (iv - self.iv_percentile_high) / (1.0 - self.iv_percentile_high)))
+            strength = max(
+                0.0,
+                min(1.0, (iv - self.iv_percentile_high) / (1.0 - self.iv_percentile_high)),
+            )
             signals.append(
                 Signal(
                     symbol=q.symbol,
@@ -818,7 +835,9 @@ class IronCondorStrategy(Strategy):
         mid_price = (q.bid + q.ask) / Decimal("2")
 
         # Delta 在目标附近（±0.05 容差）
-        delta_ok = abs_delta >= (self.delta_short - Decimal("0.05")) and abs_delta <= (self.delta_short + Decimal("0.05"))
+        delta_ok = abs_delta >= (self.delta_short - Decimal("0.05")) and abs_delta <= (
+            self.delta_short + Decimal("0.05")
+        )
 
         if not delta_ok:
             return signals
@@ -1020,7 +1039,9 @@ class CollarStrategy(Strategy):
 
         # 买入保护性 Put（OTM，|Delta| ≈ put_delta）
         if q.option_type == "put":
-            delta_ok = abs_delta >= (self.put_delta - Decimal("0.05")) and abs_delta <= (self.put_delta + Decimal("0.05"))
+            delta_ok = abs_delta >= (self.put_delta - Decimal("0.05")) and abs_delta <= (
+                self.put_delta + Decimal("0.05")
+            )
             if delta_ok:
                 signals.append(
                     Signal(
@@ -1042,7 +1063,9 @@ class CollarStrategy(Strategy):
 
         # 卖出备兑 Call（OTM，|Delta| ≈ call_delta）
         if q.option_type == "call":
-            delta_ok = abs_delta >= (self.call_delta - Decimal("0.05")) and abs_delta <= (self.call_delta + Decimal("0.05"))
+            delta_ok = abs_delta >= (self.call_delta - Decimal("0.05")) and abs_delta <= (
+                self.call_delta + Decimal("0.05")
+            )
             if delta_ok:
                 signals.append(
                     Signal(
@@ -1166,6 +1189,7 @@ class DeltaNeutralStrategy(Strategy):
 #  IVArbitrageModel - IV 套利模型
 # ═══════════════════════════════════════════════════════════════
 
+
 class IVArbitrageModel:
     """IV 套利模型。
 
@@ -1188,7 +1212,9 @@ class IVArbitrageModel:
         self.iv_threshold = iv_threshold
         self.min_spread = min_spread
 
-    def find_mispricing(self, chain: dict[date, dict[Decimal, dict[str, OptionQuote | None]]]) -> list[dict[str, Any]]:
+    def find_mispricing(
+        self, chain: dict[date, dict[Decimal, dict[str, OptionQuote | None]]]
+    ) -> list[dict[str, Any]]:
         """寻找 IV 定价错误。
 
         检查方法：
@@ -1216,16 +1242,21 @@ class IVArbitrageModel:
                     iv_diff = abs(call_iv - put_iv)
 
                     if iv_diff > self.iv_threshold:
-                        mispricings.append({
-                            "type": "put_call_parity",
-                            "expiry": expiry.isoformat(),
-                            "strike": str(strike),
-                            "call_iv": call_iv,
-                            "put_iv": put_iv,
-                            "iv_diff": iv_diff,
-                            "severity": iv_diff / self.iv_threshold,
-                            "detail": f"Put-Call IV 偏差 {iv_diff:.1%}（阈值 {self.iv_threshold:.1%}），行权价={strike}，到期={expiry}",
-                        })
+                        mispricings.append(
+                            {
+                                "type": "put_call_parity",
+                                "expiry": expiry.isoformat(),
+                                "strike": str(strike),
+                                "call_iv": call_iv,
+                                "put_iv": put_iv,
+                                "iv_diff": iv_diff,
+                                "severity": iv_diff / self.iv_threshold,
+                                "detail": (
+                                    f"Put-Call IV 偏差 {iv_diff:.1%}"
+                                    f"（阈值 {self.iv_threshold:.1%}），行权价={strike}，到期={expiry}"
+                                ),
+                            }
+                        )
 
             # 检查 2：IV 微笑突变（相邻行权价 IV 跳跃过大）
             sorted_strikes = sorted(strikes_map.keys())
@@ -1243,14 +1274,19 @@ class IVArbitrageModel:
 
                         # 相邻行权价 IV 变化不应超过阈值的 3 倍
                         if iv_change > self.iv_threshold * 3 and strike_gap > 0:
-                            mispricings.append({
-                                "type": "smile_discontinuity",
-                                "expiry": expiry.isoformat(),
-                                "strikes": [str(prev_strike), str(curr_strike)],
-                                "iv_change": iv_change,
-                                "severity": iv_change / (self.iv_threshold * 3),
-                                "detail": f"IV 微笑突变：{prev_strike}→{curr_strike}，IV 变化 {iv_change:.1%}",
-                            })
+                            mispricings.append(
+                                {
+                                    "type": "smile_discontinuity",
+                                    "expiry": expiry.isoformat(),
+                                    "strikes": [str(prev_strike), str(curr_strike)],
+                                    "iv_change": iv_change,
+                                    "severity": iv_change / (self.iv_threshold * 3),
+                                    "detail": (
+                                        f"IV 微笑突变：{prev_strike}→{curr_strike}，"
+                                        f"IV 变化 {iv_change:.1%}"
+                                    ),
+                                }
+                            )
 
         return mispricings
 
@@ -1286,16 +1322,21 @@ class IVArbitrageModel:
 
                 # 远月 IV 不应低于近月 IV 超过阈值
                 if far_iv < near_iv - self.iv_threshold:
-                    opportunities.append({
-                        "type": "calendar_spread",
-                        "near_expiry": near_expiry.isoformat(),
-                        "far_expiry": far_expiry.isoformat(),
-                        "strike": str(strike),
-                        "near_iv": near_iv,
-                        "far_iv": far_iv,
-                        "iv_diff": near_iv - far_iv,
-                        "detail": f"日历价差套利：近月IV={near_iv:.1%} > 远月IV={far_iv:.1%}，行权价={strike}",
-                    })
+                    opportunities.append(
+                        {
+                            "type": "calendar_spread",
+                            "near_expiry": near_expiry.isoformat(),
+                            "far_expiry": far_expiry.isoformat(),
+                            "strike": str(strike),
+                            "near_iv": near_iv,
+                            "far_iv": far_iv,
+                            "iv_diff": near_iv - far_iv,
+                            "detail": (
+                                f"日历价差套利：近月IV={near_iv:.1%} >"
+                                f" 远月IV={far_iv:.1%}，行权价={strike}"
+                            ),
+                        }
+                    )
 
         # 检查 2：蝶式价差凸性（三点检查）
         for expiry, strikes_map in surface.items():
@@ -1311,14 +1352,19 @@ class IVArbitrageModel:
                     excess = iv2 - iv_interp
 
                     if excess > self.iv_threshold:
-                        opportunities.append({
-                            "type": "butterfly",
-                            "expiry": expiry.isoformat(),
-                            "strikes": [str(k1), str(k2), str(k3)],
-                            "ivs": [iv1, iv2, iv3],
-                            "excess": excess,
-                            "detail": f"蝶式价差套利：K={k1}/{k2}/{k3}，中间IV={iv2:.1%}，插值={iv_interp:.1%}",
-                        })
+                        opportunities.append(
+                            {
+                                "type": "butterfly",
+                                "expiry": expiry.isoformat(),
+                                "strikes": [str(k1), str(k2), str(k3)],
+                                "ivs": [iv1, iv2, iv3],
+                                "excess": excess,
+                                "detail": (
+                                    f"蝶式价差套利：K={k1}/{k2}/{k3}，"
+                                    f"中间IV={iv2:.1%}，插值={iv_interp:.1%}"
+                                ),
+                            }
+                        )
 
         return opportunities
 
@@ -1326,6 +1372,7 @@ class IVArbitrageModel:
 # ═══════════════════════════════════════════════════════════════
 #  MarginMonitor - 卖方保证金监控
 # ═══════════════════════════════════════════════════════════════
+
 
 class MarginMonitor:
     """卖方保证金监控。
@@ -1360,8 +1407,12 @@ class MarginMonitor:
         计算卖方持仓所需保证金，并与可用保证金比较。
 
         简化公式：
-          - 卖出 Call 保证金 = max(标的价 * margin_ratio - OTM金额, 标的价 * margin_ratio * 0.5) + 权利金
-          - 卖出 Put 保证金 = max(标的价 * margin_ratio - OTM金额, 行权价 * margin_ratio * 0.5) + 权利金
+          - 卖出 Call 保证金 = max(
+              标的价 * margin_ratio - OTM金额, 标的价 * margin_ratio * 0.5
+          ) + 权利金
+          - 卖出 Put 保证金 = max(
+              标的价 * margin_ratio - OTM金额, 行权价 * margin_ratio * 0.5
+          ) + 权利金
 
         Args:
             position: 持仓信息，包含：
@@ -1405,11 +1456,18 @@ class MarginMonitor:
             )
 
         required_margin = (base_margin + premium) * abs_qty
-        margin_ratio = (required_margin / available_margin * 100).quantize(Decimal("0.01")) if available_margin > 0 else Decimal("999")
+        margin_ratio = (
+            (required_margin / available_margin * 100).quantize(Decimal("0.01"))
+            if available_margin > 0
+            else Decimal("999")
+        )
 
         warning = None
         if required_margin > available_margin:
-            warning = f"⚠️ 保证金不足！需要 {required_margin}，可用 {available_margin}，缺口 {required_margin - available_margin}"
+            warning = (
+                f"⚠️ 保证金不足！需要 {required_margin}，"
+                f"可用 {available_margin}，缺口 {required_margin - available_margin}"
+            )
         elif margin_ratio > Decimal("80"):
             warning = f"⚠️ 保证金使用率 {margin_ratio}%，接近上限"
 
@@ -1485,6 +1543,7 @@ class MarginMonitor:
 #  RollAdvisor - 展期顾问
 # ═══════════════════════════════════════════════════════════════
 
+
 class RollAdvisor:
     """展期顾问。
 
@@ -1530,9 +1589,9 @@ class RollAdvisor:
         """
         delta = Decimal(str(position.get("delta", 0)))
         abs_delta = abs(delta)
-        quantity = Decimal(str(position.get("quantity", 0)))
+        _quantity = Decimal(str(position.get("quantity", 0)))  # noqa: F841
         strike = Decimal(str(position.get("strike", 0)))
-        option_type = position.get("option_type", "call")
+        _option_type = position.get("option_type", "call")  # noqa: F841
         premium = Decimal(str(position.get("premium", 0)))
 
         # 临近到期 + 深度实值 → 平仓

@@ -93,9 +93,7 @@ class PDTChecker:
             f"PDT 检查通过: 剩余 {remaining} 次日内交易额度",
         )
 
-    def record_day_trade(
-        self, symbol: str, open_time: int, close_time: int
-    ) -> None:
+    def record_day_trade(self, symbol: str, open_time: int, close_time: int) -> None:
         """记录日内交易
 
         当同一标的在同一天内完成买入+卖出（或卖空+回补）时调用。
@@ -159,9 +157,7 @@ class RegTMarginChecker:
     # 维持保证金比例（联储局规定）
     MAINTENANCE_MARGIN = Decimal("0.25")
 
-    def check_initial_margin(
-        self, order_value: Decimal, cash: Decimal
-    ) -> tuple[bool, str]:
+    def check_initial_margin(self, order_value: Decimal, cash: Decimal) -> tuple[bool, str]:
         """检查初始保证金
 
         Args:
@@ -198,9 +194,7 @@ class RegTMarginChecker:
         Returns:
             (是否满足维持保证金, 缺口金额（负数表示安全余量）)
         """
-        total_market_value = sum(
-            abs(Decimal(str(p.get("market_value", 0)))) for p in positions
-        )
+        total_market_value = sum(abs(Decimal(str(p.get("market_value", 0)))) for p in positions)
         if total_market_value == 0:
             return True, Decimal("0")
 
@@ -321,8 +315,7 @@ class SSRChecker:
         if best_bid is not None and order.price <= best_bid:
             return (
                 False,
-                f"SSR 限制: {order.symbol} 卖空价格 ${order.price} "
-                f"必须高于最优买价 ${best_bid}",
+                f"SSR 限制: {order.symbol} 卖空价格 ${order.price} 必须高于最优买价 ${best_bid}",
             )
 
         return True, f"SSR 卖空订单验证通过: {order.symbol}"
@@ -346,9 +339,7 @@ class LocateChecker:
         # symbol -> locate 信息
         self._locates: dict[str, dict[str, Any]] = {}
 
-    def register_locate(
-        self, symbol: str, quantity: Decimal, expiry_timestamp_ns: int
-    ) -> None:
+    def register_locate(self, symbol: str, quantity: Decimal, expiry_timestamp_ns: int) -> None:
         """注册借券定位确认
 
         Args:
@@ -362,9 +353,7 @@ class LocateChecker:
             "registered_at": time.time_ns(),
         }
 
-    async def check_locate(
-        self, symbol: str, quantity: Decimal = Decimal("0")
-    ) -> tuple[bool, str]:
+    async def check_locate(self, symbol: str, quantity: Decimal = Decimal("0")) -> tuple[bool, str]:
         """卖空前校验可借券源
 
         Args:
@@ -430,9 +419,7 @@ class LULDChecker:
         # symbol -> {"reference_price": Decimal, "tier": int}
         self._reference_prices: dict[str, dict[str, Any]] = {}
 
-    def set_reference_price(
-        self, symbol: str, reference_price: Decimal, tier: int = 1
-    ) -> None:
+    def set_reference_price(self, symbol: str, reference_price: Decimal, tier: int = 1) -> None:
         """设置参考价格（通常是前收盘价或开盘价）
 
         Args:
@@ -685,9 +672,7 @@ class USMarketRuleEngine:
         # 3. Reg-T 保证金检查
         if order.price is not None:
             order_value = order.price * order.quantity
-            margin_ok, margin_msg = self.margin.check_initial_margin(
-                order_value, self._cash
-            )
+            margin_ok, margin_msg = self.margin.check_initial_margin(order_value, self._cash)
             if not margin_ok:
                 failures.append(margin_msg)
 
@@ -741,9 +726,7 @@ class USMarketRuleEngine:
 
         # 异步 Locate 检查（卖空时）
         if order.side == "sell" and is_valid:
-            locate_ok, locate_msg = await self.locate.check_locate(
-                order.symbol, order.quantity
-            )
+            locate_ok, locate_msg = await self.locate.check_locate(order.symbol, order.quantity)
             if not locate_ok:
                 failures.append(locate_msg)
 

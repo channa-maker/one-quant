@@ -33,17 +33,41 @@ MIN_ORDER_NOTIONAL = Decimal("10")
 MAX_PRICE_DEVIATION = Decimal("0.10")
 
 # 可交易白名单（硬编码）
-TRADABLE_SYMBOLS: frozenset[str] = frozenset({
-    "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
-    "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "DOT/USDT", "MATIC/USDT",
-    "LINK/USDT", "UNI/USDT", "ATOM/USDT", "LTC/USDT", "FIL/USDT",
-    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META",
-})
+TRADABLE_SYMBOLS: frozenset[str] = frozenset(
+    {
+        "BTC/USDT",
+        "ETH/USDT",
+        "SOL/USDT",
+        "BNB/USDT",
+        "XRP/USDT",
+        "DOGE/USDT",
+        "ADA/USDT",
+        "AVAX/USDT",
+        "DOT/USDT",
+        "MATIC/USDT",
+        "LINK/USDT",
+        "UNI/USDT",
+        "ATOM/USDT",
+        "LTC/USDT",
+        "FIL/USDT",
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "AMZN",
+        "TSLA",
+        "NVDA",
+        "META",
+    }
+)
 
 # 停牌/不可交易标的（硬编码）
-SUSPENDED_SYMBOLS: frozenset[str] = frozenset({
-    "LUNA/USDT", "FTT/USDT", "UST/USDT",
-})
+SUSPENDED_SYMBOLS: frozenset[str] = frozenset(
+    {
+        "LUNA/USDT",
+        "FTT/USDT",
+        "UST/USDT",
+    }
+)
 
 # 价格上限（防止错误报价）
 MAX_ABSOLUTE_PRICE = Decimal("10000000")  # 单价上限 1000 万

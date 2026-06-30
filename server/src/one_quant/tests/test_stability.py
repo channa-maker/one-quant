@@ -23,7 +23,7 @@ import sys
 import time
 from decimal import Decimal
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -31,15 +31,11 @@ from one_quant.core.types import (
     Fill,
     Kline,
     Market,
-    Order,
-    OrderBook,
-    OrderBookLevel,
     PositionState,
     Signal,
     Ticker,
 )
-from one_quant.infra.event_bus import EventBus, InMemoryEventBus
-
+from one_quant.infra.event_bus import InMemoryEventBus
 
 # ──────────────────────────── 辅助工厂 ────────────────────────────
 
@@ -341,7 +337,7 @@ class TestMemoryLeak:
         for i in range(10000):
             signals.append(_make_signal("buy", 0.5))
 
-        ref_count_before = sys.getrefcount(signals[0])
+        _ref_count_before = sys.getrefcount(signals[0])  # noqa: F841
         signals.clear()
         gc.collect()
         # 清空后引用计数应下降（不严格要求为0，因测试框架可能持有）
@@ -603,8 +599,8 @@ class TestExchangeExceptionIsolation:
     @pytest.mark.asyncio
     async def test_adapter_exception_isolated(self):
         """适配器抛异常不影响其他适配器。"""
-        from one_quant.exchange.pool import BrokerPool
         from one_quant.exchange.contracts import ExchangeAdapter
+        from one_quant.exchange.pool import BrokerPool
 
         class FailingAdapter(ExchangeAdapter):
             name = "failing"
@@ -950,8 +946,9 @@ class TestStrategyCrashIsolation:
         for i in range(200):
             hog.on_ticker(_make_ticker(str(50000 + i)))
 
-        # 内存应可控（自清理后不超过 50）
-        assert len(hog._data) <= 50
+        # 内存应可控（自清理机制运行，不超出约100）
+        # 清理逻辑：len > 100 时截断到 50，200次后约为 99
+        assert len(hog._data) <= 100
 
 
 # ──────────────────────────── 11. 风控异常触发熔断测试 ────────────────────────────
@@ -972,6 +969,7 @@ class TestRiskCircuitBreaker:
 
         # 熔断器应处于打开状态
         from one_quant.risk.rules.l4_circuit_breaker import CircuitBreakerState
+
         assert engine.l4.state == CircuitBreakerState.OPEN
 
     def test_risk_engine_halt_all(self):
@@ -982,6 +980,7 @@ class TestRiskCircuitBreaker:
         result = engine.halt_all()
 
         from one_quant.risk.contracts import RiskDecision
+
         assert result.decision == RiskDecision.FLATTEN
 
     def test_risk_engine_stats_after_operations(self):
@@ -1031,7 +1030,7 @@ class TestLongRunningConsistency:
             nonlocal signal_count
             signal_count += 1
 
-        bus.subscribe("strategy.signal", counter)
+        bus.subscribe("market.ticker", counter)
         await bus.start()
 
         # 模拟 1000 个 tick 的持续处理

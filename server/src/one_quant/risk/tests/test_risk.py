@@ -26,37 +26,23 @@ from one_quant.risk.audit import RiskAuditLog
 from one_quant.risk.contracts import RiskCheckResult, RiskDecision
 from one_quant.risk.engine import RiskEngine
 from one_quant.risk.rules.l1_static import (
-    L1StaticLimitRule,
     MAX_ABSOLUTE_PRICE,
-    MAX_ORDER_NOTIONAL,
-    MAX_PRICE_DEVIATION,
-    MIN_ORDER_NOTIONAL,
-    SUSPENDED_SYMBOLS,
-    TRADABLE_SYMBOLS,
+    L1StaticLimitRule,
 )
 from one_quant.risk.rules.l2_realtime import (
-    L2RealtimeExposureRule,
-    MAX_CRYPTO_LEVERAGE,
-    MAX_EXPOSURE_PCT,
     MAX_ORDER_FREQ,
-    MAX_POSITION_PCT,
-    MAX_STOCK_LEVERAGE,
-    ORDER_FREQ_WINDOW_SEC,
+    L2RealtimeExposureRule,
 )
 from one_quant.risk.rules.l3_drawdown import (
     L3DrawdownRule,
-    DAILY_LOSS_LIMIT,
-    MARGIN_CALL_RATIO,
-    MAX_DRAWDOWN_PCT,
 )
 from one_quant.risk.rules.l4_circuit_breaker import (
-    CircuitBreakerState,
     FAILURE_THRESHOLD,
     HALF_OPEN_MAX_PROBES,
-    L4CircuitBreaker,
     RECOVERY_TIMEOUT_SEC,
+    CircuitBreakerState,
+    L4CircuitBreaker,
 )
-
 
 # ──────────────────── Fixtures ────────────────────
 
@@ -400,7 +386,9 @@ class TestL2RealtimeExposureRule:
         positions = [_make_position(quantity=Decimal("0.1"), entry_price=Decimal("50000"))]
         order = _make_order(quantity=Decimal("0.1"), price=Decimal("50000"))
         # 现有 5000 + 新增 5000 = 10000, equity=200000 → 5% < 10%
-        result = self.rule.check(order, positions, total_equity=Decimal("200000"), latest_price=Decimal("50000"))
+        result = self.rule.check(
+            order, positions, total_equity=Decimal("200000"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.APPROVE
 
     def test_position_concentration_reject(self):
@@ -408,7 +396,9 @@ class TestL2RealtimeExposureRule:
         positions = [_make_position(quantity=Decimal("0.3"), entry_price=Decimal("50000"))]
         order = _make_order(quantity=Decimal("0.2"), price=Decimal("50000"))
         # 现有 15000 + 新增 10000 = 25000, equity=200000 → 12.5% > 10%
-        result = self.rule.check(order, positions, total_equity=Decimal("200000"), latest_price=Decimal("50000"))
+        result = self.rule.check(
+            order, positions, total_equity=Decimal("200000"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.REJECT
         assert "仓位占比" in result.reason
 
@@ -426,7 +416,9 @@ class TestL2RealtimeExposureRule:
         positions = [_make_position(quantity=Decimal("0.1"), entry_price=Decimal("50000"))]
         order = _make_order(quantity=Decimal("0.1"), price=Decimal("50000"))
         # 现有 5000 + 新增 5000 = 10000, equity=100000 → 10% < 50%
-        result = self.rule.check(order, positions, total_equity=Decimal("100000"), latest_price=Decimal("50000"))
+        result = self.rule.check(
+            order, positions, total_equity=Decimal("100000"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.APPROVE
 
     def test_total_exposure_reduce(self):
@@ -438,7 +430,9 @@ class TestL2RealtimeExposureRule:
         # 总敞口: 500/equity
         # equity=900 → 55.6% > 50% → REDUCE
         # 集中度: 500/900 = 55.6% > 10% → 但总敞口先触发
-        result = self.rule.check(order, positions, total_equity=Decimal("900"), latest_price=Decimal("50000"))
+        result = self.rule.check(
+            order, positions, total_equity=Decimal("900"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.REDUCE
         assert "总敞口" in result.reason
 
@@ -451,7 +445,9 @@ class TestL2RealtimeExposureRule:
         positions = [_make_position(quantity=Decimal("0.001"), entry_price=Decimal("50000"))]
         order = _make_order(quantity=Decimal("0.001"), market=Market.FUTURES)
         # 总名义 100, equity=10000 → 集中度 1% ✓, 杠杆 0.01x ✓
-        result = self.rule.check(order, positions, total_equity=Decimal("10000"), latest_price=Decimal("50000"))
+        result = self.rule.check(
+            order, positions, total_equity=Decimal("10000"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.APPROVE
 
     def test_leverage_crypto_reduce(self):
@@ -461,18 +457,29 @@ class TestL2RealtimeExposureRule:
         positions = [_make_position(quantity=Decimal("0.5"), entry_price=Decimal("50000"))]
         order = _make_order(quantity=Decimal("0.5"), market=Market.FUTURES)
         # 总名义 50000, equity=2000 → 总敞口 2500% > 50% → REDUCE
-        result = self.rule.check(order, positions, total_equity=Decimal("2000"), latest_price=Decimal("50000"))
+        result = self.rule.check(
+            order, positions, total_equity=Decimal("2000"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.REDUCE
         assert "总敞口" in result.reason
 
     def test_leverage_stock_reduce(self):
         """美股杠杆：总敞口先于集中度触发 REDUCE。"""
-        positions = [_make_position(
-            symbol="AAPL", quantity=Decimal("100"), entry_price=Decimal("150"), market=Market.STOCK,
-        )]
-        order = _make_order(symbol="AAPL", quantity=Decimal("100"), price=Decimal("150"), market=Market.STOCK)
+        positions = [
+            _make_position(
+                symbol="AAPL",
+                quantity=Decimal("100"),
+                entry_price=Decimal("150"),
+                market=Market.STOCK,
+            )
+        ]
+        order = _make_order(
+            symbol="AAPL", quantity=Decimal("100"), price=Decimal("150"), market=Market.STOCK
+        )
         # 总名义 30000, equity=5000 → 总敞口 600% > 50% → REDUCE
-        result = self.rule.check(order, positions, total_equity=Decimal("5000"), latest_price=Decimal("150"))
+        result = self.rule.check(
+            order, positions, total_equity=Decimal("5000"), latest_price=Decimal("150")
+        )
         assert result.decision == RiskDecision.REDUCE
 
     def test_leverage_spot_skip(self):
@@ -986,7 +993,8 @@ class TestRiskEngine:
         """L3 回撤触发 FLATTEN。"""
         order = _make_order(quantity=Decimal("0.1"), price=Decimal("50000"))
         result = self.engine.check(
-            order, [],
+            order,
+            [],
             latest_price=Decimal("50000"),
             total_equity=Decimal("80000"),
             peak_equity=Decimal("100000"),
@@ -999,7 +1007,8 @@ class TestRiskEngine:
         """L3 日内止损触发 FLATTEN。"""
         order = _make_order(quantity=Decimal("0.1"), price=Decimal("50000"))
         result = self.engine.check(
-            order, [],
+            order,
+            [],
             latest_price=Decimal("50000"),
             total_equity=Decimal("95000"),
             peak_equity=Decimal("100000"),
@@ -1012,7 +1021,8 @@ class TestRiskEngine:
         """L3 保证金预警返回 REDUCE。"""
         order = _make_order(quantity=Decimal("0.1"), price=Decimal("50000"))
         result = self.engine.check(
-            order, [],
+            order,
+            [],
             latest_price=Decimal("50000"),
             total_equity=Decimal("100000"),
             peak_equity=Decimal("100000"),
@@ -1049,7 +1059,8 @@ class TestRiskEngine:
         self.engine.halt_all()
         order = _make_order(quantity=Decimal("0.1"), price=Decimal("50000"))
         result = self.engine.check(
-            order, [],
+            order,
+            [],
             latest_price=Decimal("50000"),
             total_equity=Decimal("100000"),
             peak_equity=Decimal("100000"),
@@ -1087,7 +1098,9 @@ class TestRiskEngine:
     def test_multiple_orders_sequential(self):
         """多笔订单顺序检查。"""
         orders = [
-            _make_order(client_order_id=f"order-{i}", quantity=Decimal("0.01"), price=Decimal("50000"))
+            _make_order(
+                client_order_id=f"order-{i}", quantity=Decimal("0.01"), price=Decimal("50000")
+            )
             for i in range(5)
         ]
         for order in orders:
@@ -1212,7 +1225,7 @@ class TestRiskAuditLog:
         audit.record(decision, order, {"equity": 100000}, strategy_id="strat-1")
 
         # 读取文件验证
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             line = f.readline()
             data = json.loads(line)
             assert data["decision"] == "APPROVE"
@@ -1307,7 +1320,9 @@ class TestEdgeCases:
         ]
         order = _make_order(quantity=Decimal("0.1"), price=Decimal("50000"))
         # 总名义 = 5000+2600+5000=12600, equity=100000 → 12.6% > 10%
-        result = rule.check(order, positions, total_equity=Decimal("100000"), latest_price=Decimal("50000"))
+        result = rule.check(
+            order, positions, total_equity=Decimal("100000"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.REJECT
 
     def test_empty_positions(self):
@@ -1413,7 +1428,9 @@ class TestEdgeCases:
             order_type="stop_market",
             stop_price=Decimal("50000"),
         )
-        result = rule.check(order, positions, total_equity=Decimal("100000"), latest_price=Decimal("50000"))
+        result = rule.check(
+            order, positions, total_equity=Decimal("100000"), latest_price=Decimal("50000")
+        )
         assert result.decision == RiskDecision.APPROVE
 
     def test_risk_check_result_fields(self):
@@ -1456,7 +1473,8 @@ class TestEdgeCases:
         order = _make_order(quantity=Decimal("0.5"), market=Market.FUTURES)
         # 总名义 50000, equity=2000 → 总敞口 2500% > 50% → L2 REDUCE
         result = engine.check(
-            order, positions,
+            order,
+            positions,
             latest_price=Decimal("50000"),
             total_equity=Decimal("2000"),
         )
@@ -1470,7 +1488,9 @@ class TestEdgeCases:
         order = _make_order(quantity=Decimal("0.5"), price=Decimal("50000"))
         ts = 1000
         # 现有 500 + 新增 25000 = 25500, equity=30000 → 85% > 50%
-        result = rule._check_total_exposure(order, positions, Decimal("30000"), Decimal("50000"), ts)
+        result = rule._check_total_exposure(
+            order, positions, Decimal("30000"), Decimal("50000"), ts
+        )
         assert result is not None
         assert result.decision == RiskDecision.REDUCE
         assert "总敞口" in result.reason
@@ -1482,24 +1502,28 @@ class TestEdgeCases:
         order = _make_order(quantity=Decimal("0.01"), price=Decimal("50000"))
         ts = 1000
         # 现有 500 + 新增 500 = 1000, equity=100000 → 1% < 50%
-        result = rule._check_total_exposure(order, positions, Decimal("100000"), Decimal("50000"), ts)
+        result = rule._check_total_exposure(
+            order, positions, Decimal("100000"), Decimal("50000"), ts
+        )
         assert result is None
 
     def test_l2_exposure_triggers_in_check(self):
         """L2 check 中敞口超限通过 _check_total_exposure 触发 REDUCE。"""
         # 使用空 positions 和只有一个 symbol 的持仓使集中度通过
         # 但总敞口超限
-        rule = L2RealtimeExposureRule()
-        positions: list[PositionState] = []
+        _rule = L2RealtimeExposureRule()  # noqa: F841
+        _positions: list[PositionState] = []  # noqa: F841
         # 大订单，使总敞口 = 订单名义 > 50% equity
         # 但集中度 = 订单名义 / equity 也 > 10%
         # 所以集中度先触发。需要特殊构造。
         # 使用不同 symbol 的持仓：positions 有其他 symbol，但 order 是新的 symbol
         # 这样同标的集中度只算 order
-        other_positions = [_make_position(
-            symbol="ETH/USDT", quantity=Decimal("0.01"), entry_price=Decimal("3000")
-        )]
-        order = _make_order(quantity=Decimal("0.01"), price=Decimal("50000"))
+        _other_positions = [
+            _make_position(  # noqa: F841
+                symbol="ETH/USDT", quantity=Decimal("0.01"), entry_price=Decimal("3000")
+            )
+        ]
+        _order = _make_order(quantity=Decimal("0.01"), price=Decimal("50000"))  # noqa: F841
         # 同标的集中度: 500/equity, 总敞口: 500+30=530/equity
         # 如果 equity=5000: 集中度=10% (刚好通过), 敞口=10.6% < 50%
         # 需要敞口 > 50%: 530/equity > 0.5 → equity < 1060
@@ -1533,7 +1557,9 @@ class TestEdgeCases:
         """杠杆检查使用 latest_price 作为后备。"""
         rule = L2RealtimeExposureRule()
         positions: list[PositionState] = []
-        order = _make_order(quantity=Decimal("0.01"), price=None, order_type="market", market=Market.FUTURES)
+        order = _make_order(
+            quantity=Decimal("0.01"), price=None, order_type="market", market=Market.FUTURES
+        )
         ts = 1000
         # 无 price → 用 latest_price: 0.01 * 50000 = 500, equity=10000 → 0.05x < 20x
         result = rule._check_leverage(order, positions, Decimal("10000"), Decimal("50000"), ts)

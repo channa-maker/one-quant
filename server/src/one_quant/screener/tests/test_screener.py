@@ -9,7 +9,6 @@ from __future__ import annotations
 import time
 from decimal import Decimal
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -26,7 +25,6 @@ from one_quant.screener.filters import (
     TradabilityFilter,
 )
 from one_quant.screener.pipeline import CandidateAsset, ScreenerPipeline
-
 
 # ──────────────────────────── 辅助工具 ────────────────────────────
 
@@ -249,8 +247,7 @@ class TestDiversificationConstraint:
         """同行业标的数量不超过上限"""
         c = DiversificationConstraint()
         candidates = [
-            _make_candidate(f"COIN{i}/USDT", factors={"sector": "DeFi"})
-            for i in range(5)
+            _make_candidate(f"COIN{i}/USDT", factors={"sector": "DeFi"}) for i in range(5)
         ]
         result = c.apply(candidates, max_per_sector=2, max_per_market=10)
         assert len(result) == 2
@@ -258,9 +255,7 @@ class TestDiversificationConstraint:
     def test_market_limit(self):
         """同市场标的数量不超过上限"""
         c = DiversificationConstraint()
-        candidates = [
-            _make_candidate(f"COIN{i}/USDT", market="SPOT") for i in range(5)
-        ]
+        candidates = [_make_candidate(f"COIN{i}/USDT", market="SPOT") for i in range(5)]
         result = c.apply(candidates, max_per_sector=10, max_per_market=3)
         assert len(result) == 3
 
@@ -436,20 +431,28 @@ class TestScreenerPipeline:
         """构建测试用市场数据。"""
         return {
             "BTC/USDT": _make_ticker(
-                volume_24h="1000000", change_pct="5.0",
-                market_cap="50000000000", sector="加密货币",
+                volume_24h="1000000",
+                change_pct="5.0",
+                market_cap="50000000000",
+                sector="加密货币",
             ),
             "ETH/USDT": _make_ticker(
-                volume_24h="500000", change_pct="-2.0",
-                market_cap="20000000000", sector="加密货币",
+                volume_24h="500000",
+                change_pct="-2.0",
+                market_cap="20000000000",
+                sector="加密货币",
             ),
             "DOGE/USDT": _make_ticker(
-                volume_24h="50000", change_pct="10.0",
-                market_cap="5000000", sector="Meme",
+                volume_24h="50000",
+                change_pct="10.0",
+                market_cap="5000000",
+                sector="Meme",
             ),
             "HALT/USDT": _make_ticker(
-                volume_24h="1000000", change_pct="0.0",
-                market_cap="100000000", is_tradable=False,
+                volume_24h="1000000",
+                change_pct="0.0",
+                market_cap="100000000",
+                is_tradable=False,
             ),
         }
 
@@ -635,13 +638,19 @@ class TestFilterChain:
         symbols = ["BTC/USDT", "LOW/USDT", "HALT/USDT"]
         data = {
             "BTC/USDT": _make_ticker(
-                volume_24h="1000000", market_cap="50000000000", is_tradable=True,
+                volume_24h="1000000",
+                market_cap="50000000000",
+                is_tradable=True,
             ),
             "LOW/USDT": _make_ticker(
-                volume_24h="50000", market_cap="50000000000", is_tradable=True,
+                volume_24h="50000",
+                market_cap="50000000000",
+                is_tradable=True,
             ),
             "HALT/USDT": _make_ticker(
-                volume_24h="1000000", market_cap="50000000000", is_tradable=False,
+                volume_24h="1000000",
+                market_cap="50000000000",
+                is_tradable=False,
             ),
         }
 

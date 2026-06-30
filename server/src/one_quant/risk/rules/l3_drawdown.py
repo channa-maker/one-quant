@@ -15,7 +15,6 @@ import logging
 import time
 from decimal import Decimal, DivisionByZero, InvalidOperation
 
-from one_quant.core.types import Order, PositionState
 from one_quant.risk.contracts import RiskCheckResult, RiskDecision
 
 logger = logging.getLogger(__name__)
@@ -157,10 +156,7 @@ class L3DrawdownRule:
             return RiskCheckResult(
                 decision=RiskDecision.FLATTEN,
                 rule_name=self.name,
-                reason=(
-                    f"最大回撤 {drawdown:.2%} 超过阈值 {MAX_DRAWDOWN_PCT:.0%}，"
-                    f"触发强制平仓"
-                ),
+                reason=(f"最大回撤 {drawdown:.2%} 超过阈值 {MAX_DRAWDOWN_PCT:.0%}，触发强制平仓"),
                 timestamp_ns=ts,
             )
         return None
@@ -186,8 +182,7 @@ class L3DrawdownRule:
                     decision=RiskDecision.FLATTEN,
                     rule_name=self.name,
                     reason=(
-                        f"日内亏损 {loss_pct:.2%} 超过上限 {DAILY_LOSS_LIMIT:.0%}，"
-                        f"触发 halt_all"
+                        f"日内亏损 {loss_pct:.2%} 超过上限 {DAILY_LOSS_LIMIT:.0%}，触发 halt_all"
                     ),
                     timestamp_ns=ts,
                 )

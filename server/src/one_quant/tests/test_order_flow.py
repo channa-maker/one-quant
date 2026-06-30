@@ -14,21 +14,16 @@ ONE量化 - 订单流测试
 import time
 from decimal import Decimal
 
-import pytest
-
 from one_quant.core.types import (
-    Market,
     OrderBook,
     OrderBookLevel,
     Trade,
 )
 from one_quant.strategy.order_flow import (
     ICEBERG_REFILL_THRESHOLD,
-    LIQUIDITY_WALL_RATIO,
     SWEEP_MIN_COUNT,
     OrderFlowAnalyzer,
 )
-
 
 # ──────────────────────────── 辅助工具 ────────────────────────────
 
@@ -74,12 +69,14 @@ def _make_trades(n: int, side: str = "buy", base_price: float = 100.0) -> list[T
     trades = []
     base_ts = 1_000_000_000_000
     for i in range(n):
-        trades.append(_make_trade(
-            side=side,
-            price=str(base_price + i * 0.1),
-            quantity="1.0",
-            timestamp_ns=base_ts + i * 1_000_000,
-        ))
+        trades.append(
+            _make_trade(
+                side=side,
+                price=str(base_price + i * 0.1),
+                quantity="1.0",
+                timestamp_ns=base_ts + i * 1_000_000,
+            )
+        )
     return trades
 
 
@@ -126,9 +123,9 @@ class TestDeltaCVD:
         ]
         cvd = analyzer.compute_cvd(trades)
         assert len(cvd) == 3
-        assert cvd[0] == Decimal("3.0")   # +3
-        assert cvd[1] == Decimal("2.0")   # +3-1
-        assert cvd[2] == Decimal("4.0")   # +3-1+2
+        assert cvd[0] == Decimal("3.0")  # +3
+        assert cvd[1] == Decimal("2.0")  # +3-1
+        assert cvd[2] == Decimal("4.0")  # +3-1+2
 
     def test_cvd_window_limit(self):
         """CVD 结果不超过指定窗口大小。"""
@@ -228,15 +225,17 @@ class TestAbsorption:
         trades_with_variation = []
         for i, t in enumerate(trades):
             p = Decimal("100.00") + Decimal(str(i % 3)) * Decimal("0.001")
-            trades_with_variation.append(Trade(
-                symbol=t.symbol,
-                exchange=t.exchange,
-                price=p,
-                quantity=t.quantity,
-                side=t.side,
-                trade_id=t.trade_id,
-                timestamp_ns=t.timestamp_ns,
-            ))
+            trades_with_variation.append(
+                Trade(
+                    symbol=t.symbol,
+                    exchange=t.exchange,
+                    price=p,
+                    quantity=t.quantity,
+                    side=t.side,
+                    trade_id=t.trade_id,
+                    timestamp_ns=t.timestamp_ns,
+                )
+            )
 
         ob = _make_orderbook(
             bids=[("100", "100"), ("99", "100")],
@@ -283,12 +282,14 @@ class TestSweep:
         base_ts = 1_000_000_000_000
         trades = []
         for i in range(SWEEP_MIN_COUNT):
-            trades.append(_make_trade(
-                side="buy",
-                price=str(100 + i),
-                quantity="10.0",
-                timestamp_ns=base_ts + i * 100_000_000,
-            ))
+            trades.append(
+                _make_trade(
+                    side="buy",
+                    price=str(100 + i),
+                    quantity="10.0",
+                    timestamp_ns=base_ts + i * 100_000_000,
+                )
+            )
         ob = _make_orderbook(
             bids=[(str(100 + i), "5") for i in range(10)],
             asks=[(str(100 + i), "5") for i in range(10)],
@@ -321,12 +322,14 @@ class TestSweep:
         base_ts = 1_000_000_000_000
         trades = []
         for i in range(SWEEP_MIN_COUNT):
-            trades.append(_make_trade(
-                side="buy",
-                price="100",
-                quantity="10.0",
-                timestamp_ns=base_ts + i * 100_000_000,
-            ))
+            trades.append(
+                _make_trade(
+                    side="buy",
+                    price="100",
+                    quantity="10.0",
+                    timestamp_ns=base_ts + i * 100_000_000,
+                )
+            )
         ob = _make_orderbook()
         result = analyzer.detect_sweep(trades, ob)
         assert result is None

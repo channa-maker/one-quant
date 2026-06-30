@@ -14,11 +14,9 @@ ONE量化 - 量价结构策略族
 from __future__ import annotations
 
 from collections import defaultdict
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any
+from decimal import ROUND_HALF_UP, Decimal
 
 from one_quant.core.types import Kline
-
 
 # ──────────────────────────── 成交量分布 VPVR ────────────────────────────
 
@@ -210,7 +208,9 @@ class TPOChart:
 
     def __init__(self, interval: str = "30m") -> None:
         if interval not in self.INTERVAL_SECONDS:
-            raise ValueError(f"不支持的时间窗口: {interval}，支持: {list(self.INTERVAL_SECONDS.keys())}")
+            raise ValueError(
+                f"不支持的时间窗口: {interval}，支持: {list(self.INTERVAL_SECONDS.keys())}"
+            )
         self._interval = interval
         self._interval_sec = self.INTERVAL_SECONDS[interval]
 
@@ -331,8 +331,7 @@ class TPOChart:
                 for p, letters in sorted(tpo_map.items())
             },
             "tpo_counts": {
-                str(p.quantize(Decimal("0.01"))): c
-                for p, c in sorted(tpo_counts.items())
+                str(p.quantize(Decimal("0.01"))): c for p, c in sorted(tpo_counts.items())
             },
             "poc": str(poc.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
             "vah": str(vah.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
@@ -353,9 +352,7 @@ class VWAPFamily:
     - 机构成本线: 基于大成交量K线加权的平均成本
     """
 
-    def anchored_vwap(
-        self, klines: list[Kline], anchor_time: int
-    ) -> list[Decimal]:
+    def anchored_vwap(self, klines: list[Kline], anchor_time: int) -> list[Decimal]:
         """锚定 VWAP — 从指定时间开始计算。
 
         VWAP = Σ(典型价格 × 成交量) / Σ(成交量)
@@ -376,7 +373,7 @@ class VWAPFamily:
 
         vwap_series: list[Decimal] = []
         cum_tp_vol = Decimal("0")  # 累计(典型价格 × 成交量)
-        cum_vol = Decimal("0")     # 累计成交量
+        cum_vol = Decimal("0")  # 累计成交量
 
         for k in anchored:
             typical_price = (k.high + k.low + k.close) / Decimal("3")
@@ -391,9 +388,7 @@ class VWAPFamily:
 
         return vwap_series
 
-    def vwap_bands(
-        self, klines: list[Kline], num_std: float = 2.0
-    ) -> dict:
+    def vwap_bands(self, klines: list[Kline], num_std: float = 2.0) -> dict:
         """VWAP 标准差带。
 
         类似布林带，但标准差基于成交量加权：

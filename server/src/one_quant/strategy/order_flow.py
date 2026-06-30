@@ -19,12 +19,10 @@ ONE量化 - 订单流策略族
 from __future__ import annotations
 
 from collections import defaultdict
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any
+from decimal import ROUND_HALF_UP, Decimal
 
 from one_quant.core.types import Kline, Market, OrderBook, Signal, Ticker, Trade
 from one_quant.strategy.contracts import Strategy
-
 
 # ──────────────────────────── 辅助常量 ────────────────────────────
 
@@ -161,32 +159,38 @@ class OrderFlowAnalyzer:
             if ask_qty == 0:
                 # 只有买盘没有卖盘 → 强失衡（买方）
                 if bid_qty > 0:
-                    imbalances.append({
-                        "price": str(bid_price),
-                        "bid_qty": str(bid_qty),
-                        "ask_qty": "0",
-                        "ratio": float("inf"),
-                        "direction": "buy",
-                    })
+                    imbalances.append(
+                        {
+                            "price": str(bid_price),
+                            "bid_qty": str(bid_qty),
+                            "ask_qty": "0",
+                            "ratio": float("inf"),
+                            "direction": "buy",
+                        }
+                    )
                 continue
 
             ratio = float(bid_qty / ask_qty)
             if ratio >= threshold:
-                imbalances.append({
-                    "price": str(bid_price),
-                    "bid_qty": str(bid_qty),
-                    "ask_qty": str(ask_qty),
-                    "ratio": ratio,
-                    "direction": "buy",
-                })
+                imbalances.append(
+                    {
+                        "price": str(bid_price),
+                        "bid_qty": str(bid_qty),
+                        "ask_qty": str(ask_qty),
+                        "ratio": ratio,
+                        "direction": "buy",
+                    }
+                )
             elif ratio <= 1.0 / threshold:
-                imbalances.append({
-                    "price": str(bid_price),
-                    "bid_qty": str(bid_qty),
-                    "ask_qty": str(ask_qty),
-                    "ratio": ratio,
-                    "direction": "sell",
-                })
+                imbalances.append(
+                    {
+                        "price": str(bid_price),
+                        "bid_qty": str(bid_qty),
+                        "ask_qty": str(ask_qty),
+                        "ratio": ratio,
+                        "direction": "sell",
+                    }
+                )
 
         return imbalances
 
@@ -364,20 +368,19 @@ class OrderFlowAnalyzer:
                 if side == "buy":
                     # 买方成交 → 冰山在 ask 侧
                     has_refill = any(
-                        abs(a.price - price) / price < Decimal("0.0005")
-                        for a in ob.asks
+                        abs(a.price - price) / price < Decimal("0.0005") for a in ob.asks
                     )
                 else:
                     # 卖方成交 → 冰山在 bid 侧
                     has_refill = any(
-                        abs(b.price - price) / price < Decimal("0.0005")
-                        for b in ob.bids
+                        abs(b.price - price) / price < Decimal("0.0005") for b in ob.bids
                     )
 
                 if has_refill:
                     # 估算冰山总量
                     est_vol = sum(
-                        t.quantity for t in recent
+                        t.quantity
+                        for t in recent
                         if abs(t.price - price) / price < Decimal("0.0005")
                     )
                     return {
@@ -433,7 +436,9 @@ class OrderFlowAnalyzer:
 
     # ──────────────── 流动性墙检测 ────────────────
 
-    def detect_liquidity_wall(self, ob: OrderBook, ratio: float = LIQUIDITY_WALL_RATIO) -> dict | None:
+    def detect_liquidity_wall(
+        self, ob: OrderBook, ratio: float = LIQUIDITY_WALL_RATIO
+    ) -> dict | None:
         """流动性墙检测：盘口中某价位挂单量异常大。
 
         流动性墙可能是：
@@ -464,22 +469,26 @@ class OrderFlowAnalyzer:
         for b in ob.bids:
             r = float(b.quantity / avg_qty)
             if r >= ratio:
-                walls.append({
-                    "price": str(b.price),
-                    "quantity": str(b.quantity),
-                    "ratio": round(r, 2),
-                    "side": "bid",
-                })
+                walls.append(
+                    {
+                        "price": str(b.price),
+                        "quantity": str(b.quantity),
+                        "ratio": round(r, 2),
+                        "side": "bid",
+                    }
+                )
 
         for a in ob.asks:
             r = float(a.quantity / avg_qty)
             if r >= ratio:
-                walls.append({
-                    "price": str(a.price),
-                    "quantity": str(a.quantity),
-                    "ratio": round(r, 2),
-                    "side": "ask",
-                })
+                walls.append(
+                    {
+                        "price": str(a.price),
+                        "quantity": str(a.quantity),
+                        "ratio": round(r, 2),
+                        "side": "ask",
+                    }
+                )
 
         if not walls:
             return None
@@ -607,37 +616,41 @@ class OrderFlowStrategy(Strategy):
         if divergence == "bearish":
             strength = 0.7
             if strength >= self._signal_threshold:
-                signals.append(Signal(
-                    symbol=symbol,
-                    market=ticker.market,
-                    side="sell",
-                    strength=strength,
-                    strategy_name=self.name,
-                    reason="CVD顶背离：价格创新高但CVD未创新高，主动买盘衰竭",
-                    metadata={
-                        "factor": "cvd_divergence",
-                        "divergence_type": "bearish",
-                        "price": str(price),
-                    },
-                    timestamp_ns=ts,
-                ))
+                signals.append(
+                    Signal(
+                        symbol=symbol,
+                        market=ticker.market,
+                        side="sell",
+                        strength=strength,
+                        strategy_name=self.name,
+                        reason="CVD顶背离：价格创新高但CVD未创新高，主动买盘衰竭",
+                        metadata={
+                            "factor": "cvd_divergence",
+                            "divergence_type": "bearish",
+                            "price": str(price),
+                        },
+                        timestamp_ns=ts,
+                    )
+                )
         elif divergence == "bullish":
             strength = 0.7
             if strength >= self._signal_threshold:
-                signals.append(Signal(
-                    symbol=symbol,
-                    market=ticker.market,
-                    side="buy",
-                    strength=strength,
-                    strategy_name=self.name,
-                    reason="CVD底背离：价格创新低但CVD未创新低，主动卖盘衰竭",
-                    metadata={
-                        "factor": "cvd_divergence",
-                        "divergence_type": "bullish",
-                        "price": str(price),
-                    },
-                    timestamp_ns=ts,
-                ))
+                signals.append(
+                    Signal(
+                        symbol=symbol,
+                        market=ticker.market,
+                        side="buy",
+                        strength=strength,
+                        strategy_name=self.name,
+                        reason="CVD底背离：价格创新低但CVD未创新低，主动卖盘衰竭",
+                        metadata={
+                            "factor": "cvd_divergence",
+                            "divergence_type": "bullish",
+                            "price": str(price),
+                        },
+                        timestamp_ns=ts,
+                    )
+                )
 
         return signals
 
@@ -727,41 +740,45 @@ class OrderFlowStrategy(Strategy):
 
         # 共振判断：≥ 2 个因子同向
         if len(bullish_factors) >= 2:
-            avg_strength = sum(strengths[:len(bullish_factors)]) / len(bullish_factors)
+            avg_strength = sum(strengths[: len(bullish_factors)]) / len(bullish_factors)
             final_strength = min(avg_strength * (len(bullish_factors) / 3), 1.0)
             if final_strength >= self._signal_threshold:
-                signals.append(Signal(
-                    symbol=symbol,
-                    market=market,
-                    side="buy",
-                    strength=round(final_strength, 4),
-                    strategy_name=self.name,
-                    reason=f"订单流多因子共振(看多): {', '.join(bullish_factors)}",
-                    metadata={
-                        "factors": bullish_factors,
-                        "obi": obi,
-                        "wall": wall,
-                    },
-                    timestamp_ns=ts,
-                ))
+                signals.append(
+                    Signal(
+                        symbol=symbol,
+                        market=market,
+                        side="buy",
+                        strength=round(final_strength, 4),
+                        strategy_name=self.name,
+                        reason=f"订单流多因子共振(看多): {', '.join(bullish_factors)}",
+                        metadata={
+                            "factors": bullish_factors,
+                            "obi": obi,
+                            "wall": wall,
+                        },
+                        timestamp_ns=ts,
+                    )
+                )
 
         if len(bearish_factors) >= 2:
-            avg_strength = sum(strengths[:len(bearish_factors)]) / len(bearish_factors)
+            avg_strength = sum(strengths[: len(bearish_factors)]) / len(bearish_factors)
             final_strength = min(avg_strength * (len(bearish_factors) / 3), 1.0)
             if final_strength >= self._signal_threshold:
-                signals.append(Signal(
-                    symbol=symbol,
-                    market=market,
-                    side="sell",
-                    strength=round(final_strength, 4),
-                    strategy_name=self.name,
-                    reason=f"订单流多因子共振(看空): {', '.join(bearish_factors)}",
-                    metadata={
-                        "factors": bearish_factors,
-                        "obi": obi,
-                        "wall": wall,
-                    },
-                    timestamp_ns=ts,
-                ))
+                signals.append(
+                    Signal(
+                        symbol=symbol,
+                        market=market,
+                        side="sell",
+                        strength=round(final_strength, 4),
+                        strategy_name=self.name,
+                        reason=f"订单流多因子共振(看空): {', '.join(bearish_factors)}",
+                        metadata={
+                            "factors": bearish_factors,
+                            "obi": obi,
+                            "wall": wall,
+                        },
+                        timestamp_ns=ts,
+                    )
+                )
 
         return signals

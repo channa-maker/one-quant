@@ -6,13 +6,13 @@ ONE量化 - 执行引擎综合测试
 
 import time
 from decimal import Decimal
-
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
 from one_quant.core.types import Fill, Market, Order, Signal
-from one_quant.execution.oms import OrderManager
 from one_quant.execution.ems import ExecutionManager, TWAPAlgo, _round_to_lot
+from one_quant.execution.oms import OrderManager
 from one_quant.execution.rate_limiter import RateLimiter
 from one_quant.infra.event_bus import InMemoryEventBus
 
@@ -43,8 +43,12 @@ class TestOMSIntegration:
 
         # 创建信号
         signal = Signal(
-            symbol="BTCUSDT", market=Market.SPOT, side="buy",
-            strength=0.8, strategy_name="test", reason="测试",
+            symbol="BTCUSDT",
+            market=Market.SPOT,
+            side="buy",
+            strength=0.8,
+            strategy_name="test",
+            reason="测试",
             timestamp_ns=time.time_ns(),
         )
 
@@ -60,9 +64,14 @@ class TestOMSIntegration:
 
         # 成交
         fill = Fill(
-            order_id=order.client_order_id, symbol="BTCUSDT", side="buy",
-            price=Decimal("50000"), quantity=Decimal("0.1"),
-            fee=Decimal("5"), fee_currency="USDT", exchange="binance",
+            order_id=order.client_order_id,
+            symbol="BTCUSDT",
+            side="buy",
+            price=Decimal("50000"),
+            quantity=Decimal("0.1"),
+            fee=Decimal("5"),
+            fee_currency="USDT",
+            exchange="binance",
             timestamp_ns=time.time_ns(),
         )
         oms.process_fill(fill)

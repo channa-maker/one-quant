@@ -16,11 +16,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from decimal import Decimal
-from typing import Any
 
 from one_quant.core.types import Kline, Market, Signal, Ticker
 from one_quant.strategy.contracts import Strategy
-
 
 # ──────────────────────────── SMC 结构分析器 ────────────────────────────
 
@@ -39,9 +37,9 @@ class SMCAnalyzer:
     """
 
     # 结构检测参数
-    SWING_LOOKBACK = 5        # Swing 高低点回看K线数
-    OB_LOOKBACK = 20          # Order Block 搜索范围
-    FVG_MIN_GAP_RATIO = 0.001 # FVG 最小缺口比例（占价格的 0.1%）
+    SWING_LOOKBACK = 5  # Swing 高低点回看K线数
+    OB_LOOKBACK = 20  # Order Block 搜索范围
+    FVG_MIN_GAP_RATIO = 0.001  # FVG 最小缺口比例（占价格的 0.1%）
     LIQUIDITY_TOLERANCE = Decimal("0.002")  # 等高/等低点容差（0.2%）
 
     def __init__(self) -> None:
@@ -52,9 +50,7 @@ class SMCAnalyzer:
 
     # ──────────────── Swing 高低点识别 ────────────────
 
-    def _find_swing_highs(
-        self, highs: list[Decimal], lookback: int = SWING_LOOKBACK
-    ) -> list[dict]:
+    def _find_swing_highs(self, highs: list[Decimal], lookback: int = SWING_LOOKBACK) -> list[dict]:
         """识别 Swing 高点（局部极值）。
 
         Swing 高点定义：某根K线的 high 是前后 lookback 根K线中最高的。
@@ -69,17 +65,13 @@ class SMCAnalyzer:
         swings: list[dict] = []
         for i in range(lookback, len(highs) - lookback):
             is_highest = all(
-                highs[i] >= highs[j]
-                for j in range(i - lookback, i + lookback + 1)
-                if j != i
+                highs[i] >= highs[j] for j in range(i - lookback, i + lookback + 1) if j != i
             )
             if is_highest:
                 swings.append({"index": i, "price": highs[i]})
         return swings
 
-    def _find_swing_lows(
-        self, lows: list[Decimal], lookback: int = SWING_LOOKBACK
-    ) -> list[dict]:
+    def _find_swing_lows(self, lows: list[Decimal], lookback: int = SWING_LOOKBACK) -> list[dict]:
         """识别 Swing 低点（局部极值）。
 
         Args:
@@ -92,9 +84,7 @@ class SMCAnalyzer:
         swings: list[dict] = []
         for i in range(lookback, len(lows) - lookback):
             is_lowest = all(
-                lows[i] <= lows[j]
-                for j in range(i - lookback, i + lookback + 1)
-                if j != i
+                lows[i] <= lows[j] for j in range(i - lookback, i + lookback + 1) if j != i
             )
             if is_lowest:
                 swings.append({"index": i, "price": lows[i]})
@@ -156,9 +146,7 @@ class SMCAnalyzer:
 
     # ──────────────── CHoCH 趋势转换 ────────────────
 
-    def detect_choch(
-        self, highs: list[Decimal], lows: list[Decimal], trend: str
-    ) -> dict | None:
+    def detect_choch(self, highs: list[Decimal], lows: list[Decimal], trend: str) -> dict | None:
         """CHoCH（Change of Character）— 趋势转换信号。
 
         CHoCH 发生在趋势反转时：
@@ -240,7 +228,7 @@ class SMCAnalyzer:
             k_next = klines[i + 1]
 
             body_prev = k_prev.close - k_prev.open
-            body = k.close - k.open
+            _body = k.close - k.open  # noqa: F841
             body_next = k_next.close - k_next.open
 
             # Bullish OB: 前一根看跌 + 当前根被下一根强势吞没看涨
@@ -251,14 +239,16 @@ class SMCAnalyzer:
                     ob_bottom = min(k.open, k.close)
                     # OB 强度 = 吞没K线实体大小 / 当前价格
                     strength = float(abs(body_next) / k_next.close) if k_next.close > 0 else 0
-                    order_blocks.append({
-                        "type": "bullish_ob",
-                        "top": str(ob_top),
-                        "bottom": str(ob_bottom),
-                        "index": i,
-                        "strength": min(strength * 100, 1.0),  # 归一化
-                        "volume": str(k.volume),
-                    })
+                    order_blocks.append(
+                        {
+                            "type": "bullish_ob",
+                            "top": str(ob_top),
+                            "bottom": str(ob_bottom),
+                            "index": i,
+                            "strength": min(strength * 100, 1.0),  # 归一化
+                            "volume": str(k.volume),
+                        }
+                    )
 
             # Bearish OB: 前一根看涨 + 当前根被下一根强势吞没看跌
             elif body_prev > 0 and body_next < 0:
@@ -266,14 +256,16 @@ class SMCAnalyzer:
                     ob_top = max(k.open, k.close)
                     ob_bottom = min(k.open, k.close)
                     strength = float(abs(body_next) / k_next.close) if k_next.close > 0 else 0
-                    order_blocks.append({
-                        "type": "bearish_ob",
-                        "top": str(ob_top),
-                        "bottom": str(ob_bottom),
-                        "index": i,
-                        "strength": min(strength * 100, 1.0),
-                        "volume": str(k.volume),
-                    })
+                    order_blocks.append(
+                        {
+                            "type": "bearish_ob",
+                            "top": str(ob_top),
+                            "bottom": str(ob_bottom),
+                            "index": i,
+                            "strength": min(strength * 100, 1.0),
+                            "volume": str(k.volume),
+                        }
+                    )
 
         # 只保留最近的 OB（最多 10 个）
         return order_blocks[-10:]
@@ -303,44 +295,46 @@ class SMCAnalyzer:
         for i in range(2, len(klines)):
             k1 = klines[i - 2]  # 第 1 根
             # k2 = klines[i - 1]  # 第 2 根（中间根）
-            k3 = klines[i]       # 第 3 根
+            k3 = klines[i]  # 第 3 根
 
             # Bullish FVG: 第 3 根 low > 第 1 根 high
             if k3.low > k1.high:
                 gap = k3.low - k1.high
                 gap_ratio = float(gap / k1.high) if k1.high > 0 else 0
                 if gap_ratio >= self.FVG_MIN_GAP_RATIO:
-                    fvgs.append({
-                        "type": "bullish_fvg",
-                        "top": str(k3.low),
-                        "bottom": str(k1.high),
-                        "index": i,
-                        "gap_size": str(gap),
-                        "gap_ratio": round(gap_ratio, 6),
-                    })
+                    fvgs.append(
+                        {
+                            "type": "bullish_fvg",
+                            "top": str(k3.low),
+                            "bottom": str(k1.high),
+                            "index": i,
+                            "gap_size": str(gap),
+                            "gap_ratio": round(gap_ratio, 6),
+                        }
+                    )
 
             # Bearish FVG: 第 3 根 high < 第 1 根 low
             elif k3.high < k1.low:
                 gap = k1.low - k3.high
                 gap_ratio = float(gap / k1.low) if k1.low > 0 else 0
                 if gap_ratio >= self.FVG_MIN_GAP_RATIO:
-                    fvgs.append({
-                        "type": "bearish_fvg",
-                        "top": str(k1.low),
-                        "bottom": str(k3.high),
-                        "index": i,
-                        "gap_size": str(gap),
-                        "gap_ratio": round(gap_ratio, 6),
-                    })
+                    fvgs.append(
+                        {
+                            "type": "bearish_fvg",
+                            "top": str(k1.low),
+                            "bottom": str(k3.high),
+                            "index": i,
+                            "gap_size": str(gap),
+                            "gap_ratio": round(gap_ratio, 6),
+                        }
+                    )
 
         # 只保留最近的 FVG（最多 10 个）
         return fvgs[-10:]
 
     # ──────────────── 流动性池 ────────────────
 
-    def find_liquidity_pools(
-        self, highs: list[Decimal], lows: list[Decimal]
-    ) -> list[dict]:
+    def find_liquidity_pools(self, highs: list[Decimal], lows: list[Decimal]) -> list[dict]:
         """流动性池识别：等高/等低点止损聚集区。
 
         流动性池特征：
@@ -371,18 +365,23 @@ class SMCAnalyzer:
                 if j in used_highs:
                     continue
                 # 价格接近（在容差范围内）
-                if abs(swing_highs[j]["price"] - sh["price"]) / sh["price"] < self.LIQUIDITY_TOLERANCE:
+                if (
+                    abs(swing_highs[j]["price"] - sh["price"]) / sh["price"]
+                    < self.LIQUIDITY_TOLERANCE
+                ):
                     cluster.append(swing_highs[j])
                     used_highs.add(j)
 
             if len(cluster) >= 2:
                 avg_price = sum(c["price"] for c in cluster) / Decimal(len(cluster))
-                pools.append({
-                    "type": "sell_side_liquidity",  # 止损在高点上方（做空者的止损）
-                    "price": str(avg_price),
-                    "touch_count": len(cluster),
-                    "indices": [c["index"] for c in cluster],
-                })
+                pools.append(
+                    {
+                        "type": "sell_side_liquidity",  # 止损在高点上方（做空者的止损）
+                        "price": str(avg_price),
+                        "touch_count": len(cluster),
+                        "indices": [c["index"] for c in cluster],
+                    }
+                )
 
         # 查找等低点（低点聚集）
         used_lows: set[int] = set()
@@ -394,26 +393,29 @@ class SMCAnalyzer:
             for j in range(i + 1, len(swing_lows)):
                 if j in used_lows:
                     continue
-                if abs(swing_lows[j]["price"] - sl["price"]) / sl["price"] < self.LIQUIDITY_TOLERANCE:
+                if (
+                    abs(swing_lows[j]["price"] - sl["price"]) / sl["price"]
+                    < self.LIQUIDITY_TOLERANCE
+                ):
                     cluster.append(swing_lows[j])
                     used_lows.add(j)
 
             if len(cluster) >= 2:
                 avg_price = sum(c["price"] for c in cluster) / Decimal(len(cluster))
-                pools.append({
-                    "type": "buy_side_liquidity",  # 止损在低点下方（做多者的止损）
-                    "price": str(avg_price),
-                    "touch_count": len(cluster),
-                    "indices": [c["index"] for c in cluster],
-                })
+                pools.append(
+                    {
+                        "type": "buy_side_liquidity",  # 止损在低点下方（做多者的止损）
+                        "price": str(avg_price),
+                        "touch_count": len(cluster),
+                        "indices": [c["index"] for c in cluster],
+                    }
+                )
 
         return pools
 
     # ──────────────── 流动性猎杀 ────────────────
 
-    def detect_liquidity_grab(
-        self, klines: list[Kline], pools: list[dict]
-    ) -> dict | None:
+    def detect_liquidity_grab(self, klines: list[Kline], pools: list[dict]) -> dict | None:
         """流动性猎杀检测：假突破扫止损后反转。
 
         流动性猎杀特征：
@@ -451,7 +453,9 @@ class SMCAnalyzer:
                             "close": str(k_current.close),
                             "reversal_strength": float(
                                 (k_prev.high - k_current.close) / k_current.close
-                            ) if k_current.close > 0 else 0,
+                            )
+                            if k_current.close > 0
+                            else 0,
                             "signal": "bullish",  # 扫完上方止损 → 做多
                         }
 
@@ -468,7 +472,9 @@ class SMCAnalyzer:
                             "close": str(k_current.close),
                             "reversal_strength": float(
                                 (k_current.close - k_prev.low) / k_current.close
-                            ) if k_current.close > 0 else 0,
+                            )
+                            if k_current.close > 0
+                            else 0,
                             "signal": "bearish",  # 扫完下方止损 → 做空
                         }
 
@@ -501,7 +507,7 @@ class SMCAnalyzer:
             return "equilibrium"
 
         # 50% 回撤位 = 均衡价位
-        equilibrium = (highest + lowest) / 2
+        _equilibrium = (highest + lowest) / 2  # noqa: F841
         current = klines[-1].close
 
         # 计算当前价格在波段中的位置（0~1）
@@ -728,9 +734,7 @@ class SMCStrategy(Strategy):
         if len(self._lows[symbol]) > 100:
             self._lows[symbol] = self._lows[symbol][-100:]
 
-    def _check_ob_proximity(
-        self, price: Decimal, obs: list[dict]
-    ) -> dict | None:
+    def _check_ob_proximity(self, price: Decimal, obs: list[dict]) -> dict | None:
         """检查价格是否接近某个 Order Block。
 
         Args:
@@ -746,10 +750,9 @@ class SMCStrategy(Strategy):
 
             # 价格在 OB 区间内或接近
             in_zone = ob_bottom <= price <= ob_top
-            near_zone = (
-                abs(price - ob_top) / ob_top < Decimal(str(self._ob_proximity))
-                or abs(price - ob_bottom) / ob_bottom < Decimal(str(self._ob_proximity))
-            )
+            near_zone = abs(price - ob_top) / ob_top < Decimal(str(self._ob_proximity)) or abs(
+                price - ob_bottom
+            ) / ob_bottom < Decimal(str(self._ob_proximity))
 
             if in_zone or near_zone:
                 return ob
@@ -833,7 +836,7 @@ class SMCStrategy(Strategy):
                 else:
                     strength = 0.65
                     reasons.append("BOS确认上升趋势")
-                    reasons.append(f"价格回踩看涨OB")
+                    reasons.append("价格回踩看涨OB")
 
             elif bos["type"] == "bearish_bos" and near_ob["type"] == "bearish_ob":
                 if zone == "premium":
@@ -844,7 +847,7 @@ class SMCStrategy(Strategy):
                 else:
                     strength = 0.65
                     reasons.append("BOS确认下降趋势")
-                    reasons.append(f"价格回踩看跌OB")
+                    reasons.append("价格回踩看跌OB")
 
         # 场景 B: 趋势反转（CHoCH + 流动性猎杀）
         if liq_grab and choch:
@@ -896,23 +899,25 @@ class SMCStrategy(Strategy):
 
             side: str = "buy" if is_bullish else "sell"
 
-            signals.append(Signal(
-                symbol=symbol,
-                market=market,
-                side=side,
-                strength=round(strength, 4),
-                strategy_name=self.name,
-                reason="; ".join(reasons),
-                metadata={
-                    "trend": trend,
-                    "zone": zone,
-                    "bos": bos,
-                    "choch": choch,
-                    "near_ob": near_ob,
-                    "liq_grab": liq_grab,
-                    "fvgs_count": len(fvgs),
-                },
-                timestamp_ns=ts,
-            ))
+            signals.append(
+                Signal(
+                    symbol=symbol,
+                    market=market,
+                    side=side,
+                    strength=round(strength, 4),
+                    strategy_name=self.name,
+                    reason="; ".join(reasons),
+                    metadata={
+                        "trend": trend,
+                        "zone": zone,
+                        "bos": bos,
+                        "choch": choch,
+                        "near_ob": near_ob,
+                        "liq_grab": liq_grab,
+                        "fvgs_count": len(fvgs),
+                    },
+                    timestamp_ns=ts,
+                )
+            )
 
         return signals

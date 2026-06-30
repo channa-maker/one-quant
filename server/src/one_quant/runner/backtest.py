@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-import time
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from one_quant.core.types import Fill, Kline, Market, Order, Signal, Ticker, Trade
-from one_quant.data.replay import TickReplayer
+from one_quant.core.types import Kline, Market, Order, Signal, Ticker
 from one_quant.infra.logging import get_logger
-from one_quant.risk.engine import RiskEngine
 from one_quant.strategy.contracts import Strategy
 
 logger = get_logger(__name__)
@@ -20,6 +16,7 @@ logger = get_logger(__name__)
 @dataclass
 class BacktestConfig:
     """回测配置"""
+
     initial_capital: Decimal = Decimal("100000")
     commission_rate: Decimal = Decimal("0.001")  # 0.1%
     slippage_rate: Decimal = Decimal("0.0005")  # 0.05%
@@ -30,6 +27,7 @@ class BacktestConfig:
 @dataclass
 class BacktestResult:
     """回测结果"""
+
     total_return: Decimal = Decimal("0")
     sharpe_ratio: float = 0.0
     max_drawdown: Decimal = Decimal("0")
@@ -102,10 +100,12 @@ class BacktestEngine:
                 total_slippage += slippage
 
             self._update_equity(price)
-            self._equity_curve.append({
-                "timestamp_ns": tick.get("timestamp_ns", 0),
-                "equity": str(self._equity),
-            })
+            self._equity_curve.append(
+                {
+                    "timestamp_ns": tick.get("timestamp_ns", 0),
+                    "equity": str(self._equity),
+                }
+            )
 
         # 计算统计
         total_return = (self._equity - self._config.initial_capital) / self._config.initial_capital
@@ -126,6 +126,7 @@ class BacktestEngine:
     def _signal_to_order(self, signal: Signal, current_price: Decimal) -> Order:
         """信号转订单"""
         import uuid
+
         quantity = self._equity * Decimal("0.1") / current_price  # 10% 仓位
         return Order(
             client_order_id=str(uuid.uuid4()),
@@ -168,15 +169,17 @@ class BacktestEngine:
         self._equity -= commission
 
         # 记录交易
-        self._trades.append({
-            "symbol": symbol,
-            "side": order.side,
-            "quantity": str(order.quantity),
-            "price": str(fill_price),
-            "commission": str(commission),
-            "slippage": str(slippage),
-            "timestamp_ns": order.timestamp_ns,
-        })
+        self._trades.append(
+            {
+                "symbol": symbol,
+                "side": order.side,
+                "quantity": str(order.quantity),
+                "price": str(fill_price),
+                "commission": str(commission),
+                "slippage": str(slippage),
+                "timestamp_ns": order.timestamp_ns,
+            }
+        )
 
         return commission, slippage
 
@@ -220,7 +223,9 @@ class FutureFunctionChecker:
     """
 
     @staticmethod
-    def check(strategy: Strategy, data: list[dict[str, Any]], data_type: str = "ticker") -> tuple[bool, list[str]]:
+    def check(
+        strategy: Strategy, data: list[dict[str, Any]], data_type: str = "ticker"
+    ) -> tuple[bool, list[str]]:
         """检查是否存在未来函数。
 
         Returns:
@@ -251,7 +256,7 @@ class FutureFunctionChecker:
                 signals_b.extend(strategy.on_kline(kline))
 
         # 比较前 cutoff 条信号
-        if len(signals_a[:len(signals_b)]) != len(signals_b):
+        if len(signals_a[: len(signals_b)]) != len(signals_b):
             issues.append("截断数据后信号数量不一致，可能存在未来函数")
 
         return len(issues) == 0, issues

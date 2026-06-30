@@ -27,9 +27,9 @@ from __future__ import annotations
 import csv
 import json
 import time
-from datetime import datetime, timezone
+from collections.abc import Generator
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Generator
 
 from one_quant.infra.logging import get_logger
 
@@ -251,7 +251,7 @@ class DataLoader:
         # 尝试常见编码
         for encoding in ("utf-8", "utf-8-sig", "gbk", "latin-1"):
             try:
-                with open(file_path, "r", encoding=encoding, newline="") as f:
+                with open(file_path, encoding=encoding, newline="") as f:
                     # 读取前几行检测分隔符
                     sample = f.read(8192)
                     f.seek(0)
@@ -360,7 +360,7 @@ class DataLoader:
                 try:
                     dt = datetime.strptime(value, fmt)
                     if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=UTC)
                     return int(dt.timestamp() * 1_000_000_000)
                 except ValueError:
                     continue
@@ -371,7 +371,7 @@ class DataLoader:
 
                 dt = du_parse(value)
                 if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
+                    dt = dt.replace(tzinfo=UTC)
                 return int(dt.timestamp() * 1_000_000_000)
             except (ImportError, ValueError):
                 pass
@@ -383,7 +383,7 @@ class DataLoader:
         """纳秒时间戳转 ISO 格式字符串。"""
         if ns is None:
             return None
-        dt = datetime.fromtimestamp(ns / 1_000_000_000, tz=timezone.utc)
+        dt = datetime.fromtimestamp(ns / 1_000_000_000, tz=UTC)
         return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     def _extract_timestamp(self, row: dict) -> int | None:
@@ -452,6 +452,7 @@ class DataLoader:
         Returns:
             排序后的数据列表（新列表，不修改原列表）
         """
+
         def sort_key(row: dict) -> int:
             ts = self._extract_timestamp(row)
             return ts if ts is not None else 0

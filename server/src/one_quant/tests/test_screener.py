@@ -2,8 +2,9 @@
 ONE量化 - 选股选币流水线测试
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from one_quant.core.types import Instrument, InstrumentType, Market
 from one_quant.screener.pipeline import ScreenerPipeline
@@ -40,10 +41,10 @@ def instruments():
 @pytest.mark.asyncio
 async def test_screener_basic(instruments):
     """基本选股。"""
-    pipeline = ScreenerPipeline(min_volume_24h=Decimal("0"), top_n=10)
+    pipeline = ScreenerPipeline(min_volume_24h=Decimal("0"), min_market_cap=Decimal("0"), top_n=10)
     market_data = {
-        "BTCUSDT": {"change_pct": 5.0, "volume_24h": "1000000"},
-        "ETHUSDT": {"change_pct": -2.0, "volume_24h": "500000"},
+        "BTCUSDT": {"change_pct": 5.0, "volume_24h": "1000000", "market_cap": "1000000000"},
+        "ETHUSDT": {"change_pct": -2.0, "volume_24h": "500000", "market_cap": "500000000"},
     }
     results = await pipeline.run(instruments, market_data)
     assert len(results) == 2
@@ -54,10 +55,12 @@ async def test_screener_basic(instruments):
 @pytest.mark.asyncio
 async def test_screener_filter_low_volume(instruments):
     """过滤低成交量标的。"""
-    pipeline = ScreenerPipeline(min_volume_24h=Decimal("1000000"), top_n=10)
+    pipeline = ScreenerPipeline(
+        min_volume_24h=Decimal("1000000"), min_market_cap=Decimal("0"), top_n=10
+    )
     market_data = {
-        "BTCUSDT": {"change_pct": 5.0, "volume_24h": "2000000"},
-        "ETHUSDT": {"change_pct": 2.0, "volume_24h": "100"},  # 低成交量
+        "BTCUSDT": {"change_pct": 5.0, "volume_24h": "2000000", "market_cap": "1000000000"},
+        "ETHUSDT": {"change_pct": 2.0, "volume_24h": "100", "market_cap": "500000000"},  # 低成交量
     }
     results = await pipeline.run(instruments, market_data)
     assert len(results) == 1
@@ -67,10 +70,10 @@ async def test_screener_filter_low_volume(instruments):
 @pytest.mark.asyncio
 async def test_screener_top_n(instruments):
     """Top-N 限制。"""
-    pipeline = ScreenerPipeline(min_volume_24h=Decimal("0"), top_n=1)
+    pipeline = ScreenerPipeline(min_volume_24h=Decimal("0"), min_market_cap=Decimal("0"), top_n=1)
     market_data = {
-        "BTCUSDT": {"change_pct": 5.0, "volume_24h": "1000000"},
-        "ETHUSDT": {"change_pct": 2.0, "volume_24h": "500000"},
+        "BTCUSDT": {"change_pct": 5.0, "volume_24h": "1000000", "market_cap": "1000000000"},
+        "ETHUSDT": {"change_pct": 2.0, "volume_24h": "500000", "market_cap": "500000000"},
     }
     results = await pipeline.run(instruments, market_data)
     assert len(results) == 1

@@ -290,9 +290,9 @@ class ExitBrain:
 
         # 计算盈亏比例
         if position.side == "long":
-            pnl_pct = float((position.unrealized_pnl / (entry_price * position.quantity)))
+            pnl_pct = float(position.unrealized_pnl / (entry_price * position.quantity))
         else:  # short
-            pnl_pct = float((position.unrealized_pnl / (entry_price * position.quantity)))
+            pnl_pct = float(position.unrealized_pnl / (entry_price * position.quantity))
 
         reasons: list[str] = []
         strength = 0.0

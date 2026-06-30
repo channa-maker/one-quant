@@ -383,12 +383,14 @@ class StrategyRunner:
 
     def _record_lifecycle(self, action: str, name: str, enabled: bool) -> None:
         """记录策略生命周期事件。"""
-        self._lifecycle_events.append({
-            "action": action,
-            "strategy_name": name,
-            "enabled": enabled,
-            "timestamp_ns": time.time_ns(),
-        })
+        self._lifecycle_events.append(
+            {
+                "action": action,
+                "strategy_name": name,
+                "enabled": enabled,
+                "timestamp_ns": time.time_ns(),
+            }
+        )
 
     def get_lifecycle_events(self, limit: int = 50) -> list[dict[str, Any]]:
         """获取策略生命周期事件记录。

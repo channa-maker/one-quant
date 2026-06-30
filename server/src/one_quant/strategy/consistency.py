@@ -16,8 +16,7 @@ from copy import deepcopy
 from decimal import Decimal
 
 from one_quant.core.types import Fill
-from one_quant.strategy.backtest import BacktestEngine, BacktestResult
-from one_quant.strategy.contracts import Strategy
+from one_quant.strategy.backtest import BacktestEngine
 
 
 class BacktestConsistencyChecker:
@@ -84,8 +83,8 @@ class BacktestConsistencyChecker:
             return True
 
         # 检查总收益率方向是否一致
-        r1_positive = result1.total_return > 0
-        r2_positive = result2.total_return > 0
+        _r1_positive = result1.total_return > 0  # noqa: F841
+        _r2_positive = result2.total_return > 0  # noqa: F841
 
         # 如果收益率方向相反，可能存在未来函数
         # 但这也可能是正常的（打乱价格改变了市场走势）
@@ -183,7 +182,7 @@ class BacktestConsistencyChecker:
         """
         strategy = strategy_factory()
         engine = BacktestEngine(strategy, initial_capital=initial_capital)
-        result = await engine.run(data)
+        _result = await engine.run(data)  # noqa: F841
         actual_trades = engine.trades
 
         if len(actual_trades) != len(expected_trades):

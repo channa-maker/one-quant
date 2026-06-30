@@ -23,5 +23,5 @@ async def client(app) -> AsyncClient:
 class TestHealthEndpoint:
     @pytest.mark.asyncio
     async def test_health(self, client: AsyncClient) -> None:
-        resp = await client.get("/health")
+        resp = await client.get("/api/v1/health")
         assert resp.status_code == 200

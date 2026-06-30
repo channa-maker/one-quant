@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -169,7 +169,7 @@ class ListingAgeFilter(BaseFilter):
         Returns:
             通过上市时长阈值的标的列表。
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result: list[str] = []
         for sym in symbols:
             ticker = market_data.get(sym, {})
@@ -182,14 +182,12 @@ class ListingAgeFilter(BaseFilter):
             try:
                 if isinstance(listing_date_raw, (int, float)):
                     # Unix 时间戳（秒）
-                    listed_dt = datetime.fromtimestamp(
-                        listing_date_raw, tz=timezone.utc
-                    )
+                    listed_dt = datetime.fromtimestamp(listing_date_raw, tz=UTC)
                 else:
                     # ISO 格式日期字符串
                     listed_dt = datetime.fromisoformat(str(listing_date_raw))
                     if listed_dt.tzinfo is None:
-                        listed_dt = listed_dt.replace(tzinfo=timezone.utc)
+                        listed_dt = listed_dt.replace(tzinfo=UTC)
                 age_days = (now - listed_dt).days
             except (ValueError, TypeError, OSError):
                 logger.warning(

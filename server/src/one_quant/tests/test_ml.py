@@ -5,7 +5,6 @@ ONE量化 - ML 因子库综合测试
 """
 
 from one_quant.ml.factors import (
-    FactorResult,
     MomentumFactor,
     RSIFactor,
     VolatilityStdFactor,
@@ -55,6 +54,7 @@ class TestRSIFactorIntegration:
     def test_rsi_bearish(self):
         """连续下跌 → RSI 偏低。"""
         from decimal import Decimal
+
         f = RSIFactor(window=5)
         for i in range(20):
             f.update(Decimal(str(200 - i * 2)))

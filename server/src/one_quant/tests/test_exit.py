@@ -14,9 +14,8 @@ from decimal import Decimal
 
 import pytest
 
-from one_quant.core.types import Market, PositionState, Signal
+from one_quant.core.types import Market, PositionState
 from one_quant.strategy.exit import ExitBrain, FixedExitStrategy
-
 
 # ──────────────────────────── 辅助工具 ────────────────────────────
 

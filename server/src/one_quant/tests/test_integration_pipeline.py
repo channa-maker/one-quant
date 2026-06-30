@@ -36,18 +36,16 @@ from one_quant.core.types import (
     Ticker,
 )
 from one_quant.execution.oms import OrderManager
+from one_quant.execution.position_recovery import PositionRecoveryManager
 from one_quant.infra.event_bus import (
     BackpressurePolicy,
     EventBusFullError,
     InMemoryEventBus,
 )
-from one_quant.risk.contracts import RiskCheckResult, RiskDecision
+from one_quant.risk.contracts import RiskDecision
 from one_quant.risk.engine import RiskEngine
-from one_quant.risk.rules.l4_circuit_breaker import L4CircuitBreaker
-from one_quant.strategy.contracts import Strategy
 from one_quant.runner.engine import StrategyRunner
-from one_quant.execution.position_recovery import PositionRecoveryManager
-
+from one_quant.strategy.contracts import Strategy
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 测试辅助：模拟策略
@@ -827,6 +825,7 @@ async def test_06c_backpressure_raise():
 
     # 手动将队列精确填满
     from one_quant.infra.event_bus import MessageEnvelope
+
     queue = bus._queues["backpressure.test3"]
     while not queue.empty():
         queue.get_nowait()
@@ -1383,7 +1382,9 @@ async def test_07c_pipeline_multiple_symbols():
     assert eth_result.decision == RiskDecision.APPROVE
 
     # 模拟成交
-    btc_fill = _make_fill(order_id=btc_order.client_order_id, price=Decimal("50000"), quantity=Decimal("0.1"))
+    btc_fill = _make_fill(
+        order_id=btc_order.client_order_id, price=Decimal("50000"), quantity=Decimal("0.1")
+    )
     eth_fill = _make_fill(
         order_id=eth_order.client_order_id,
         symbol="ETH/USDT",

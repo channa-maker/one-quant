@@ -15,10 +15,10 @@ ONE量化 - 风控合约（决策类型与规则协议）
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Protocol
 
 from pydantic import BaseModel
-from enum import Enum
 
 from one_quant.core.types import Order, PositionState
 

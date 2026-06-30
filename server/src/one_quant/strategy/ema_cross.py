@@ -79,9 +79,9 @@ class EMACrossStrategy(Strategy):
 
         # 每个 symbol 独立维护状态
         self._prices: dict[str, list[Decimal]] = {}  # 价格缓冲（用于初始化 EMA）
-        self._ema_fast: dict[str, Decimal] = {}       # 快线当前值
-        self._ema_slow: dict[str, Decimal] = {}       # 慢线当前值
-        self._prev_diff: dict[str, Decimal] = {}      # 前一次快慢线差值（用于检测交叉）
+        self._ema_fast: dict[str, Decimal] = {}  # 快线当前值
+        self._ema_slow: dict[str, Decimal] = {}  # 慢线当前值
+        self._prev_diff: dict[str, Decimal] = {}  # 前一次快慢线差值（用于检测交叉）
 
     @property
     def factor_name(self) -> str:
@@ -109,13 +109,15 @@ class EMACrossStrategy(Strategy):
             symbol: 标的符号
             prices: 已收集的价格列表（长度 >= slow_period）
         """
-        fast_buf = prices[-self.fast_period:]
-        slow_buf = prices[-self.slow_period:]
+        fast_buf = prices[-self.fast_period :]
+        slow_buf = prices[-self.slow_period :]
         self._ema_fast[symbol] = sum(fast_buf) / Decimal(len(fast_buf))
         self._ema_slow[symbol] = sum(slow_buf) / Decimal(len(slow_buf))
         self._prev_diff[symbol] = self._ema_fast[symbol] - self._ema_slow[symbol]
 
-    def _process_price(self, symbol: str, price: Decimal, market: Market, timestamp_ns: int) -> list[Signal]:
+    def _process_price(
+        self, symbol: str, price: Decimal, market: Market, timestamp_ns: int
+    ) -> list[Signal]:
         """处理单个价格更新，返回信号列表。
 
         流程：

@@ -1,6 +1,7 @@
 """pytest 公共 fixture"""
 
 import pytest
+
 from one_quant.infra.event_bus import InMemoryEventBus
 
 
@@ -14,7 +15,9 @@ def event_bus():
 def sample_ticker():
     """提供示例 Ticker 数据。"""
     from decimal import Decimal
-    from one_quant.core.types import Ticker, Market
+
+    from one_quant.core.types import Market, Ticker
+
     return Ticker(
         symbol="BTCUSDT",
         market=Market.SPOT,
@@ -31,7 +34,9 @@ def sample_ticker():
 def sample_kline():
     """提供示例 Kline 数据。"""
     from decimal import Decimal
+
     from one_quant.core.types import Kline, Market
+
     return Kline(
         symbol="BTCUSDT",
         market=Market.SPOT,

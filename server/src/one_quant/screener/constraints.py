@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from decimal import Decimal
-from typing import Any
 
 from one_quant.screener.pipeline import CandidateAsset
 
@@ -47,9 +46,7 @@ class DiversificationConstraint:
             通过分散化约束的候选标的列表。
         """
         # 按最终得分降序排列（确保高分优先保留）
-        sorted_candidates = sorted(
-            candidates, key=lambda c: c.final_score, reverse=True
-        )
+        sorted_candidates = sorted(candidates, key=lambda c: c.final_score, reverse=True)
 
         sector_count: Counter[str] = Counter()
         market_count: Counter[str] = Counter()
@@ -125,9 +122,7 @@ class CorrelationConstraint:
             return candidates
 
         # 按最终得分降序排列
-        sorted_candidates = sorted(
-            candidates, key=lambda c: c.final_score, reverse=True
-        )
+        sorted_candidates = sorted(candidates, key=lambda c: c.final_score, reverse=True)
 
         removed: set[str] = set()
         result: list[CandidateAsset] = []
@@ -141,9 +136,7 @@ class CorrelationConstraint:
             for kept in result:
                 corr_key = (candidate.symbol, kept.symbol)
                 corr_key_rev = (kept.symbol, candidate.symbol)
-                corr = correlation_matrix.get(
-                    corr_key, correlation_matrix.get(corr_key_rev, 0.0)
-                )
+                corr = correlation_matrix.get(corr_key, correlation_matrix.get(corr_key_rev, 0.0))
                 if abs(corr) > max_corr:
                     logger.debug(
                         "相关性约束: %s 与 %s 相关性 %.3f > %.3f，剔除 %s",
@@ -196,9 +189,7 @@ class PositionLimitConstraint:
             return candidates
 
         # 按最终得分降序排列
-        sorted_candidates = sorted(
-            candidates, key=lambda c: c.final_score, reverse=True
-        )
+        sorted_candidates = sorted(candidates, key=lambda c: c.final_score, reverse=True)
 
         # 计算总得分用于归一化权重
         total_score = Decimal(str(sum(c.final_score for c in sorted_candidates)))

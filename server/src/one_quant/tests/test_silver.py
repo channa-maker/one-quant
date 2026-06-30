@@ -41,10 +41,7 @@ class TestSilverProcessor:
 
     def test_batch_processing(self, processor: SilverProcessor) -> None:
         now = time.time_ns()
-        records = [
-            {"symbol": "BTC/USDT", "timestamp_ns": now + i}
-            for i in range(10)
-        ]
+        records = [{"symbol": "BTC/USDT", "timestamp_ns": now + i} for i in range(10)]
         results = processor.process_batch(records)
         assert len(results) == 10
 

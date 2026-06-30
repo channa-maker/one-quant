@@ -4,12 +4,13 @@ ONE量化 - 交易所适配器测试
 验证 BrokerPool、适配器注册/获取、限流器集成。
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from one_quant.core.types import Market
-from one_quant.exchange.pool import BrokerPool
 from one_quant.exchange.contracts import ExchangeAdapter
+from one_quant.exchange.pool import BrokerPool
 
 
 class DummyAdapter(ExchangeAdapter):
@@ -34,13 +35,20 @@ class DummyAdapter(ExchangeAdapter):
         return []
 
     async def get_ticker(self, symbol):
-        from one_quant.core.types import Ticker
-        from decimal import Decimal
         import time
+        from decimal import Decimal
+
+        from one_quant.core.types import Ticker
+
         return Ticker(
-            symbol=symbol, market=Market.SPOT, exchange="dummy",
-            last_price=Decimal("100"), bid=Decimal("99"), ask=Decimal("101"),
-            volume_24h=Decimal("1000"), timestamp_ns=time.time_ns(),
+            symbol=symbol,
+            market=Market.SPOT,
+            exchange="dummy",
+            last_price=Decimal("100"),
+            bid=Decimal("99"),
+            ask=Decimal("101"),
+            volume_24h=Decimal("1000"),
+            timestamp_ns=time.time_ns(),
         )
 
 

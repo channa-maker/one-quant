@@ -16,22 +16,18 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_DOWN
-from typing import Literal
+from decimal import Decimal
 
 import pytest
 
 from one_quant.core.types import (
     Fill,
     Market,
-    Order,
     PositionState,
     Signal,
-    Ticker,
 )
-from one_quant.infra.event_bus import InMemoryEventBus
 from one_quant.execution.oms import OrderManager
-
+from one_quant.infra.event_bus import InMemoryEventBus
 
 # ══════════════════════════════════════════════════════════════════════
 # 模拟盘引擎（Paper Trading Engine）
@@ -84,9 +80,7 @@ class PaperAccount:
         margin_required = cost / self.leverage + fee
 
         if margin_required > self.balance:
-            raise ValueError(
-                f"余额不足: 需要 {margin_required} USDT，当前 {self.balance} USDT"
-            )
+            raise ValueError(f"余额不足: 需要 {margin_required} USDT，当前 {self.balance} USDT")
 
         # 扣减余额
         self.balance -= margin_required
@@ -154,13 +148,11 @@ class PaperAccount:
 
         pos = self.positions[symbol]
         if quantity > pos.quantity:
-            raise ValueError(
-                f"持仓不足: 要卖 {quantity}，只有 {pos.quantity}"
-            )
+            raise ValueError(f"持仓不足: 要卖 {quantity}，只有 {pos.quantity}")
 
         revenue = price * quantity
         fee = revenue * self.fee_rate
-        net_revenue = revenue - fee
+        _net_revenue = revenue - fee  # noqa: F841
 
         # 计算已实现盈亏
         pnl = (price - pos.entry_price) * quantity - fee
@@ -232,21 +224,29 @@ class PaperAccount:
         sl = self.stop_losses[symbol]
         if current_price <= sl["price"]:
             # 触发止损：以当前价格全部卖出
-            quantity = min(sl["quantity"], self.positions.get(symbol, PositionState(
-                symbol=symbol, market=Market.SPOT, side="flat",
-                quantity=Decimal("0"), entry_price=Decimal("0"),
-                unrealized_pnl=Decimal("0"), realized_pnl=Decimal("0"),
-                timestamp_ns=time.time_ns(),
-            )).quantity)
+            quantity = min(
+                sl["quantity"],
+                self.positions.get(
+                    symbol,
+                    PositionState(
+                        symbol=symbol,
+                        market=Market.SPOT,
+                        side="flat",
+                        quantity=Decimal("0"),
+                        entry_price=Decimal("0"),
+                        unrealized_pnl=Decimal("0"),
+                        realized_pnl=Decimal("0"),
+                        timestamp_ns=time.time_ns(),
+                    ),
+                ).quantity,
+            )
             if quantity > 0 and symbol in self.positions:
                 fill = self.sell(symbol, current_price, quantity)
                 del self.stop_losses[symbol]
                 return fill
         return None
 
-    def update_trailing_stop(
-        self, symbol: str, current_price: Decimal, trail_pct: Decimal
-    ) -> None:
+    def update_trailing_stop(self, symbol: str, current_price: Decimal, trail_pct: Decimal) -> None:
         """更新移动止损。
 
         当价格上涨时，止损价跟随上移；价格下跌时止损价不变。
@@ -315,7 +315,7 @@ class TestPaperTrading:
         assert sell_fill.fee == Decimal("51")
 
         # 盈亏 = (51000 - 50000) * 1 - 50 - 51 = 899 USDT
-        expected_pnl = Decimal("1000") - Decimal("50") - Decimal("51")
+        _expected_pnl = Decimal("1000") - Decimal("50") - Decimal("51")  # noqa: F841
         assert sell_fill.fee == Decimal("51")
 
         # ── 3. 验证最终余额 ──
@@ -340,9 +340,9 @@ class TestPaperTrading:
         )
 
         # ── 买入三个标的 ──
-        account.buy("BTCUSDT", Decimal("50000"), Decimal("1"))    # 成本 50000 + 手续费 50
-        account.buy("ETHUSDT", Decimal("3000"), Decimal("10"))    # 成本 30000 + 手续费 30
-        account.buy("SOLUSDT", Decimal("100"), Decimal("100"))    # 成本 10000 + 手续费 10
+        account.buy("BTCUSDT", Decimal("50000"), Decimal("1"))  # 成本 50000 + 手续费 50
+        account.buy("ETHUSDT", Decimal("3000"), Decimal("10"))  # 成本 30000 + 手续费 30
+        account.buy("SOLUSDT", Decimal("100"), Decimal("100"))  # 成本 10000 + 手续费 10
 
         # 总支出 = 50000 + 50 + 30000 + 30 + 10000 + 10 = 90090
         # 余额 = 100000 - 90090 = 9910
@@ -488,8 +488,7 @@ class TestPaperTrading:
 
         # ── 3. 价格回落到 54000 → 止损不更新（54000*0.97=52380 < 53350）──
         account.update_trailing_stop("BTCUSDT", Decimal("54000"), trail_pct)
-        assert account.stop_losses["BTCUSDT"]["price"] == Decimal("53350"), \
-            "止损不应下调"
+        assert account.stop_losses["BTCUSDT"]["price"] == Decimal("53350"), "止损不应下调"
 
         # ── 4. 价格继续回落到 53000 → 触发止损 ──
         fill = account.check_stop_loss("BTCUSDT", Decimal("53000"))
@@ -547,10 +546,10 @@ class TestPaperTrading:
         )
 
         # ── 分散买入 ──
-        account.buy("BTCUSDT", Decimal("50000"), Decimal("0.5"))    # 25000 + 25
-        account.buy("ETHUSDT", Decimal("3000"), Decimal("10"))      # 30000 + 30
-        account.buy("SOLUSDT", Decimal("100"), Decimal("200"))      # 20000 + 20
-        account.buy("BNBUSDT", Decimal("500"), Decimal("20"))       # 10000 + 10
+        account.buy("BTCUSDT", Decimal("50000"), Decimal("0.5"))  # 25000 + 25
+        account.buy("ETHUSDT", Decimal("3000"), Decimal("10"))  # 30000 + 30
+        account.buy("SOLUSDT", Decimal("100"), Decimal("200"))  # 20000 + 20
+        account.buy("BNBUSDT", Decimal("500"), Decimal("20"))  # 10000 + 10
 
         # 总投入 = 25025 + 30030 + 20020 + 10010 = 85085
         # 余额 = 100000 - 85085 = 14915
@@ -664,8 +663,12 @@ class TestPaperTradingOMSIntegration:
 
         # ── 创建信号 → 订单 ──
         signal = Signal(
-            symbol="BTCUSDT", market=Market.SPOT, side="buy",
-            strength=0.8, strategy_name="paper_test", reason="模拟盘测试",
+            symbol="BTCUSDT",
+            market=Market.SPOT,
+            side="buy",
+            strength=0.8,
+            strategy_name="paper_test",
+            reason="模拟盘测试",
             timestamp_ns=time.time_ns(),
         )
         order = oms.create_order_from_signal(
@@ -709,8 +712,12 @@ class TestPaperTradingOMSIntegration:
 
         # ── 1. 策略产生信号 ──
         buy_signal = Signal(
-            symbol="BTCUSDT", market=Market.SPOT, side="buy",
-            strength=0.9, strategy_name="momentum", reason="突破新高",
+            symbol="BTCUSDT",
+            market=Market.SPOT,
+            side="buy",
+            strength=0.9,
+            strategy_name="momentum",
+            reason="突破新高",
             timestamp_ns=time.time_ns(),
         )
 
@@ -742,8 +749,12 @@ class TestPaperTradingOMSIntegration:
         # ── 7. OMS 记录止损成交 ──
         sl_order = oms.create_order_from_signal(
             Signal(
-                symbol="BTCUSDT", market=Market.SPOT, side="sell",
-                strength=1.0, strategy_name="risk_engine", reason="移动止损触发",
+                symbol="BTCUSDT",
+                market=Market.SPOT,
+                side="sell",
+                strength=1.0,
+                strategy_name="risk_engine",
+                reason="移动止损触发",
                 timestamp_ns=time.time_ns(),
             ),
             price=Decimal("53000"),

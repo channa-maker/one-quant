@@ -64,21 +64,23 @@ class RSIReversalStrategy(Strategy):
         self.overbought: Decimal = Decimal(str(overbought))
 
         # 每个 symbol 独立维护状态
-        self._prev_close: dict[str, Decimal] = {}          # 前一收盘价
-        self._avg_gain: dict[str, Decimal] = {}            # Wilder 平均涨幅
-        self._avg_loss: dict[str, Decimal] = {}            # Wilder 平均跌幅
-        self._rsi: dict[str, Decimal | None] = {}          # 当前 RSI 值
-        self._prev_rsi: dict[str, Decimal | None] = {}     # 前一次 RSI 值
-        self._price_count: dict[str, int] = {}             # 已处理价格数量
-        self._gains_buf: dict[str, list[Decimal]] = {}     # 预热期涨幅缓冲
-        self._losses_buf: dict[str, list[Decimal]] = {}    # 预热期跌幅缓冲
+        self._prev_close: dict[str, Decimal] = {}  # 前一收盘价
+        self._avg_gain: dict[str, Decimal] = {}  # Wilder 平均涨幅
+        self._avg_loss: dict[str, Decimal] = {}  # Wilder 平均跌幅
+        self._rsi: dict[str, Decimal | None] = {}  # 当前 RSI 值
+        self._prev_rsi: dict[str, Decimal | None] = {}  # 前一次 RSI 值
+        self._price_count: dict[str, int] = {}  # 已处理价格数量
+        self._gains_buf: dict[str, list[Decimal]] = {}  # 预热期涨幅缓冲
+        self._losses_buf: dict[str, list[Decimal]] = {}  # 预热期跌幅缓冲
 
     @property
     def factor_name(self) -> str:
         """因子命名：rsi_reversal_{period}"""
         return f"rsi_reversal_{self.period}"
 
-    def _process_price(self, symbol: str, price: Decimal, market: Market, timestamp_ns: int) -> list[Signal]:
+    def _process_price(
+        self, symbol: str, price: Decimal, market: Market, timestamp_ns: int
+    ) -> list[Signal]:
         """处理单个价格更新，计算 RSI 并检测反转信号。
 
         流程：

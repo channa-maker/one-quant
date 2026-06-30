@@ -15,11 +15,8 @@ ONE量化 - 加密专属结构分析
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Literal
-
-from one_quant.core.types import Market, Signal
-
+from decimal import Decimal
+from typing import Any
 
 # ──────────────────────────── 链上分析 ────────────────────────────
 
@@ -69,8 +66,13 @@ class OnChainAnalyzer:
             }
         """
         if not inflows or not outflows:
-            return {"netflow": "0", "cumulative": "0", "trend": "neutral",
-                    "signal": "neutral", "intensity": 0.0}
+            return {
+                "netflow": "0",
+                "cumulative": "0",
+                "trend": "neutral",
+                "signal": "neutral",
+                "intensity": 0.0,
+            }
 
         # 取最近 window 期
         recent_in = inflows[-window:]
@@ -134,10 +136,7 @@ class OnChainAnalyzer:
         """
         thresh = threshold or self.WHALE_THRESHOLD_BTC
 
-        whale_txs = [
-            t for t in transfers
-            if Decimal(str(t.get("amount", 0))) >= thresh
-        ]
+        whale_txs = [t for t in transfers if Decimal(str(t.get("amount", 0))) >= thresh]
 
         if not whale_txs:
             return {
@@ -152,11 +151,13 @@ class OnChainAnalyzer:
 
         # 分类：流入交易所 vs 流出交易所
         to_exchange = sum(
-            Decimal(str(t["amount"])) for t in whale_txs
+            Decimal(str(t["amount"]))
+            for t in whale_txs
             if str(t.get("to", "")).lower() in self.EXCHANGE_LABELS
         )
         from_exchange = sum(
-            Decimal(str(t["amount"])) for t in whale_txs
+            Decimal(str(t["amount"]))
+            for t in whale_txs
             if str(t.get("from", "")).lower() in self.EXCHANGE_LABELS
         )
 
@@ -221,7 +222,9 @@ class OnChainAnalyzer:
         mid = len(recent_usdt) // 2
         if mid > 0:
             first_half = sum(recent_usdt[:mid], Decimal("0")) + sum(recent_usdc[:mid], Decimal("0"))
-            second_half = sum(recent_usdt[mid:], Decimal("0")) + sum(recent_usdc[mid:], Decimal("0"))
+            second_half = sum(recent_usdt[mid:], Decimal("0")) + sum(
+                recent_usdc[mid:], Decimal("0")
+            )
 
             if second_half > first_half * Decimal("1.1"):
                 trend = "increasing"
@@ -259,8 +262,8 @@ class DerivativesStructure:
     """
 
     # 资金费率极值阈值（年化）
-    FUNDING_EXTREME_HIGH = Decimal("0.001")   # 0.1% 每 8h ≈ 109% 年化
-    FUNDING_EXTREME_LOW = Decimal("-0.001")   # -0.1% 每 8h
+    FUNDING_EXTREME_HIGH = Decimal("0.001")  # 0.1% 每 8h ≈ 109% 年化
+    FUNDING_EXTREME_LOW = Decimal("-0.001")  # -0.1% 每 8h
 
     def funding_rate_extreme(self, rate: Decimal) -> dict:
         """资金费率极值分析。
@@ -338,9 +341,14 @@ class DerivativesStructure:
             }
         """
         if len(oi_data) < 2:
-            return {"current_oi": "0", "change": "0", "change_pct": "0",
-                    "price_direction": "flat", "signal": "neutral",
-                    "interpretation": "数据不足"}
+            return {
+                "current_oi": "0",
+                "change": "0",
+                "change_pct": "0",
+                "price_direction": "flat",
+                "signal": "neutral",
+                "interpretation": "数据不足",
+            }
 
         current = oi_data[-1]
         prev = oi_data[-2]
@@ -420,11 +428,13 @@ class DerivativesStructure:
             total_size = sum(Decimal(str(p["size"])) for p in positions)
             return {
                 "heatmap": {str(min_price): str(total_size)},
-                "high_density_zones": [{
-                    "price": str(min_price),
-                    "volume": str(total_size),
-                    "side": positions[0]["side"],
-                }],
+                "high_density_zones": [
+                    {
+                        "price": str(min_price),
+                        "volume": str(total_size),
+                        "side": positions[0]["side"],
+                    }
+                ],
                 "signal": "neutral",
             }
 
@@ -575,8 +585,15 @@ class OptionStructure:
             }
         """
         if not chain:
-            return {"total_gex": "0", "positive_gex": "0", "negative_gex": "0",
-                    "net_gex": "0", "regime": "neutral", "call_wall": "0", "put_wall": "0"}
+            return {
+                "total_gex": "0",
+                "positive_gex": "0",
+                "negative_gex": "0",
+                "net_gex": "0",
+                "regime": "neutral",
+                "call_wall": "0",
+                "put_wall": "0",
+            }
 
         total_gex = Decimal("0")
         pos_gex = Decimal("0")
@@ -607,15 +624,23 @@ class OptionStructure:
         # 判断市场状态
         net_gex = pos_gex - neg_gex
         if net_gex > 0:
-            regime = "stabilizing"   # 正 GEX → 均值回归
+            regime = "stabilizing"  # 正 GEX → 均值回归
         elif net_gex < 0:
-            regime = "amplifying"    # 负 GEX → 趋势加速
+            regime = "amplifying"  # 负 GEX → 趋势加速
         else:
             regime = "neutral"
 
         # Call/Put Wall
-        call_wall = max(call_gamma_map.keys(), key=lambda k: call_gamma_map[k]) if call_gamma_map else Decimal("0")
-        put_wall = max(put_gamma_map.keys(), key=lambda k: put_gamma_map[k]) if put_gamma_map else Decimal("0")
+        call_wall = (
+            max(call_gamma_map.keys(), key=lambda k: call_gamma_map[k])
+            if call_gamma_map
+            else Decimal("0")
+        )
+        put_wall = (
+            max(put_gamma_map.keys(), key=lambda k: put_gamma_map[k])
+            if put_gamma_map
+            else Decimal("0")
+        )
 
         return {
             "total_gex": str(total_gex.quantize(Decimal("0.01"))),
@@ -647,8 +672,12 @@ class OptionStructure:
                 "extreme": bool,       # 是否处于极端值
             }
         """
-        call_oi = sum(Decimal(str(c.get("open_interest", 0))) for c in chain if c.get("type") == "call")
-        put_oi = sum(Decimal(str(c.get("open_interest", 0))) for c in chain if c.get("type") == "put")
+        call_oi = sum(
+            Decimal(str(c.get("open_interest", 0))) for c in chain if c.get("type") == "call"
+        )
+        put_oi = sum(
+            Decimal(str(c.get("open_interest", 0))) for c in chain if c.get("type") == "put"
+        )
         call_vol = sum(Decimal(str(c.get("volume", 0))) for c in chain if c.get("type") == "call")
         put_vol = sum(Decimal(str(c.get("volume", 0))) for c in chain if c.get("type") == "put")
 
@@ -699,14 +728,24 @@ class OptionStructure:
             }
         """
         if not chain:
-            return {"skew": 0.0, "put_wing_iv": "0", "call_wing_iv": "0",
-                    "atm_iv": "0", "interpretation": "数据不足"}
+            return {
+                "skew": 0.0,
+                "put_wing_iv": "0",
+                "call_wing_iv": "0",
+                "atm_iv": "0",
+                "interpretation": "数据不足",
+            }
 
         # 获取 spot price（从第一个期权的 strike 估算）
         strikes = sorted(set(Decimal(str(c["strike"])) for c in chain))
         if not strikes:
-            return {"skew": 0.0, "put_wing_iv": "0", "call_wing_iv": "0",
-                    "atm_iv": "0", "interpretation": "无有效行权价"}
+            return {
+                "skew": 0.0,
+                "put_wing_iv": "0",
+                "call_wing_iv": "0",
+                "atm_iv": "0",
+                "interpretation": "无有效行权价",
+            }
 
         # 估算 ATM 价格（中间行权价）
         atm_price = strikes[len(strikes) // 2]
@@ -715,8 +754,13 @@ class OptionStructure:
         otm_puts = [c for c in chain if Decimal(str(c["strike"])) < atm_price * Decimal("0.95")]
         otm_calls = [c for c in chain if Decimal(str(c["strike"])) > atm_price * Decimal("1.05")]
         atm_options = [
-            c for c in chain
-            if atm_price * Decimal("0.95") <= Decimal(str(c["strike"])) <= atm_price * Decimal("1.05")
+            c
+            for c in chain
+            if (
+                atm_price * Decimal("0.95")
+                <= Decimal(str(c["strike"]))
+                <= atm_price * Decimal("1.05")
+            )
         ]
 
         def avg_iv(options: list[dict]) -> Decimal:
@@ -769,10 +813,10 @@ class StrategyFusion:
 
     # 各层权重
     WEIGHTS = {
-        "order_flow": 0.30,   # 订单流权重最高（最即时）
-        "smc": 0.30,          # SMC 结构（机构行为）
-        "ml": 0.25,           # ML 因子（统计优势）
-        "llm": 0.15,          # LLM（消息面，辅助确认）
+        "order_flow": 0.30,  # 订单流权重最高（最即时）
+        "smc": 0.30,  # SMC 结构（机构行为）
+        "ml": 0.25,  # ML 因子（统计优势）
+        "llm": 0.15,  # LLM（消息面，辅助确认）
     }
 
     def fuse(
@@ -848,7 +892,8 @@ class StrategyFusion:
 
         # 计算同向层数
         agreeing = sum(
-            1 for layer in layers.values()
+            1
+            for layer in layers.values()
             if layer["side"] == final_side and layer["side"] != "neutral"
         )
 

@@ -13,8 +13,7 @@ from __future__ import annotations
 import asyncio
 import time
 from decimal import Decimal
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -22,7 +21,6 @@ from one_quant.core.types import (
     Kline,
     Market,
     OrderBook,
-    OrderBookLevel,
     Ticker,
     Trade,
 )
@@ -39,7 +37,6 @@ from one_quant.marketgw.normalizer import (
     okx_symbol_to_internal,
 )
 from one_quant.marketgw.reconnect import ReconnectManager
-
 
 # ══════════════════════════════════════════════════════════════════════
 # normalizer 测试
@@ -265,7 +262,17 @@ class TestNormalizeOKXKline:
 
     def test_basic_fields(self) -> None:
         # [ts, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
-        raw = ["1700000000000", "50000", "50100", "49900", "50050", "100", "5000000", "5000000", "1"]
+        raw = [
+            "1700000000000",
+            "50000",
+            "50100",
+            "49900",
+            "50050",
+            "100",
+            "5000000",
+            "5000000",
+            "1",
+        ]
         k = normalize_okx_kline(raw, inst_id="BTC-USDT", interval="1m")
 
         assert isinstance(k, Kline)

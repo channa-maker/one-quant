@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import time
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import patch
 
 import pytest
 
@@ -32,14 +32,13 @@ from one_quant.core.types import (
 )
 from one_quant.infra.event_bus import InMemoryEventBus
 from one_quant.marketgw.reconnect import ReconnectManager
-from one_quant.risk.contracts import RiskCheckResult, RiskDecision
+from one_quant.risk.contracts import RiskDecision
 from one_quant.risk.engine import RiskEngine
 from one_quant.risk.rules.l4_circuit_breaker import (
+    FAILURE_THRESHOLD,
     CircuitBreakerState,
     L4CircuitBreaker,
-    FAILURE_THRESHOLD,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # 辅助工厂函数
@@ -125,7 +124,7 @@ class TestChaosMarketDisconnect:
         manager = ReconnectManager(initial_delay=0.01, max_delay=0.1, multiplier=2.0)
 
         connect_call_count = 0
-        disconnect_injected = False
+        _disconnect_injected = False  # noqa: F841
 
         async def mock_connect():
             """模拟连接：第 1 次成功，第 2 次抛出异常，第 3 次成功。"""
@@ -164,6 +163,7 @@ class TestChaosMarketDisconnect:
         2. 超时检测触发
         3. 自动切换到备用源（币安）
         """
+
         # ── 模拟主源超时 ──
         async def slow_okx_fetch():
             """模拟 OKX 慢响应：3 秒后才返回。"""
@@ -182,7 +182,7 @@ class TestChaosMarketDisconnect:
 
         try:
             result = await asyncio.wait_for(slow_okx_fetch(), timeout=timeout_sec)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # 主源超时，切换备用源
             used_fallback = True
             result = await fast_binance_fetch()
@@ -208,9 +208,15 @@ class TestChaosMarketDisconnect:
         # 有缺口：t0, t1, t4（丢失 t2, t3）
         received_klines = [
             Kline(
-                symbol="BTCUSDT", market=Market.SPOT, exchange="binance",
-                interval="1m", open=Decimal("50000"), high=Decimal("50100"),
-                low=Decimal("49900"), close=Decimal("50050"), volume=Decimal("100"),
+                symbol="BTCUSDT",
+                market=Market.SPOT,
+                exchange="binance",
+                interval="1m",
+                open=Decimal("50000"),
+                high=Decimal("50100"),
+                low=Decimal("49900"),
+                close=Decimal("50050"),
+                volume=Decimal("100"),
                 timestamp_ns=base_ts + i * interval_ns,
             )
             for i in [0, 1, 4]  # 有缺口：缺 t2, t3
@@ -244,12 +250,20 @@ class TestChaosMarketDisconnect:
             result = []
             ts = start_ts
             while ts < end_ts:
-                result.append(Kline(
-                    symbol="BTCUSDT", market=Market.SPOT, exchange="binance",
-                    interval="1m", open=Decimal("50000"), high=Decimal("50100"),
-                    low=Decimal("49900"), close=Decimal("50050"), volume=Decimal("100"),
-                    timestamp_ns=ts,
-                ))
+                result.append(
+                    Kline(
+                        symbol="BTCUSDT",
+                        market=Market.SPOT,
+                        exchange="binance",
+                        interval="1m",
+                        open=Decimal("50000"),
+                        high=Decimal("50100"),
+                        low=Decimal("49900"),
+                        close=Decimal("50050"),
+                        volume=Decimal("100"),
+                        timestamp_ns=ts,
+                    )
+                )
                 ts += interval_ns
             return result
 
@@ -262,7 +276,7 @@ class TestChaosMarketDisconnect:
         assert len(all_klines) == 5, "合并后应有 5 根完整 K 线"
         for i in range(1, len(all_klines)):
             gap = all_klines[i].timestamp_ns - all_klines[i - 1].timestamp_ns
-            assert gap == interval_ns, f"K 线 {i-1}→{i} 间隔不连续"
+            assert gap == interval_ns, f"K 线 {i - 1}→{i} 间隔不连续"
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -297,7 +311,7 @@ class TestChaosExchangeFailure:
 
         # ── 3. 触发状态检查，应转入 HALF_OPEN ──
         # 创建一个正常订单用于探测
-        order = _make_order()
+        _order = _make_order()  # noqa: F841
 
         # should_allow() 会检测超时并自动从 OPEN → HALF_OPEN
         allowed = breaker.should_allow()
@@ -331,11 +345,16 @@ class TestChaosExchangeFailure:
 
         # ── 模拟交易所拒单 ──
         from one_quant.execution.oms import OrderManager
+
         oms = OrderManager(bus)
 
         signal = Signal(
-            symbol="BTCUSDT", market=Market.SPOT, side="buy",
-            strength=0.8, strategy_name="test", reason="测试拒单",
+            symbol="BTCUSDT",
+            market=Market.SPOT,
+            side="buy",
+            strength=0.8,
+            strategy_name="test",
+            reason="测试拒单",
             timestamp_ns=time.time_ns(),
         )
         order = oms.create_order_from_signal(
@@ -363,12 +382,17 @@ class TestChaosExchangeFailure:
         await bus.start()
 
         from one_quant.execution.oms import OrderManager
+
         oms = OrderManager(bus)
 
         # ── 1. 创建并提交订单 ──
         signal = Signal(
-            symbol="BTCUSDT", market=Market.SPOT, side="buy",
-            strength=0.8, strategy_name="test", reason="测试部分成交",
+            symbol="BTCUSDT",
+            market=Market.SPOT,
+            side="buy",
+            strength=0.8,
+            strategy_name="test",
+            reason="测试部分成交",
             timestamp_ns=time.time_ns(),
         )
         order = oms.create_order_from_signal(
@@ -401,8 +425,12 @@ class TestChaosExchangeFailure:
 
         # ── 4. 重新下单剩余部分 ──
         new_signal = Signal(
-            symbol="BTCUSDT", market=Market.SPOT, side="buy",
-            strength=0.8, strategy_name="test", reason="补充下单",
+            symbol="BTCUSDT",
+            market=Market.SPOT,
+            side="buy",
+            strength=0.8,
+            strategy_name="test",
+            reason="补充下单",
             timestamp_ns=time.time_ns(),
         )
         new_order = oms.create_order_from_signal(
@@ -501,7 +529,7 @@ class TestChaosDatabase:
                 except OSError:
                     if retry == max_retries - 1:
                         raise
-                    await asyncio.sleep(0.01 * (2 ** retry))  # 指数退避
+                    await asyncio.sleep(0.01 * (2**retry))  # 指数退避
             return False
 
         # ── 执行写入 ──
@@ -588,6 +616,7 @@ class TestChaosStrategy:
 
         class CrashingStrategy(Strategy):
             """会崩溃的策略 A。"""
+
             name = "crashing_strategy"
             enabled = True
 
@@ -599,23 +628,31 @@ class TestChaosStrategy:
 
         class NormalStrategy(Strategy):
             """正常策略 B。"""
+
             name = "normal_strategy"
             enabled = True
             signal_count = 0
 
             def on_ticker(self, ticker: Ticker) -> list[Signal]:
                 NormalStrategy.signal_count += 1
-                return [Signal(
-                    symbol=ticker.symbol, market=ticker.market, side="buy",
-                    strength=0.5, strategy_name=self.name, reason="正常信号",
-                    timestamp_ns=time.time_ns(),
-                )]
+                return [
+                    Signal(
+                        symbol=ticker.symbol,
+                        market=ticker.market,
+                        side="buy",
+                        strength=0.5,
+                        strategy_name=self.name,
+                        reason="正常信号",
+                        timestamp_ns=time.time_ns(),
+                    )
+                ]
 
             def on_kline(self, kline: Kline) -> list[Signal]:
                 return []
 
         bus = InMemoryEventBus()
         from one_quant.runner.engine import StrategyRunner
+
         runner = StrategyRunner(bus)
 
         strategy_a = CrashingStrategy()
@@ -661,6 +698,7 @@ class TestChaosStrategy:
 
         class InfiniteLoopStrategy(Strategy):
             """死循环策略。"""
+
             name = "infinite_loop_strategy"
             enabled = True
 
@@ -687,7 +725,7 @@ class TestChaosStrategy:
                     timeout=timeout,
                 )
                 return result
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 restart_count += 1
                 return []  # 超时返回空信号
 
@@ -727,7 +765,7 @@ class TestChaosRisk:
 
         # ── 模拟 L2 层异常 ──
         # 使用 BTC/USDT（白名单格式）确保通过 L1
-        with patch.object(engine.l2, 'check', side_effect=RuntimeError("L2 计算异常")):
+        with patch.object(engine.l2, "check", side_effect=RuntimeError("L2 计算异常")):
             order = _make_order(symbol="BTC/USDT")
             positions = [_make_position(symbol="BTC/USDT")]
 
@@ -737,10 +775,10 @@ class TestChaosRisk:
             try:
                 result = engine.check(order, positions)
                 # 如果没有抛异常，必须是 FLATTEN（不能是 APPROVE）
-                assert result.decision == RiskDecision.FLATTEN, \
+                assert result.decision == RiskDecision.FLATTEN, (
                     f"风控异常时应返回 FLATTEN，实际: {result.decision}"
-                assert "异常" in result.reason or "熔断" in result.reason, \
-                    "原因应说明异常/熔断"
+                )
+                assert "异常" in result.reason or "熔断" in result.reason, "原因应说明异常/熔断"
             except RuntimeError:
                 # 抛出异常也是可接受的行为（不静默）
                 pass
@@ -774,8 +812,11 @@ class TestChaosRisk:
 
         # ── 验证触发熔断 ──
         # L3 回撤规则应检测到 15% 回撤并拒绝/平仓
-        assert result.decision in (RiskDecision.REJECT, RiskDecision.FLATTEN, RiskDecision.REDUCE), \
-            f"15% 回撤应触发风控，实际决策: {result.decision}"
+        assert result.decision in (
+            RiskDecision.REJECT,
+            RiskDecision.FLATTEN,
+            RiskDecision.REDUCE,
+        ), f"15% 回撤应触发风控，实际决策: {result.decision}"
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_consecutive_failures(self):
@@ -790,8 +831,7 @@ class TestChaosRisk:
 
         # ── 1. 连续失败 ──
         for i in range(FAILURE_THRESHOLD):
-            assert breaker.state == CircuitBreakerState.CLOSED, \
-                f"第 {i+1} 次失败前应为 CLOSED"
+            assert breaker.state == CircuitBreakerState.CLOSED, f"第 {i + 1} 次失败前应为 CLOSED"
             breaker.record_failure()
 
         # ── 2. 验证熔断 ──
@@ -854,7 +894,7 @@ class TestChaosRisk:
         breaker._open_since = time.time() - 61
 
         # ── 触发 OPEN → HALF_OPEN ──
-        allowed = breaker.should_allow()
+        allowed = breaker.should_allow()  # noqa: F841
         assert breaker.state == CircuitBreakerState.HALF_OPEN
 
         # ── 探测失败 ──

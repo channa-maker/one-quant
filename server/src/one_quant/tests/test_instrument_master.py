@@ -98,6 +98,7 @@ class TestInstrumentMaster:
 
     def test_point_in_time_query(self, master: InstrumentMaster) -> None:
         import time
+
         inst = Instrument(
             internal_id="binance:T1/USDT",
             symbol="T1USDT",

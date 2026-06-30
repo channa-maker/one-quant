@@ -14,20 +14,14 @@ import asyncio
 import time
 from decimal import Decimal
 
-import pytest
-
 from one_quant.core.types import (
     Fill,
     Kline,
-    Market,
-    OrderBook,
-    OrderBookLevel,
     Signal,
     Ticker,
 )
 from one_quant.strategy.backtest import BacktestEngine, BacktestResult
 from one_quant.strategy.contracts import Strategy
-
 
 # ──────────────────────────── 辅助工具 ────────────────────────────
 
@@ -49,15 +43,17 @@ class BuyHoldStrategy(Strategy):
         self._count += 1
         signals: list[Signal] = []
         if not self._bought:
-            signals.append(Signal(
-                symbol=kline.symbol,
-                market=kline.market,
-                side="buy",
-                strength=1.0,
-                strategy_name=self.name,
-                reason="首次买入",
-                timestamp_ns=kline.timestamp_ns,
-            ))
+            signals.append(
+                Signal(
+                    symbol=kline.symbol,
+                    market=kline.market,
+                    side="buy",
+                    strength=1.0,
+                    strategy_name=self.name,
+                    reason="首次买入",
+                    timestamp_ns=kline.timestamp_ns,
+                )
+            )
             self._bought = True
         return signals
 
@@ -75,15 +71,17 @@ class AlwaysBuyStrategy(Strategy):
         return []
 
     def on_kline(self, kline: Kline) -> list[Signal]:
-        return [Signal(
-            symbol=kline.symbol,
-            market=kline.market,
-            side="buy",
-            strength=0.5,
-            strategy_name=self.name,
-            reason="持续买入",
-            timestamp_ns=kline.timestamp_ns,
-        )]
+        return [
+            Signal(
+                symbol=kline.symbol,
+                market=kline.market,
+                side="buy",
+                strength=0.5,
+                strategy_name=self.name,
+                reason="持续买入",
+                timestamp_ns=kline.timestamp_ns,
+            )
+        ]
 
     def on_fill(self, fill: Fill) -> None:
         pass
@@ -104,15 +102,17 @@ class BuySellStrategy(Strategy):
     def on_kline(self, kline: Kline) -> list[Signal]:
         self._count += 1
         side = "buy" if self._count % 2 == 1 else "sell"
-        return [Signal(
-            symbol=kline.symbol,
-            market=kline.market,
-            side=side,
-            strength=1.0,
-            strategy_name=self.name,
-            reason=f"第{self._count}笔{'买入' if side == 'buy' else '卖出'}",
-            timestamp_ns=kline.timestamp_ns,
-        )]
+        return [
+            Signal(
+                symbol=kline.symbol,
+                market=kline.market,
+                side=side,
+                strength=1.0,
+                strategy_name=self.name,
+                reason=f"第{self._count}笔{'买入' if side == 'buy' else '卖出'}",
+                timestamp_ns=kline.timestamp_ns,
+            )
+        ]
 
     def on_fill(self, fill: Fill) -> None:
         pass
@@ -165,12 +165,14 @@ def _make_rising_data(n: int = 10, start: float = 100.0, step: float = 1.0) -> l
     base_ts = 1_000_000_000_000  # 1T ns
     for i in range(n):
         price = start + i * step
-        data.append(_make_kline_data(
-            close=str(price),
-            high=str(price + step * 0.5),
-            low=str(price - step * 0.5),
-            timestamp_ns=base_ts + i * 60_000_000_000,  # 每分钟
-        ))
+        data.append(
+            _make_kline_data(
+                close=str(price),
+                high=str(price + step * 0.5),
+                low=str(price - step * 0.5),
+                timestamp_ns=base_ts + i * 60_000_000_000,  # 每分钟
+            )
+        )
     return data
 
 
@@ -183,12 +185,14 @@ def _make_volatile_data(n: int = 20, base: float = 100.0) -> list[dict]:
             price = base + 5.0
         else:
             price = base - 5.0
-        data.append(_make_kline_data(
-            close=str(price),
-            high=str(price + 2),
-            low=str(price - 2),
-            timestamp_ns=base_ts + i * 60_000_000_000,
-        ))
+        data.append(
+            _make_kline_data(
+                close=str(price),
+                high=str(price + 2),
+                low=str(price - 2),
+                timestamp_ns=base_ts + i * 60_000_000_000,
+            )
+        )
     return data
 
 
@@ -201,7 +205,7 @@ class TestBacktestEmptyData:
     def test_empty_data_no_crash(self):
         """空数据列表回测不崩溃，返回零指标。"""
         engine = BacktestEngine(strategy=NoOpStrategy())
-        result = asyncio.get_event_loop().run_until_complete(engine.run([]))
+        result = asyncio.run(engine.run([]))
 
         assert isinstance(result, BacktestResult)
         assert result.total_return == Decimal("0")
@@ -214,7 +218,7 @@ class TestBacktestEmptyData:
         """有行情数据但策略不产生信号，权益不变。"""
         data = _make_rising_data(n=10)
         engine = BacktestEngine(strategy=NoOpStrategy())
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert result.total_trades == 0
         assert result.total_return == Decimal("0")
@@ -228,7 +232,7 @@ class TestBacktestEmptyData:
             _make_kline_data(timestamp_ns=2),
         ]
         engine = BacktestEngine(strategy=NoOpStrategy())
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
         assert isinstance(result, BacktestResult)
 
 
@@ -245,15 +249,15 @@ class TestBacktestCosts:
             commission_rate=Decimal("0"),
             slippage_rate=Decimal("0"),
         )
-        result_no_cost = asyncio.get_event_loop().run_until_complete(engine_no_cost.run(data))
+        result_no_cost = asyncio.run(engine_no_cost.run(data))
 
         # 有成本
         engine_with_cost = BacktestEngine(
             strategy=BuySellStrategy(),
             commission_rate=Decimal("0.01"),  # 1% 手续费
-            slippage_rate=Decimal("0.005"),   # 0.5% 滑点
+            slippage_rate=Decimal("0.005"),  # 0.5% 滑点
         )
-        result_with_cost = asyncio.get_event_loop().run_until_complete(engine_with_cost.run(data))
+        result_with_cost = asyncio.run(engine_with_cost.run(data))
 
         # 含成本收益应更低
         assert result_with_cost.total_return < result_no_cost.total_return
@@ -266,7 +270,7 @@ class TestBacktestCosts:
             slippage_rate=Decimal("0"),
         )
         data = _make_rising_data(n=5, start=100.0, step=1.0)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        _result = asyncio.run(engine.run(data))  # noqa: F841
 
         # 检查成交记录无手续费
         for fill in engine.trades:
@@ -283,7 +287,7 @@ class TestBacktestCosts:
                 commission_rate=comm,
                 slippage_rate=Decimal("0"),
             )
-            r = asyncio.get_event_loop().run_until_complete(engine.run(data))
+            r = asyncio.run(engine.run(data))
             results.append(r.total_return)
 
         # 收益应单调递减
@@ -297,7 +301,7 @@ class TestBacktestAnchoring:
         """买入信号创建多头持仓。"""
         engine = BacktestEngine(strategy=BuyHoldStrategy())
         data = [_make_kline_data(close="100")]
-        asyncio.get_event_loop().run_until_complete(engine.run(data))
+        asyncio.run(engine.run(data))
 
         positions = engine.positions
         assert "BTCUSDT" in positions
@@ -308,7 +312,7 @@ class TestBacktestAnchoring:
         """多次买入累积持仓。"""
         engine = BacktestEngine(strategy=AlwaysBuyStrategy())
         data = _make_rising_data(n=5, start=100.0, step=0.0)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert result.total_trades > 0
         pos = engine.positions.get("BTCUSDT")
@@ -319,7 +323,7 @@ class TestBacktestAnchoring:
         """卖出减少持仓。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=4, start=100.0, step=1.0)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        _result = asyncio.run(engine.run(data))  # noqa: F841
 
         # 应该有买入和卖出成交
         buys = [f for f in engine.trades if f.side == "buy"]
@@ -333,8 +337,10 @@ class TestBacktestNoFutureFunction:
 
     def test_signal_uses_only_current_and_past_data(self):
         """验证策略信号只使用当前及历史数据。"""
+
         class FutureDetectorStrategy(Strategy):
             """检测是否使用了未来数据的策略。"""
+
             name = "future_detector"
             enabled = True
 
@@ -351,15 +357,17 @@ class TestBacktestNoFutureFunction:
 
                 # 记录信号时的价格
                 self.last_signal_price = current_price
-                return [Signal(
-                    symbol=kline.symbol,
-                    market=kline.market,
-                    side="buy",
-                    strength=0.5,
-                    strategy_name=self.name,
-                    reason="测试",
-                    timestamp_ns=kline.timestamp_ns,
-                )]
+                return [
+                    Signal(
+                        symbol=kline.symbol,
+                        market=kline.market,
+                        side="buy",
+                        strength=0.5,
+                        strategy_name=self.name,
+                        reason="测试",
+                        timestamp_ns=kline.timestamp_ns,
+                    )
+                ]
 
             def on_fill(self, fill: Fill) -> None:
                 pass
@@ -367,7 +375,7 @@ class TestBacktestNoFutureFunction:
         strategy = FutureDetectorStrategy()
         engine = BacktestEngine(strategy=strategy)
         data = _make_rising_data(n=20, start=100.0, step=1.0)
-        asyncio.get_event_loop().run_until_complete(engine.run(data))
+        asyncio.run(engine.run(data))
 
         # 验证策略看到的价格序列是递增时间顺序
         assert len(strategy.seen_prices) == 20
@@ -393,7 +401,7 @@ class TestBacktestNoFutureFunction:
 
         engine = BacktestEngine(strategy=TimestampTracker())
         data = _make_rising_data(n=10)
-        asyncio.get_event_loop().run_until_complete(engine.run(data))
+        asyncio.run(engine.run(data))
 
         # 时间戳应单调递增
         for i in range(1, len(timestamps_seen)):
@@ -407,7 +415,7 @@ class TestBacktestEquityCurve:
         """回测后权益曲线有记录。"""
         engine = BacktestEngine(strategy=NoOpStrategy())
         data = _make_rising_data(n=10)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert len(result.equity_curve) == 10
         for ts, equity in result.equity_curve:
@@ -422,7 +430,7 @@ class TestBacktestEquityCurve:
             initial_capital=Decimal("50000"),
         )
         data = _make_rising_data(n=5)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert result.equity_curve[0][1] == Decimal("50000.00")
 
@@ -433,7 +441,7 @@ class TestBacktestEquityCurve:
             initial_capital=Decimal("100000"),
         )
         data = _make_rising_data(n=10)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         for _, equity in result.equity_curve:
             assert equity == Decimal("100000.00")
@@ -446,7 +454,7 @@ class TestBacktestMetrics:
         """最大回撤为非负数。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_volatile_data(n=20)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert result.max_drawdown >= Decimal("0")
 
@@ -454,7 +462,7 @@ class TestBacktestMetrics:
         """恒定权益时最大回撤为零。"""
         engine = BacktestEngine(strategy=NoOpStrategy())
         data = _make_rising_data(n=10, step=0.0)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert result.max_drawdown == Decimal("0")
 
@@ -462,7 +470,7 @@ class TestBacktestMetrics:
         """夏普比率为有限值。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=20)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert isinstance(result.sharpe_ratio, float)
         assert not (result.sharpe_ratio == float("inf") or result.sharpe_ratio == float("-inf"))
@@ -471,7 +479,7 @@ class TestBacktestMetrics:
         """胜率在 [0, 1] 范围内。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=20)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert 0.0 <= result.win_rate <= 1.0
 
@@ -479,7 +487,7 @@ class TestBacktestMetrics:
         """盈亏比为非负数。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=20)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert result.profit_factor >= 0.0
 
@@ -487,7 +495,7 @@ class TestBacktestMetrics:
         """总交易次数应等于实际成交数。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=10)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert result.total_trades == len(engine.trades)
 
@@ -495,7 +503,7 @@ class TestBacktestMetrics:
         """卡玛比率 = 年化收益 / 最大回撤。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=20)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         assert isinstance(result.calmar_ratio, float)
 
@@ -503,7 +511,7 @@ class TestBacktestMetrics:
         """有交易时换手率为正。"""
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=10)
-        result = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result = asyncio.run(engine.run(data))
 
         if result.total_trades > 0:
             assert result.turnover_rate > 0.0
@@ -513,8 +521,8 @@ class TestBacktestMetrics:
         engine = BacktestEngine(strategy=BuySellStrategy())
         data = _make_rising_data(n=10)
 
-        result1 = asyncio.get_event_loop().run_until_complete(engine.run(data))
-        result2 = asyncio.get_event_loop().run_until_complete(engine.run(data))
+        result1 = asyncio.run(engine.run(data))
+        result2 = asyncio.run(engine.run(data))
 
         # 两次结果应一致
         assert result1.total_return == result2.total_return
@@ -533,8 +541,8 @@ class TestBacktestMetrics:
             initial_capital=Decimal("200000"),
         )
 
-        r1 = asyncio.get_event_loop().run_until_complete(engine1.run(data))
-        r2 = asyncio.get_event_loop().run_until_complete(engine2.run(data))
+        r1 = asyncio.run(engine1.run(data))
+        r2 = asyncio.run(engine2.run(data))
 
         # 收益率应相近（不完全相同因为舍入）
         assert abs(float(r1.total_return) - float(r2.total_return)) < 0.01

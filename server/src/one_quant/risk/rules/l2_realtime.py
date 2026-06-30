@@ -156,9 +156,7 @@ class L2RealtimeExposureRule:
         """检查单标的仓位集中度。"""
         # 计算同标的现有持仓名义价值
         same_symbol_positions = [p for p in positions if p.symbol == order.symbol]
-        existing_notional = sum(
-            abs(p.quantity) * p.entry_price for p in same_symbol_positions
-        )
+        existing_notional = sum(abs(p.quantity) * p.entry_price for p in same_symbol_positions)
 
         # 新增订单名义价值
         order_notional = order.quantity * (order.price or latest_price)
@@ -189,9 +187,7 @@ class L2RealtimeExposureRule:
     ) -> RiskCheckResult | None:
         """检查总敞口。"""
         # 当前总持仓名义价值
-        total_position_notional = sum(
-            abs(p.quantity) * p.entry_price for p in positions
-        )
+        total_position_notional = sum(abs(p.quantity) * p.entry_price for p in positions)
 
         # 新增订单名义价值
         order_notional = order.quantity * (order.price or latest_price)
@@ -230,9 +226,7 @@ class L2RealtimeExposureRule:
             return None
 
         # 简化杠杆计算：总持仓名义 / 总权益
-        total_position_notional = sum(
-            abs(p.quantity) * p.entry_price for p in positions
-        )
+        total_position_notional = sum(abs(p.quantity) * p.entry_price for p in positions)
         order_notional = order.quantity * (order.price or (latest_price or Decimal("0")))
         total_notional = total_position_notional + order_notional
 
@@ -242,10 +236,7 @@ class L2RealtimeExposureRule:
                 return RiskCheckResult(
                     decision=RiskDecision.REDUCE,
                     rule_name=self.name,
-                    reason=(
-                        f"杠杆 {leverage:.1f}x 超过上限 {max_leverage}x，"
-                        f"请减仓后重新下单"
-                    ),
+                    reason=(f"杠杆 {leverage:.1f}x 超过上限 {max_leverage}x，请减仓后重新下单"),
                     timestamp_ns=ts,
                 )
         return None

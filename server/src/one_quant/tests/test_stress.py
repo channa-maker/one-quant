@@ -21,7 +21,6 @@ from one_quant.risk.stress_test import (
     StressTestEngine,
 )
 
-
 # ──────────────────────────── 辅助工具 ────────────────────────────
 
 
@@ -85,9 +84,7 @@ class TestScenarioReplay:
         engine = StressTestEngine()
         scenario = engine.get_scenarios()[0]
         # tick 数据文件不存在，走模拟路径
-        result = asyncio.get_event_loop().run_until_complete(
-            engine.run_scenario(scenario, "test_strategy")
-        )
+        result = asyncio.run(engine.run_scenario(scenario, "test_strategy"))
         assert isinstance(result, StressResult)
         assert result.scenario == scenario.name
 
@@ -95,7 +92,7 @@ class TestScenarioReplay:
         """模拟场景最大亏损为正数。"""
         engine = StressTestEngine()
         scenario = engine.get_scenarios()[0]
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             engine.run_scenario(scenario, "test", initial_equity=Decimal("100000"))
         )
         assert result.max_loss > Decimal("0")
@@ -104,19 +101,17 @@ class TestScenarioReplay:
         """模拟场景回撤百分比合理。"""
         engine = StressTestEngine()
         scenario = engine.get_scenarios()[0]
-        result = asyncio.get_event_loop().run_until_complete(
-            engine.run_scenario(scenario, "test")
-        )
+        result = asyncio.run(engine.run_scenario(scenario, "test"))
         assert 0 < result.max_drawdown_pct < 100
 
     def test_simulate_scenario_risk_controls(self):
         """大幅回撤时触发风控。"""
         engine = StressTestEngine()
         # 找一个预期回撤大的场景
-        worst = max(engine.get_scenarios(), key=lambda s: abs(s.expected_impact.get("alt_drawdown_pct", 0)))
-        result = asyncio.get_event_loop().run_until_complete(
-            engine.run_scenario(worst, "test")
+        worst = max(
+            engine.get_scenarios(), key=lambda s: abs(s.expected_impact.get("alt_drawdown_pct", 0))
         )
+        result = asyncio.run(engine.run_scenario(worst, "test"))
         # 如果回撤 > 15%，应有风控触发
         if result.max_drawdown_pct > 15:
             assert len(result.risk_controls_triggered) > 0
@@ -124,9 +119,7 @@ class TestScenarioReplay:
     def test_run_all_scenarios(self):
         """运行所有场景返回结果列表。"""
         engine = StressTestEngine()
-        results = asyncio.get_event_loop().run_until_complete(
-            engine.run_all_scenarios("test_strategy")
-        )
+        results = asyncio.run(engine.run_all_scenarios("test_strategy"))
         assert len(results) == len(engine.get_scenarios())
         for r in results:
             assert isinstance(r, StressResult)
@@ -134,9 +127,7 @@ class TestScenarioReplay:
     def test_results_history_accumulated(self):
         """历史结果累积。"""
         engine = StressTestEngine()
-        asyncio.get_event_loop().run_until_complete(
-            engine.run_all_scenarios("test")
-        )
+        asyncio.run(engine.run_all_scenarios("test"))
         assert len(engine.results_history) == len(engine.get_scenarios())
 
 
@@ -194,9 +185,7 @@ class TestRiskControlTriggers:
         """StressResult 包含风控触发字段。"""
         engine = StressTestEngine()
         scenario = engine.get_scenarios()[0]
-        result = asyncio.get_event_loop().run_until_complete(
-            engine.run_scenario(scenario, "test")
-        )
+        result = asyncio.run(engine.run_scenario(scenario, "test"))
         assert hasattr(result, "risk_controls_triggered")
         assert isinstance(result.risk_controls_triggered, list)
 
@@ -204,9 +193,7 @@ class TestRiskControlTriggers:
         """StressResult 所有字段完整。"""
         engine = StressTestEngine()
         scenario = engine.get_scenarios()[0]
-        result = asyncio.get_event_loop().run_until_complete(
-            engine.run_scenario(scenario, "test")
-        )
+        result = asyncio.run(engine.run_scenario(scenario, "test"))
         assert result.scenario != ""
         assert result.max_loss >= Decimal("0")
         assert result.max_drawdown >= Decimal("0")
@@ -245,9 +232,7 @@ class TestStressSummary:
     def test_all_scenarios_covered(self):
         """所有场景都有结果。"""
         engine = StressTestEngine()
-        results = asyncio.get_event_loop().run_until_complete(
-            engine.run_all_scenarios("test")
-        )
+        results = asyncio.run(engine.run_all_scenarios("test"))
         scenario_names = {s.name for s in engine.get_scenarios()}
         result_names = {r.scenario for r in results}
         assert scenario_names == result_names
@@ -255,16 +240,12 @@ class TestStressSummary:
     def test_worst_scenario_identifiable(self):
         """可识别最差场景。"""
         engine = StressTestEngine()
-        results = asyncio.get_event_loop().run_until_complete(
-            engine.run_all_scenarios("test")
-        )
+        results = asyncio.run(engine.run_all_scenarios("test"))
         worst = max(results, key=lambda r: r.max_drawdown_pct)
         assert worst.max_drawdown_pct > 0
 
     def test_results_history_persists(self):
         """运行后历史结果持久化。"""
         engine = StressTestEngine()
-        asyncio.get_event_loop().run_until_complete(
-            engine.run_all_scenarios("test")
-        )
+        asyncio.run(engine.run_all_scenarios("test"))
         assert len(engine.results_history) > 0
