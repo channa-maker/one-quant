@@ -95,15 +95,7 @@ class L2RealtimeExposureRule:
         # 记录本次下单
         self._order_timestamps[order.symbol].append(ts)
 
-        # 2. 单标的仓位集中度检查
-        if total_equity is not None and total_equity > 0 and latest_price is not None:
-            pos_result = self._check_position_concentration(
-                order, positions, total_equity, latest_price, ts
-            )
-            if pos_result is not None:
-                return pos_result
-
-        # 3. 总敞口检查
+        # 2. 总敞口检查（组合级别，优先于单标的检查）
         if total_equity is not None and total_equity > 0 and latest_price is not None:
             exp_result = self._check_total_exposure(
                 order, positions, total_equity, latest_price, ts
@@ -111,11 +103,19 @@ class L2RealtimeExposureRule:
             if exp_result is not None:
                 return exp_result
 
-        # 4. 杠杆上限检查
+        # 3. 杠杆上限检查
         if total_equity is not None and total_equity > 0:
             lev_result = self._check_leverage(order, positions, total_equity, latest_price, ts)
             if lev_result is not None:
                 return lev_result
+
+        # 4. 单标的仓位集中度检查
+        if total_equity is not None and total_equity > 0 and latest_price is not None:
+            pos_result = self._check_position_concentration(
+                order, positions, total_equity, latest_price, ts
+            )
+            if pos_result is not None:
+                return pos_result
 
         return RiskCheckResult(
             decision=RiskDecision.APPROVE,

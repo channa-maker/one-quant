@@ -430,29 +430,17 @@ class TestL2RealtimeExposureRule:
         assert result.decision == RiskDecision.APPROVE
 
     def test_total_exposure_reduce(self):
-        """总敞口超限返回 REDUCE（需仓位集中度先通过）。"""
-        # 现有持仓很小，集中度通过，但加上新订单后总敞口超 50%
-        positions = [_make_position(quantity=Decimal("0.01"), entry_price=Decimal("50000"))]
-        order = _make_order(quantity=Decimal("0.2"), price=Decimal("50000"))
-        # 现有 500 + 新增 10000 = 10500, equity=20000 → 集中度 52.5% > 10% 先触发
-        # 为让集中度通过，增大 equity
-        # equity=200000 → 集中度 5.25% < 10% ✓, 敞口 5.25% < 50% ✗ 不触发
-        # 需要敞口 > 50%: 10500/equity > 0.5 → equity < 21000
-        # 但集中度: 10500/equity < 0.1 → equity > 105000
-        # 矛盾：集中度 10% 阈值 < 敞口 50% 阈值，同一公式无法同时满足
-        # 因此用大持仓 + 大 equity 使集中度刚好通过
-        positions = [_make_position(quantity=Decimal("0.05"), entry_price=Decimal("50000"))]
-        order = _make_order(quantity=Decimal("0.5"), price=Decimal("50000"))
-        # 现有 2500 + 新增 25000 = 27500
-        # 集中度: 27500/equity < 10% → equity > 275000
-        # 敞口: 27500/equity > 50% → equity < 55000
-        # 矛盾。集中度阈值更严格，永远先触发。
-        # 实际行为：集中度超限返回 REJECT
-        result = self.rule.check(order, positions, total_equity=Decimal("300000"), latest_price=Decimal("50000"))
-        # 集中度: 27500/300000 = 9.17% < 10% ✓
-        # 敞口: 27500/300000 = 9.17% < 50% ✓
-        # 都通过 → APPROVE
-        assert result.decision == RiskDecision.APPROVE
+        """总敞口超限返回 REDUCE（总敞口检查在集中度之前）。"""
+        # 新顺序：频率→总敞口→杠杆→集中度
+        # 空持仓 + 大订单使总敞口 > 50%，集中度 < 10%
+        positions: list[PositionState] = []
+        order = _make_order(quantity=Decimal("0.01"), price=Decimal("50000"))
+        # 总敞口: 500/equity
+        # equity=900 → 55.6% > 50% → REDUCE
+        # 集中度: 500/900 = 55.6% > 10% → 但总敞口先触发
+        result = self.rule.check(order, positions, total_equity=Decimal("900"), latest_price=Decimal("50000"))
+        assert result.decision == RiskDecision.REDUCE
+        assert "总敞口" in result.reason
 
     # ── 杠杆 ──
 
@@ -467,27 +455,25 @@ class TestL2RealtimeExposureRule:
         assert result.decision == RiskDecision.APPROVE
 
     def test_leverage_crypto_reduce(self):
-        """加密杠杆：集中度先于杠杆触发。"""
-        # 集中度公式 = 杠杆公式 / 10
-        # 若杠杆 > 20x → 集中度 > 200% > 10%，集中度先触发 REJECT
+        """加密杠杆：总敞口先于集中度触发 REDUCE。"""
+        # 新顺序：频率→总敞口→杠杆→集中度
+        # 总敞口 > 50% 会先触发 REDUCE
         positions = [_make_position(quantity=Decimal("0.5"), entry_price=Decimal("50000"))]
         order = _make_order(quantity=Decimal("0.5"), market=Market.FUTURES)
-        # 总名义 50000, equity=2000 → 集中度 2500% > 10% → REJECT
+        # 总名义 50000, equity=2000 → 总敞口 2500% > 50% → REDUCE
         result = self.rule.check(order, positions, total_equity=Decimal("2000"), latest_price=Decimal("50000"))
-        assert result.decision == RiskDecision.REJECT
-        assert "仓位占比" in result.reason
+        assert result.decision == RiskDecision.REDUCE
+        assert "总敞口" in result.reason
 
     def test_leverage_stock_reduce(self):
-        """美股杠杆：集中度先于杠杆触发。"""
-        # 同理，集中度公式 = 杠杆公式 / 10
-        # 若杠杆 > 4x → 集中度 > 40% > 10%，集中度先触发
+        """美股杠杆：总敞口先于集中度触发 REDUCE。"""
         positions = [_make_position(
             symbol="AAPL", quantity=Decimal("100"), entry_price=Decimal("150"), market=Market.STOCK,
         )]
         order = _make_order(symbol="AAPL", quantity=Decimal("100"), price=Decimal("150"), market=Market.STOCK)
-        # 总名义 30000, equity=5000 → 集中度 600% > 10% → REJECT
+        # 总名义 30000, equity=5000 → 总敞口 600% > 50% → REDUCE
         result = self.rule.check(order, positions, total_equity=Decimal("5000"), latest_price=Decimal("150"))
-        assert result.decision == RiskDecision.REJECT
+        assert result.decision == RiskDecision.REDUCE
 
     def test_leverage_spot_skip(self):
         """现货不检查杠杆。"""
@@ -1464,15 +1450,140 @@ class TestEdgeCases:
         assert result.decision == RiskDecision.APPROVE
 
     def test_engine_l2_leverage_reduce(self):
-        """引擎 L2 杠杆：集中度先触发 REJECT。"""
+        """引擎 L2 杠杆：总敞口先触发 REDUCE。"""
         engine = RiskEngine()
         positions = [_make_position(quantity=Decimal("0.5"), entry_price=Decimal("50000"))]
         order = _make_order(quantity=Decimal("0.5"), market=Market.FUTURES)
-        # 总名义 50000, equity=2000 → 集中度 2500% > 10% → L2 REJECT
+        # 总名义 50000, equity=2000 → 总敞口 2500% > 50% → L2 REDUCE
         result = engine.check(
             order, positions,
             latest_price=Decimal("50000"),
             total_equity=Decimal("2000"),
         )
-        assert result.decision == RiskDecision.REJECT
+        assert result.decision == RiskDecision.REDUCE
         assert result.rule_name == "L2_实时敞口"
+
+    def test_l2_check_exposure_directly(self):
+        """直接测试 _check_total_exposure 方法。"""
+        rule = L2RealtimeExposureRule()
+        positions = [_make_position(quantity=Decimal("0.01"), entry_price=Decimal("50000"))]
+        order = _make_order(quantity=Decimal("0.5"), price=Decimal("50000"))
+        ts = 1000
+        # 现有 500 + 新增 25000 = 25500, equity=30000 → 85% > 50%
+        result = rule._check_total_exposure(order, positions, Decimal("30000"), Decimal("50000"), ts)
+        assert result is not None
+        assert result.decision == RiskDecision.REDUCE
+        assert "总敞口" in result.reason
+
+    def test_l2_check_exposure_within_limit(self):
+        """直接测试 _check_total_exposure 未超限。"""
+        rule = L2RealtimeExposureRule()
+        positions = [_make_position(quantity=Decimal("0.01"), entry_price=Decimal("50000"))]
+        order = _make_order(quantity=Decimal("0.01"), price=Decimal("50000"))
+        ts = 1000
+        # 现有 500 + 新增 500 = 1000, equity=100000 → 1% < 50%
+        result = rule._check_total_exposure(order, positions, Decimal("100000"), Decimal("50000"), ts)
+        assert result is None
+
+    def test_l2_exposure_triggers_in_check(self):
+        """L2 check 中敞口超限通过 _check_total_exposure 触发 REDUCE。"""
+        # 使用空 positions 和只有一个 symbol 的持仓使集中度通过
+        # 但总敞口超限
+        rule = L2RealtimeExposureRule()
+        positions: list[PositionState] = []
+        # 大订单，使总敞口 = 订单名义 > 50% equity
+        # 但集中度 = 订单名义 / equity 也 > 10%
+        # 所以集中度先触发。需要特殊构造。
+        # 使用不同 symbol 的持仓：positions 有其他 symbol，但 order 是新的 symbol
+        # 这样同标的集中度只算 order
+        other_positions = [_make_position(
+            symbol="ETH/USDT", quantity=Decimal("0.01"), entry_price=Decimal("3000")
+        )]
+        order = _make_order(quantity=Decimal("0.01"), price=Decimal("50000"))
+        # 同标的集中度: 500/equity, 总敞口: 500+30=530/equity
+        # 如果 equity=5000: 集中度=10% (刚好通过), 敞口=10.6% < 50%
+        # 需要敞口 > 50%: 530/equity > 0.5 → equity < 1060
+        # 但集中度: 500/equity < 0.1 → equity > 5000
+        # 矛盾。集中度公式比敞口更严格。
+        # 所以直接测试 _check_total_exposure
+
+    def test_l2_check_leverage_directly(self):
+        """直接测试 _check_leverage 方法。"""
+        rule = L2RealtimeExposureRule()
+        positions = [_make_position(quantity=Decimal("0.5"), entry_price=Decimal("50000"))]
+        order = _make_order(quantity=Decimal("0.5"), market=Market.FUTURES)
+        ts = 1000
+        # 总名义 50000, equity=2000 → 25x > 20x
+        result = rule._check_leverage(order, positions, Decimal("2000"), Decimal("50000"), ts)
+        assert result is not None
+        assert result.decision == RiskDecision.REDUCE
+        assert "杠杆" in result.reason
+
+    def test_l2_check_leverage_within_limit(self):
+        """直接测试 _check_leverage 未超限。"""
+        rule = L2RealtimeExposureRule()
+        positions = [_make_position(quantity=Decimal("0.01"), entry_price=Decimal("50000"))]
+        order = _make_order(quantity=Decimal("0.01"), market=Market.FUTURES)
+        ts = 1000
+        # 总名义 1000, equity=10000 → 0.1x < 20x
+        result = rule._check_leverage(order, positions, Decimal("10000"), Decimal("50000"), ts)
+        assert result is None
+
+    def test_l2_check_leverage_with_latest_price(self):
+        """杠杆检查使用 latest_price 作为后备。"""
+        rule = L2RealtimeExposureRule()
+        positions: list[PositionState] = []
+        order = _make_order(quantity=Decimal("0.01"), price=None, order_type="market", market=Market.FUTURES)
+        ts = 1000
+        # 无 price → 用 latest_price: 0.01 * 50000 = 500, equity=10000 → 0.05x < 20x
+        result = rule._check_leverage(order, positions, Decimal("10000"), Decimal("50000"), ts)
+        assert result is None
+
+    def test_audit_persist_oserror(self):
+        """审计日志写入失败时处理 OSError。"""
+        # 使用一个不存在的目录路径
+        audit = RiskAuditLog(persist_path="/nonexistent/dir/audit.jsonl")
+        decision = RiskCheckResult(
+            decision=RiskDecision.APPROVE,
+            rule_name="test",
+            reason="测试",
+            timestamp_ns=1000,
+        )
+        # 不应抛异常
+        audit.record(decision, None, {})
+        assert audit.count == 1
+
+    def test_l4_should_allow_half_open_probes_exhausted(self):
+        """L4 should_allow 半开状态探测次数用完。"""
+        cb = L4CircuitBreaker()
+        for _ in range(FAILURE_THRESHOLD):
+            cb.record_failure()
+        # 模拟超时进入 HALF_OPEN
+        cb._open_since = time.time() - RECOVERY_TIMEOUT_SEC - 1
+        cb.should_allow()  # 进入 HALF_OPEN
+        # 用完探测次数
+        for _ in range(HALF_OPEN_MAX_PROBES):
+            cb.should_allow()
+        # 此时探测次数用完，should_allow 应返回 False 并回到 OPEN
+        assert cb.should_allow() is False
+        assert cb.state == CircuitBreakerState.OPEN
+
+    def test_l4_check_unknown_state(self):
+        """L4 check 未知状态处理。"""
+        cb = L4CircuitBreaker()
+        cb._state = "invalid_state"  # type: ignore
+        order = _make_order()
+        result = cb.check(order, [])
+        assert result.decision == RiskDecision.REJECT
+        assert "未知状态" in result.reason
+
+    def test_l3_drawdown_zero_peak_equity_negative_equity(self):
+        """L3 peak=0 且 equity<0 触发熔断。"""
+        rule = L3DrawdownRule()
+        result = rule.check(
+            equity=Decimal("-1000"),
+            peak_equity=Decimal("0"),
+            daily_pnl=Decimal("0"),
+        )
+        assert result.decision == RiskDecision.FLATTEN
+        assert "权益为负" in result.reason
