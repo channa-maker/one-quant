@@ -1,7 +1,7 @@
 """
 ONE量化 - 基础设施层
 
-提供配置、日志、消息信封、插件注册表等基础组件。
+提供配置、日志、消息信封、插件注册表、运维成熟度等基础组件。
 """
 
 from one_quant.infra.config import (
@@ -29,6 +29,15 @@ from one_quant.infra.registry import (
     register_source,
     register_strategy,
 )
+
+# ── 运维成熟度模块 ──────────────────────────────────────────────
+from one_quant.infra.watchdog import Watchdog, ProcessInfo, ProcessStatus
+from one_quant.infra.self_heal import SelfHealStrategy, HealResult
+from one_quant.infra.disaster_recovery import DisasterRecovery, DRScenario
+from one_quant.infra.runbook import RunbookManager, RunbookStep, Severity
+from one_quant.infra.change_management import ChangeManager, ChangeType, RiskLevel, ChangeStatus, DRMetrics
+from one_quant.infra.incident import IncidentManager, IncidentStatus
+from one_quant.infra.capacity import CapacityManager
 
 __all__ = [
     # 配置
@@ -62,4 +71,29 @@ __all__ = [
     "register_factor",
     "register_source",
     "register_strategy",
+    # 运维成熟度 - 看门狗
+    "Watchdog",
+    "ProcessInfo",
+    "ProcessStatus",
+    # 运维成熟度 - 自愈策略
+    "SelfHealStrategy",
+    "HealResult",
+    # 运维成熟度 - 灾备
+    "DisasterRecovery",
+    "DRScenario",
+    # 运维成熟度 - Runbook
+    "RunbookManager",
+    "RunbookStep",
+    "Severity",
+    # 运维成熟度 - 变更管理
+    "ChangeManager",
+    "ChangeType",
+    "RiskLevel",
+    "ChangeStatus",
+    "DRMetrics",
+    # 运维成熟度 - 事故管理
+    "IncidentManager",
+    "IncidentStatus",
+    # 运维成熟度 - 容量管理
+    "CapacityManager",
 ]

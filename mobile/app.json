@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "ONE量化",
+    "slug": "one-quant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "onequant",
+    "splash": {
+      "backgroundColor": "#141414"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.onequant.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#141414"
+      },
+      "package": "com.onequant.app"
+    },
+    "plugins": [
+      "expo-notifications"
+    ]
+  }
+}

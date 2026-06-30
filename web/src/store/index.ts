@@ -26,6 +26,10 @@ interface AppState {
   // WebSocket
   wsConnected: boolean
   setWsConnected: (connected: boolean) => void
+
+  // 主题设置
+  colorMode: 'red-up' | 'green-up'
+  setColorMode: (mode: 'red-up' | 'green-up') => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -55,4 +59,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   wsConnected: false,
   setWsConnected: (connected) => set({ wsConnected: connected }),
+
+  colorMode: 'red-up',
+  setColorMode: (mode) => set({ colorMode: mode }),
 }))
