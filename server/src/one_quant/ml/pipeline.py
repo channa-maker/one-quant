@@ -20,13 +20,18 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from one_quant.data.bronze import BronzeStorage
+
+from datetime import UTC
+
 from one_quant.ml.factors import FactorLibrary
 from one_quant.ml.model_registry import ModelRegistry
-from one_quant.ml.trainer import MLTrainer, TrainResult, CVResult
+from one_quant.ml.trainer import MLTrainer, TrainResult
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +59,7 @@ class TrainingPipeline:
         factor_lib: FactorLibrary,
         trainer: MLTrainer,
         registry: ModelRegistry,
-        bronze_storage: "BronzeStorage | None" = None,
+        bronze_storage: BronzeStorage | None = None,
     ) -> None:
         """初始化训练管线。
 
@@ -110,9 +115,7 @@ class TrainingPipeline:
         """
         n = len(prices)
         if n < forward_periods + 10:
-            raise DataInsufficientError(
-                f"价格数据不足: {n} 条，需要至少 {forward_periods + 10} 条"
-            )
+            raise DataInsufficientError(f"价格数据不足: {n} 条，需要至少 {forward_periods + 10} 条")
 
         prices_arr = np.array(prices, dtype=np.float64)
 
@@ -120,7 +123,9 @@ class TrainingPipeline:
         future_returns = np.full(n, np.nan)
         for i in range(n - forward_periods):
             if prices_arr[i] > 0:
-                future_returns[i] = (prices_arr[i + forward_periods] - prices_arr[i]) / prices_arr[i]
+                future_returns[i] = (prices_arr[i + forward_periods] - prices_arr[i]) / prices_arr[
+                    i
+                ]
 
         # 去掉末尾无标签的样本
         valid_mask = ~np.isnan(future_returns)
@@ -163,9 +168,7 @@ class TrainingPipeline:
         """
         prices = market_data.get("prices") or market_data.get("closes", [])
         if len(prices) < lookback:
-            raise DataInsufficientError(
-                f"价格数据不足: {len(prices)} 条，需要至少 {lookback} 条"
-            )
+            raise DataInsufficientError(f"价格数据不足: {len(prices)} 条，需要至少 {lookback} 条")
 
         # 滚动计算因子
         feature_names: list[str] = []
@@ -206,14 +209,14 @@ class TrainingPipeline:
         if not feature_rows:
             raise DataInsufficientError("无法生成任何特征行")
 
-        X = np.array(feature_rows, dtype=np.float64)
+        X = np.array(feature_rows, dtype=np.float64)  # noqa: N806
 
         # 最终检查：确保无 NaN
         nan_mask = np.isnan(X)
         if np.any(nan_mask):
             nan_count = int(np.sum(nan_mask))
             logger.warning("特征矩阵中有 %d 个 NaN，已填充为 0", nan_count)
-            X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+            X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)  # noqa: N806
 
         return X, feature_names
 
@@ -297,7 +300,7 @@ class TrainingPipeline:
         market_data = await self._fetch_market_data(symbol)
 
         # 2. 准备特征
-        X, feature_names = self._prepare_features(market_data)
+        X, feature_names = self._prepare_features(market_data)  # noqa: N806
 
         # 3. 生成标签
         prices = market_data.get("prices") or market_data.get("closes", [])
@@ -305,7 +308,7 @@ class TrainingPipeline:
 
         # 对齐：X 和 y 长度可能不一致
         min_len = min(len(X), len(y))
-        X = X[:min_len]
+        X = X[:min_len]  # noqa: N806
         y = y[:min_len]
 
         if len(X) < 50:
@@ -313,7 +316,7 @@ class TrainingPipeline:
 
         # 4. 时间序列分割（80/20）
         split_idx = int(len(X) * 0.8)
-        X_train, X_val = X[:split_idx], X[split_idx:]
+        X_train, X_val = X[:split_idx], X[split_idx:]  # noqa: N806
         y_train, y_val = y[:split_idx], y[split_idx:]
 
         # 5. 训练
@@ -405,9 +408,9 @@ class TrainingPipeline:
         # ── 方式一：从 Bronze 层获取历史 K 线 ──
         if self._bronze is not None:
             try:
-                from datetime import datetime, timedelta, timezone
+                from datetime import datetime, timedelta
 
-                end_time = datetime.now(timezone.utc)
+                end_time = datetime.now(UTC)
                 start_time = end_time - timedelta(days=90)  # 默认取近 90 天
 
                 records = await self._bronze.replay(
@@ -505,7 +508,7 @@ class TrainingPipeline:
         market_data = await self._fetch_market_data(symbol)
 
         # 准备特征
-        X, feature_names = self._prepare_features(market_data, lookback)
+        X, feature_names = self._prepare_features(market_data, lookback)  # noqa: N806
 
         if len(X) == 0:
             raise DataInsufficientError("回测数据为空")

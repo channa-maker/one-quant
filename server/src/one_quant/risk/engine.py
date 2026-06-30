@@ -51,6 +51,7 @@ class RiskEngine:
         self._check_count = 0
         self._reject_count = 0
         self._flatten_count = 0
+        self._equity: Decimal | None = None
 
     def check(
         self,
@@ -93,7 +94,8 @@ class RiskEngine:
 
         # ── L2: 实时敞口 ──
         result = self.l2.check(
-            order, positions,
+            order,
+            positions,
             total_equity=total_equity,
             latest_price=latest_price,
         )
@@ -105,7 +107,7 @@ class RiskEngine:
         # ── L3: 后台回撤 ──
         # L3 需要 equity/peak_equity/daily_pnl；若未提供则跳过
         if peak_equity is not None and daily_pnl is not None:
-            equity = total_equity if total_equity is not None else Decimal("0")
+            equity = total_equity if total_equity is not None else (self._equity or Decimal("0"))
             result = self.l3.check(
                 equity=equity,
                 peak_equity=peak_equity,
@@ -159,11 +161,12 @@ class RiskEngine:
         )
 
     def update_equity(self, equity: Decimal) -> None:
-        """更新权益（透传给 L3）。
+        """更新权益，供后续 check 在未显式传参时使用。
 
         Args:
             equity: 当前权益。
         """
+        self._equity = equity
 
     def reset(self) -> None:
         """重置所有风控状态（用于测试）。"""

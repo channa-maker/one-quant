@@ -14,10 +14,9 @@
 
 from __future__ import annotations
 
-import time
 from collections import defaultdict
 from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -164,7 +163,7 @@ class WashSaleDetector:
             (是否触发 Wash Sale, 不可抵扣亏损金额)
         """
         # 计算卖出盈亏
-        pnl = sell_price - buy_price  # 简化：假设成本基础为 buy_price
+        _pnl = sell_price - buy_price  # 简化：假设成本基础为 buy_price  # noqa: F841
 
         # 如果没有亏损，不适用 Wash Sale
         if sell_price >= buy_price:
@@ -374,9 +373,9 @@ class TaxLotAccounting:
             )
 
         if remaining > 0:
+            lot_symbol = lots[0].symbol if lots else "unknown"
             raise ValueError(
-                f"批次数量不足: {symbol} 需要 {quantity}, "
-                f"可用 {quantity - remaining}"
+                f"批次数量不足: {lot_symbol} 需要 {quantity}, 可用 {quantity - remaining}"
             )
 
         # 更新原始批次（扣除已消耗）
@@ -425,9 +424,7 @@ class TaxLotAccounting:
             )
 
         if remaining > 0:
-            raise ValueError(
-                f"指定批次数量不足: 需要 {quantity}, 可用 {quantity - remaining}"
-            )
+            raise ValueError(f"指定批次数量不足: 需要 {quantity}, 可用 {quantity - remaining}")
 
         return total_cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), consumed
 
@@ -551,9 +548,7 @@ class TaxReportGenerator:
             - wash_sale_summary: Wash Sale 汇总
         """
         # 筛选指定年份的处置记录
-        year_disposals = [
-            d for d in self._disposals if d.sell_date.year == year
-        ]
+        year_disposals = [d for d in self._disposals if d.sell_date.year == year]
 
         # 分类：短期 vs 长期
         short_term = [d for d in year_disposals if not d.is_long_term]
@@ -618,9 +613,7 @@ class TaxReportGenerator:
                 "long_term_loss": str(long_term_loss.quantize(Decimal("0.01"))),
                 "net_long_term": str(net_long.quantize(Decimal("0.01"))),
                 "net_total": str(net_total.quantize(Decimal("0.01"))),
-                "wash_sale_disallowed_loss": str(
-                    total_wash_sale_loss.quantize(Decimal("0.01"))
-                ),
+                "wash_sale_disallowed_loss": str(total_wash_sale_loss.quantize(Decimal("0.01"))),
             },
             "schedule_d": {
                 "part_i_short_term": {
@@ -656,12 +649,8 @@ class TaxReportGenerator:
             },
             "form_8949": form_8949_entries,
             "wash_sale_summary": {
-                "affected_transactions": sum(
-                    1 for d in year_disposals if d.wash_sale
-                ),
-                "total_disallowed_loss": str(
-                    total_wash_sale_loss.quantize(Decimal("0.01"))
-                ),
+                "affected_transactions": sum(1 for d in year_disposals if d.wash_sale),
+                "total_disallowed_loss": str(total_wash_sale_loss.quantize(Decimal("0.01"))),
                 "details": [
                     {
                         "symbol": d.symbol,

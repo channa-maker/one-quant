@@ -23,7 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from one_quant.core.types import Fill, Kline, Market, Signal, Ticker
+from one_quant.core.types import Fill, Kline, Market, PositionState, Signal, Ticker
 from one_quant.strategy.contracts import Strategy
 
 
@@ -36,6 +36,7 @@ class _GridLevel:
         side: 该层级的方向（buy/sell）
         filled: 是否已成交
     """
+
     price: Decimal
     side: str  # "buy" 或 "sell"
     filled: bool = False
@@ -52,6 +53,7 @@ class _SymbolGridState:
         position_cost: 持仓成本
         total_position_limit: 总仓位上限（数量）
     """
+
     center_price: Decimal
     levels: list[_GridLevel] = field(default_factory=list)
     position_qty: Decimal = Decimal(0)
@@ -145,7 +147,9 @@ class GridStrategy(Strategy):
         self._initialized.add(symbol)
         return state
 
-    def _process_price(self, symbol: str, price: Decimal, market: Market, timestamp_ns: int) -> list[Signal]:
+    def _process_price(
+        self, symbol: str, price: Decimal, market: Market, timestamp_ns: int
+    ) -> list[Signal]:
         """处理价格更新，检测是否触网。
 
         流程：
@@ -314,18 +318,20 @@ class GridStrategy(Strategy):
             if state.position_qty > 0:
                 # 按比例减少成本
                 sell_ratio = min(fill.quantity / state.position_qty, Decimal(1))
-                state.position_cost *= (Decimal(1) - sell_ratio)
+                state.position_cost *= Decimal(1) - sell_ratio
                 state.position_qty = max(Decimal(0), state.position_qty - fill.quantity)
 
         # 检查是否需要重新布网：所有买单都已成交
-        all_buy_filled = all(
-            lv.filled for lv in state.levels if lv.side == "buy"
-        )
+        all_buy_filled = all(lv.filled for lv in state.levels if lv.side == "buy")
         if all_buy_filled and state.position_qty > 0:
             # 以最新成交价为中心重新布网
-            self._build_grid(symbol, fill.price, Market(fill.symbol.split("/")[-1]) if "/" in fill.symbol else Market.SPOT)
+            self._build_grid(
+                symbol,
+                fill.price,
+                Market(fill.symbol.split("/")[-1]) if "/" in fill.symbol else Market.SPOT,
+            )
 
-    def on_recover(self, state: "PositionState") -> None:
+    def on_recover(self, state: PositionState) -> None:
         """恢复持仓状态。
 
         系统重启后恢复持仓信息，并以当前价格重新构建网格。

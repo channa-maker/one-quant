@@ -5,42 +5,46 @@ ONE量化 · 权限系统
 
 from __future__ import annotations
 
-import uuid
+import logging
 import time
-import asyncio
+import uuid
+
+logger = logging.getLogger(__name__)
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from enum import Enum
 from functools import wraps
-from typing import Callable, Any, Optional
-from dataclasses import dataclass, field
-
+from typing import Any
 
 # ── 权限枚举 ──────────────────────────────────────────────
 
+
 class Permission(str, Enum):
     """细粒度权限"""
-    VIEW_DASHBOARD = "view_dashboard"       # 查看总览
-    VIEW_POSITIONS = "view_positions"       # 查看持仓
-    PLACE_ORDER = "place_order"             # 下单
-    CANCEL_ORDER = "cancel_order"           # 撤单
-    MANAGE_STRATEGY = "manage_strategy"     # 管理策略
-    EDIT_RISK_LIMITS = "edit_risk_limits"   # 编辑风控参数
-    EMERGENCY_HALT = "emergency_halt"       # 紧急暂停
-    VIEW_AUDIT = "view_audit"               # 查看审计日志
+
+    VIEW_DASHBOARD = "view_dashboard"  # 查看总览
+    VIEW_POSITIONS = "view_positions"  # 查看持仓
+    PLACE_ORDER = "place_order"  # 下单
+    CANCEL_ORDER = "cancel_order"  # 撤单
+    MANAGE_STRATEGY = "manage_strategy"  # 管理策略
+    EDIT_RISK_LIMITS = "edit_risk_limits"  # 编辑风控参数
+    EMERGENCY_HALT = "emergency_halt"  # 紧急暂停
+    VIEW_AUDIT = "view_audit"  # 查看审计日志
 
 
 class Role(str, Enum):
     """角色"""
-    OWNER = "owner"       # 所有者 - 全部权限
-    ADMIN = "admin"       # 管理员 - 除紧急暂停和审计外全部
-    TRADER = "trader"     # 交易员 - 查看+下单+撤单+策略
-    VIEWER = "viewer"     # 观察者 - 仅查看
+
+    OWNER = "owner"  # 所有者 - 全部权限
+    ADMIN = "admin"  # 管理员 - 除紧急暂停和审计外全部
+    TRADER = "trader"  # 交易员 - 查看+下单+撤单+策略
+    VIEWER = "viewer"  # 观察者 - 仅查看
 
 
 # ── 角色-权限矩阵 ─────────────────────────────────────────
 
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     Role.OWNER: {p for p in Permission},  # 全部权限
-
     Role.ADMIN: {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_POSITIONS,
@@ -50,7 +54,6 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.EDIT_RISK_LIMITS,
         Permission.VIEW_AUDIT,
     },
-
     Role.TRADER: {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_POSITIONS,
@@ -58,7 +61,6 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.CANCEL_ORDER,
         Permission.MANAGE_STRATEGY,
     },
-
     Role.VIEWER: {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_POSITIONS,
@@ -76,9 +78,11 @@ DUAL_APPROVAL_PERMISSIONS: set[Permission] = {
 
 # ── 用户上下文 ────────────────────────────────────────────
 
+
 @dataclass
 class UserContext:
     """当前用户上下文"""
+
     user_id: str
     username: str
     role: Role
@@ -91,17 +95,18 @@ class UserContext:
 
 # ── 权限检查器 ────────────────────────────────────────────
 
+
 class PermissionChecker:
     """权限检查器"""
 
     def check(self, user_role: Role, required_permission: Permission) -> bool:
         """
         检查角色是否拥有指定权限
-        
+
         Args:
             user_role: 用户角色
             required_permission: 需要的权限
-            
+
         Returns:
             bool: 是否拥有权限
         """
@@ -123,7 +128,7 @@ class PermissionChecker:
     def require_permission(self, permission: Permission) -> Callable:
         """
         装饰器：要求特定权限
-        
+
         用法:
             @checker.require_permission(Permission.PLACE_ORDER)
             async def place_order(user: UserContext, ...):
@@ -140,8 +145,7 @@ class PermissionChecker:
 
                 if not self.check_user(user, permission):
                     raise PermissionError(
-                        f"权限不足：需要 {permission.value}，"
-                        f"当前角色 {user.role.value} 无此权限"
+                        f"权限不足：需要 {permission.value}，当前角色 {user.role.value} 无此权限"
                     )
 
                 return await func(*args, **kwargs)
@@ -153,7 +157,7 @@ class PermissionChecker:
     def require_any_permission(self, *permissions: Permission) -> Callable:
         """
         装饰器：要求拥有任一指定权限
-        
+
         用法:
             @checker.require_any_permission(Permission.PLACE_ORDER, Permission.CANCEL_ORDER)
             async def submit_order(...):
@@ -182,7 +186,7 @@ class PermissionChecker:
         return decorator
 
 
-def _extract_user_context(args: tuple, kwargs: dict) -> Optional[UserContext]:
+def _extract_user_context(args: tuple, kwargs: dict) -> UserContext | None:
     """从函数参数中提取 UserContext"""
     # 检查 kwargs
     for v in kwargs.values():
@@ -199,30 +203,32 @@ def _extract_user_context(args: tuple, kwargs: dict) -> Optional[UserContext]:
 
 # ── 双人复核系统 ──────────────────────────────────────────
 
+
 @dataclass
 class ApprovalRequest:
     """复核请求"""
+
     request_id: str
     action: str
     requester_id: str
     created_at: float
     expires_at: float
-    status: str = "pending"   # pending / approved / rejected / expired
-    approver_id: Optional[str] = None
-    approved_at: Optional[float] = None
+    status: str = "pending"  # pending / approved / rejected / expired
+    approver_id: str | None = None
+    approved_at: float | None = None
     metadata: dict = field(default_factory=dict)
 
 
 class DualApproval:
     """
     双人复核（敏感操作）
-    
+
     流程:
     1. 发起人调用 request_approval 发起请求
     2. 系统通知审批人
     3. 审批人调用 approve 完成审批
     4. 发起人收到审批结果后执行操作
-    
+
     超时: 默认 5 分钟
     """
 
@@ -234,19 +240,19 @@ class DualApproval:
         self,
         action: str,
         requester_id: str,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> str:
         """
         发起复核请求
-        
+
         Args:
             action: 操作描述（如 "edit_risk_limit: max_drawdown=0.1"）
             requester_id: 发起人 ID
             metadata: 附加信息
-            
+
         Returns:
             str: 请求 ID
-            
+
         Raises:
             ValueError: 如果已有相同操作的待审批请求
         """
@@ -260,9 +266,7 @@ class DualApproval:
                 and req.status == "pending"
                 and req.expires_at > now
             ):
-                raise ValueError(
-                    f"已有相同操作的待审批请求: {req.request_id}"
-                )
+                raise ValueError(f"已有相同操作的待审批请求: {req.request_id}")
 
         request_id = str(uuid.uuid4())
         request = ApprovalRequest(
@@ -329,14 +333,14 @@ class DualApproval:
     async def approve(self, request_id: str, approver_id: str) -> bool:
         """
         审批复核请求
-        
+
         Args:
             request_id: 请求 ID
             approver_id: 审批人 ID
-            
+
         Returns:
             bool: 是否审批成功
-            
+
         Raises:
             ValueError: 请求不存在或已过期
             PermissionError: 审批人与发起人相同（不允许自批自）
@@ -380,7 +384,7 @@ class DualApproval:
 
         return True
 
-    def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+    def get_request(self, request_id: str) -> ApprovalRequest | None:
         """获取复核请求状态"""
         req = self._requests.get(request_id)
         # 检查是否过期
@@ -388,7 +392,7 @@ class DualApproval:
             req.status = "expired"
         return req
 
-    def get_pending_requests(self, requester_id: Optional[str] = None) -> list[ApprovalRequest]:
+    def get_pending_requests(self, requester_id: str | None = None) -> list[ApprovalRequest]:
         """获取待审批请求列表"""
         now = time.time()
         results = []
@@ -405,7 +409,8 @@ class DualApproval:
         """清理过期请求，返回清理数量"""
         now = time.time()
         expired_ids = [
-            rid for rid, req in self._requests.items()
+            rid
+            for rid, req in self._requests.items()
             if req.status in ("expired", "approved", "rejected")
             and (now - req.created_at) > 3600  # 1 小时后清理
         ]
@@ -421,6 +426,7 @@ dual_approval = DualApproval()
 
 
 # ── 便捷函数 ──────────────────────────────────────────────
+
 
 def check_permission(user: UserContext, permission: Permission) -> bool:
     """检查用户权限"""
