@@ -928,7 +928,7 @@ class SMCSource:
             return 0.0, 0.0
 
         highs = [Decimal(str(h)) for h in highs_raw]
-        lows = [Decimal(str(l)) for l in lows_raw]
+        lows = [Decimal(str(low_val)) for low_val in lows_raw]
 
         signals: list[tuple[float, float]] = []  # (strength, direction)
 
@@ -963,7 +963,7 @@ class SMCSource:
         # ③ Order Block 检测（订单块）
         try:
             if klines:
-                from decimal import Decimal as D
+                from decimal import Decimal
 
                 from one_quant.core.types import Kline, Market
 
@@ -976,11 +976,11 @@ class SMCSource:
                                 market=Market.SPOT,
                                 exchange="",
                                 interval="1h",
-                                open=D(str(k.get("open", 0))),
-                                high=D(str(k.get("high", 0))),
-                                low=D(str(k.get("low", 0))),
-                                close=D(str(k.get("close", 0))),
-                                volume=D(str(k.get("volume", 0))),
+                                open=Decimal(str(k.get("open", 0))),
+                                high=Decimal(str(k.get("high", 0))),
+                                low=Decimal(str(k.get("low", 0))),
+                                close=Decimal(str(k.get("close", 0))),
+                                volume=Decimal(str(k.get("volume", 0))),
                                 timestamp_ns=k.get("timestamp_ns", 0),
                             )
                         )
@@ -1003,7 +1003,7 @@ class SMCSource:
         # ④ FVG 检测（公允价值缺口）
         try:
             if klines:
-                from decimal import Decimal as D
+                from decimal import Decimal
 
                 from one_quant.core.types import Kline, Market
 
@@ -1016,11 +1016,11 @@ class SMCSource:
                                 market=Market.SPOT,
                                 exchange="",
                                 interval="1h",
-                                open=D(str(k.get("open", 0))),
-                                high=D(str(k.get("high", 0))),
-                                low=D(str(k.get("low", 0))),
-                                close=D(str(k.get("close", 0))),
-                                volume=D(str(k.get("volume", 0))),
+                                open=Decimal(str(k.get("open", 0))),
+                                high=Decimal(str(k.get("high", 0))),
+                                low=Decimal(str(k.get("low", 0))),
+                                close=Decimal(str(k.get("close", 0))),
+                                volume=Decimal(str(k.get("volume", 0))),
                                 timestamp_ns=k.get("timestamp_ns", 0),
                             )
                         )

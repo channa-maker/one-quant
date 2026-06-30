@@ -120,7 +120,11 @@ def generate_dashboard_json() -> dict:
                 "gridPos": {"h": 4, "w": 8, "x": 0, "y": 6},
                 "targets": [
                     {
-                        "expr": "one_quant_data_quality_checks_total{result='passed'} / (one_quant_data_quality_checks_total{result='passed'} + one_quant_data_quality_checks_total{result='rejected'})",
+                        "expr": (
+                            "one_quant_data_quality_checks_total{result='passed'}"
+                            " / (one_quant_data_quality_checks_total{result='passed'}"
+                            " + one_quant_data_quality_checks_total{result='rejected'})"
+                        ),
                         "legendFormat": "通过率",
                     }
                 ],
@@ -190,7 +194,8 @@ def generate_dashboard_json() -> dict:
                 "gridPos": {"h": 4, "w": 8, "x": 8, "y": 11},
                 "targets": [
                     {
-                        "expr": "histogram_quantile(0.99, rate(one_quant_risk_decision_latency_seconds_bucket[5m]))",
+                        "expr": "histogram_quantile(0.99, "
+                        "rate(one_quant_risk_decision_latency_seconds_bucket[5m]))",
                         "legendFormat": "P99",
                     }
                 ],

@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -21,7 +21,7 @@ from one_quant.infra.logging import get_logger
 logger = get_logger(__name__)
 
 
-class ChangeType(str, Enum):
+class ChangeType(StrEnum):
     """变更类型"""
 
     HOTFIX = "hotfix"
@@ -31,7 +31,7 @@ class ChangeType(str, Enum):
     STRATEGY = "strategy"  # 策略参数变更
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """风险等级"""
 
     LOW = "low"
@@ -40,7 +40,7 @@ class RiskLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class ChangeStatus(str, Enum):
+class ChangeStatus(StrEnum):
     """变更状态"""
 
     DRAFT = "draft"

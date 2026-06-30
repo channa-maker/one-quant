@@ -8,18 +8,18 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-
-logger = logging.getLogger(__name__)
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from functools import wraps
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ── 权限枚举 ──────────────────────────────────────────────
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     """细粒度权限"""
 
     VIEW_DASHBOARD = "view_dashboard"  # 查看总览
@@ -32,7 +32,7 @@ class Permission(str, Enum):
     VIEW_AUDIT = "view_audit"  # 查看审计日志
 
 
-class Role(str, Enum):
+class Role(StrEnum):
     """角色"""
 
     OWNER = "owner"  # 所有者 - 全部权限

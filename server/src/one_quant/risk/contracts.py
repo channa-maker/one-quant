@@ -15,7 +15,7 @@ ONE量化 - 风控合约（决策类型与规则协议）
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Protocol
 
 from pydantic import BaseModel
@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from one_quant.core.types import Order, PositionState
 
 
-class RiskDecision(str, Enum):
+class RiskDecision(StrEnum):
     """风控决策枚举"""
 
     APPROVE = "APPROVE"  # 批准

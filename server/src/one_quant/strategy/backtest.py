@@ -249,12 +249,12 @@ class BacktestEngine:
     def _build_orderbook(item: dict) -> OrderBook:
         """从 dict 构造 OrderBook 对象。"""
         bids = [
-            {"price": Decimal(str(l["price"])), "quantity": Decimal(str(l["quantity"]))}
-            for l in item.get("bids", [])
+            {"price": Decimal(str(lvl["price"])), "quantity": Decimal(str(lvl["quantity"]))}
+            for lvl in item.get("bids", [])
         ]
         asks = [
-            {"price": Decimal(str(l["price"])), "quantity": Decimal(str(l["quantity"]))}
-            for l in item.get("asks", [])
+            {"price": Decimal(str(lvl["price"])), "quantity": Decimal(str(lvl["quantity"]))}
+            for lvl in item.get("asks", [])
         ]
         # OrderBookLevel 需要显式构造
         from one_quant.core.types import OrderBookLevel

@@ -17,7 +17,7 @@ from __future__ import annotations
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -25,7 +25,7 @@ from one_quant.infra.logging import get_logger
 logger = get_logger(__name__)
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """事故严重级别"""
 
     P0 = "P0"  # 全面停机，资金风险

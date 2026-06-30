@@ -16,13 +16,13 @@ ONE量化 - 插件注册表
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 # 泛型类型变量 —— 被注册对象的类型（通常是类）
 T = TypeVar("T")
 
 
-class Registry(Generic[T]):
+class Registry[T]:
     """
     通用泛型注册表。
 

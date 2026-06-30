@@ -17,7 +17,7 @@ import statistics
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 # ──────────────────────────── 枚举 ────────────────────────────
 
 
-class ModelStatus(str, Enum):
+class ModelStatus(StrEnum):
     """模型生命周期状态"""
 
     DRAFT = "draft"  # 草稿：刚创建，未提交验证
@@ -38,7 +38,7 @@ class ModelStatus(str, Enum):
     RETIRED = "retired"  # 退役：已下线
 
 
-class ApprovalAction(str, Enum):
+class ApprovalAction(StrEnum):
     """审批动作"""
 
     APPROVE = "approve"  # 通过
@@ -46,7 +46,7 @@ class ApprovalAction(str, Enum):
     REQUEST_CHANGES = "request_changes"  # 要求修改
 
 
-class DriftType(str, Enum):
+class DriftType(StrEnum):
     """漂移类型"""
 
     DATA_DRIFT = "data_drift"  # 输入数据分布漂移
@@ -54,7 +54,7 @@ class DriftType(str, Enum):
     PERFORMANCE_DRIFT = "performance_drift"  # 性能漂移（准确率下降等）
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     """告警严重度"""
 
     INFO = "info"
@@ -226,7 +226,10 @@ class ModelRiskManager:
         mrm = ModelRiskManager()
 
         # 注册模型
-        card = ModelCard(model_id="v1.0", name="ma_cross", version="1.0", description="均线交叉策略")
+        card = ModelCard(
+            model_id="v1.0", name="ma_cross",
+            version="1.0", description="均线交叉策略"
+        )
         mrm.register(card)
 
         # 记录血缘
@@ -246,7 +249,10 @@ class ModelRiskManager:
         mrm.promote_to_live("v1.0")
 
         # 监控
-        mrm.record_snapshot(MonitoringSnapshot(model_id="v1.0", metrics={"accuracy": 0.85}, prediction_count=1000))
+        mrm.record_snapshot(MonitoringSnapshot(
+            model_id="v1.0", metrics={"accuracy": 0.85},
+            prediction_count=1000
+        ))
     """
 
     def __init__(self) -> None:

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -17,7 +17,7 @@ from pydantic import BaseModel
 # ──────────────────────────── 枚举 ────────────────────────────
 
 
-class Market(str, Enum):
+class Market(StrEnum):
     """市场类型枚举"""
 
     SPOT = "SPOT"  # 现货
@@ -26,7 +26,7 @@ class Market(str, Enum):
     STOCK = "STOCK"  # 股票
 
 
-class InstrumentType(str, Enum):
+class InstrumentType(StrEnum):
     """标的类型枚举"""
 
     SPOT = "SPOT"  # 现货

@@ -22,7 +22,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 # ──────────────────────────── 枚举与常量 ────────────────────────────
 
 
-class WalletType(str, Enum):
+class WalletType(StrEnum):
     """钱包类型"""
 
     HOT = "hot"  # 热钱包：联网，用于交易
@@ -41,7 +41,7 @@ class WalletType(str, Enum):
     EXCHANGE = "exchange"  # 交易所钱包（子账户）
 
 
-class DepositStatus(str, Enum):
+class DepositStatus(StrEnum):
     """充值确认状态"""
 
     PENDING = "pending"  # 等待确认
@@ -50,7 +50,7 @@ class DepositStatus(str, Enum):
     FAILED = "failed"  # 充值失败
 
 
-class AlertLevel(str, Enum):
+class AlertLevel(StrEnum):
     """告警级别"""
 
     INFO = "info"

@@ -306,7 +306,7 @@ class TaxLotAccounting:
         )
         self._lots[symbol].append(lot)
         # 按买入日期排序
-        self._lots[symbol].sort(key=lambda l: l.buy_date)
+        self._lots[symbol].sort(key=lambda lot: lot.buy_date)
         return lot
 
     def calculate_cost_basis(
@@ -394,7 +394,7 @@ class TaxLotAccounting:
         specific_lot_ids: list[str],
     ) -> tuple[Decimal, list[TaxLot]]:
         """特定批次指定"""
-        lot_map = {l.lot_id: l for l in lots}
+        lot_map = {lot.lot_id: lot for lot in lots}
         total_cost = Decimal("0")
         consumed: list[TaxLot] = []
         remaining = quantity
@@ -448,7 +448,7 @@ class TaxLotAccounting:
         Returns:
             总数量
         """
-        return sum(l.quantity for l in self._lots.get(symbol, []))
+        return sum(lot.quantity for lot in self._lots.get(symbol, []))
 
 
 # ──────────────────────────── 税务报表 ────────────────────────────

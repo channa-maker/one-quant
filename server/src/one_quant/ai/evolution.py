@@ -13,7 +13,7 @@ import hashlib
 import time
 from dataclasses import dataclass, field
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 # ──────────────────────────── 枚举与数据结构 ────────────────────────────
 
 
-class StrategyLifecycle(str, Enum):
+class StrategyLifecycle(StrEnum):
     """策略生命周期阶段"""
 
     DRAFT = "draft"  # 草稿 — 因子/策略刚生成
@@ -38,7 +38,7 @@ class StrategyLifecycle(str, Enum):
     RETIRED = "retired"  # 已退役
 
 
-class FactorSource(str, Enum):
+class FactorSource(StrEnum):
     """因子来源"""
 
     LLM = "llm"  # LLM 生成
@@ -536,7 +536,11 @@ class EvolutionPlatform:
             "- expression: 因子数学表达式（使用 close/open/high/low/volume/returns 等变量）\n"
             "- description: 中文描述（一句话说明因子逻辑）\n"
             '- expected_direction: 预期方向（"positive" 或 "negative"）\n'
-            '示例表达式: "close / shift(close, 5) - 1", "(high - low) / close", "volume / mean(volume, 20)"\n'
+            "- description: 中文描述（一句话说明因子逻辑）\n"
+            '- expected_direction: 预期方向（"positive" 或 "negative"）\n'
+            '示例表达式: "close / shift(close, 5) - 1", "'
+            '(high - low) / close", "volume / mean(volume, 20)"\n'
+            "只输出 JSON 数组，不要其他内容。"
             "只输出 JSON 数组，不要其他内容。"
         )
 
@@ -1600,7 +1604,8 @@ class ChampionChallenger:
 
             if comp.promoted:
                 comp.reason = (
-                    f"挑战者全面超越: 夏普 {comp.challenger_sharpe:.2f} vs {comp.champion_sharpe:.2f}, "
+                    f"挑战者全面超越: 夏普 {comp.challenger_sharpe:.2f} "
+                    f"vs {comp.champion_sharpe:.2f}, "
                     f"回撤 {comp.challenger_max_dd:.2%} vs {comp.champion_max_dd:.2%}, "
                     f"超额 {comp.outperformance:.2%}"
                 )

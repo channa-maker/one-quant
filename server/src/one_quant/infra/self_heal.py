@@ -10,7 +10,7 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -18,7 +18,7 @@ from one_quant.infra.logging import get_logger
 logger = get_logger(__name__)
 
 
-class HealResult(str, Enum):
+class HealResult(StrEnum):
     """自愈结果"""
 
     SUCCESS = "success"

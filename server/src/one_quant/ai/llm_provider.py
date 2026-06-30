@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from dataclasses import field
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel
@@ -109,7 +109,7 @@ class LLMResponse(BaseModel, frozen=True):
 # ──────────────────── 任务复杂度枚举 ────────────────────
 
 
-class TaskComplexity(str, Enum):
+class TaskComplexity(StrEnum):
     """任务复杂度等级，用于路由决策。"""
 
     HIGH = "high"  # 推理/规划/复杂分析

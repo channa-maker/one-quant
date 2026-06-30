@@ -215,4 +215,4 @@ class TestMarketEnum:
         assert Market.STOCK == "STOCK"
 
     def test_str(self) -> None:
-        assert str(Market.SPOT) == "Market.SPOT"
+        assert str(Market.SPOT) == "SPOT"

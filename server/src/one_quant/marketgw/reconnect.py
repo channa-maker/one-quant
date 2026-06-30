@@ -103,7 +103,9 @@ class ReconnectManager:
             should_continue: 是否继续重试的判断回调
         """
         if should_continue is None:
-            should_continue = lambda: True
+
+            def should_continue():
+                return True
 
         while should_continue():
             try:
@@ -154,7 +156,9 @@ class ReconnectManager:
             should_continue: 是否继续的判断回调
         """
         if should_continue is None:
-            should_continue = lambda: True
+
+            def should_continue():
+                return True
 
         while should_continue():
             try:

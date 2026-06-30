@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -20,7 +20,7 @@ from one_quant.infra.logging import get_logger
 logger = get_logger(__name__)
 
 
-class BackupStatus(str, Enum):
+class BackupStatus(StrEnum):
     """备份状态"""
 
     PENDING = "pending"
@@ -29,7 +29,7 @@ class BackupStatus(str, Enum):
     FAILED = "failed"
 
 
-class DRScenario(str, Enum):
+class DRScenario(StrEnum):
     """灾备演练场景"""
 
     NETWORK_DOWN = "network_down"  # 断网
@@ -276,7 +276,7 @@ class DisasterRecovery:
 
     # ── 故障演练 ──────────────────────────────────────────────────
 
-    async def failover演练(self) -> dict[str, Any]:
+    async def failover_drill(self) -> dict[str, Any]:
         """故障演练（断网/断库/交易所故障）+ 真实恢复演练。
 
         演练流程：

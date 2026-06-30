@@ -9,7 +9,7 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -20,7 +20,7 @@ HealthCheckFn = Callable[[], Awaitable[bool]]
 RestartFn = Callable[[], Awaitable[None]]
 
 
-class ProcessStatus(str, Enum):
+class ProcessStatus(StrEnum):
     """进程状态枚举"""
 
     UNKNOWN = "unknown"

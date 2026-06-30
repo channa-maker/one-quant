@@ -380,9 +380,9 @@ class OptionChainModel:
 
     @staticmethod
     def _sabr_hagan_iv(
-        F: float,
-        K: float,
-        T: float,
+        F: float,  # noqa: N803
+        K: float,  # noqa: N803
+        T: float,  # noqa: N803
         alpha: float,
         beta: float,
         rho: float,  # noqa: N803
@@ -1253,7 +1253,8 @@ class IVArbitrageModel:
                                 "severity": iv_diff / self.iv_threshold,
                                 "detail": (
                                     f"Put-Call IV 偏差 {iv_diff:.1%}"
-                                    f"（阈值 {self.iv_threshold:.1%}），行权价={strike}，到期={expiry}"
+                                    f"（阈值 {self.iv_threshold:.1%}），"
+                                    f"行权价={strike}，到期={expiry}"
                                 ),
                             }
                         )

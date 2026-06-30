@@ -13,7 +13,7 @@ ONE量化 - 分诊员智能体
 from __future__ import annotations
 
 import time
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.agents.base import BaseAgent
@@ -22,7 +22,7 @@ from one_quant.infra.logging import get_logger
 logger = get_logger(__name__)
 
 
-class AlertLevel(str, Enum):
+class AlertLevel(StrEnum):
     """告警等级枚举。"""
 
     P0 = "P0"  # 紧急：系统故障、大面积爆仓、行情断线

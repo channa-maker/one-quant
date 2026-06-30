@@ -928,8 +928,8 @@ class StrategyFusion:
                 "buy_score": str(buy_score.quantize(Decimal("0.0001"))),
                 "sell_score": str(sell_score.quantize(Decimal("0.0001"))),
                 "layers": {
-                    name: {"side": l["side"], "strength": round(l["strength"], 4)}
-                    for name, l in layers.items()
+                    name: {"side": layer["side"], "strength": round(layer["strength"], 4)}
+                    for name, layer in layers.items()
                 },
             },
         }

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -24,7 +24,7 @@ logger = get_logger("healthcheck")
 # ──────────────────── 健康状态枚举 ────────────────────
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """健康状态枚举。"""
 
     HEALTHY = "healthy"  # 正常

@@ -19,7 +19,7 @@ from __future__ import annotations
 import time
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 # ──────────────────────────── 枚举与模型 ────────────────────────────
 
 
-class CorporateActionType(str, Enum):
+class CorporateActionType(StrEnum):
     """公司行为类型"""
 
     DIVIDEND = "dividend"  # 分红（现金股息）

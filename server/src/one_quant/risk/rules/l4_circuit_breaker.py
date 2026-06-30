@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 import time
-from enum import Enum
+from enum import StrEnum
 
 from one_quant.core.types import Order, PositionState
 from one_quant.risk.contracts import RiskCheckResult, RiskDecision
@@ -39,7 +39,7 @@ RECOVERY_TIMEOUT_SEC = 60
 HALF_OPEN_MAX_PROBES = 3
 
 
-class CircuitBreakerState(str, Enum):
+class CircuitBreakerState(StrEnum):
     """熔断器状态枚举。"""
 
     CLOSED = "closed"  # 正常

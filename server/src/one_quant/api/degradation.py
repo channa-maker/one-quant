@@ -9,11 +9,11 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 
-class DegradationLevel(str, Enum):
+class DegradationLevel(StrEnum):
     """降级级别"""
 
     NORMAL = "normal"  # 正常运行
