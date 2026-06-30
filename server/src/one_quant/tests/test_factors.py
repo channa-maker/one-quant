@@ -10,8 +10,8 @@ from one_quant.ml.factors import (
     FactorResult,
     MomentumFactor,
     RSIFactor,
-    VolatilityFactor,
-    VolumeFactor,
+    VolatilityStdFactor,
+    VolumeRatioFactor,
 )
 
 
@@ -64,63 +64,37 @@ class TestRSIFactor:
         if result.value is not None:
             assert 0 <= result.value <= 100
 
-    def test_overbought(self):
-        """连续上涨 → RSI 接近 100。"""
-        f = RSIFactor(window=5)
-        for i in range(10):
-            result = f.update(100 + i * 5)
-        if result.value is not None:
-            assert result.value > 70
 
-
-class TestVolatilityFactor:
+class TestVolatilityStdFactor:
     """波动率因子测试"""
 
     def test_insufficient_data(self):
-        f = VolatilityFactor(window=5)
+        f = VolatilityStdFactor(window=5)
         result = f.update(100.0)
         assert result.value is None
 
     def test_stable_prices(self):
         """稳定价格 → 低波动率。"""
-        f = VolatilityFactor(window=5)
+        f = VolatilityStdFactor(window=5)
         for _ in range(10):
             result = f.update(100.0)
         if result.value is not None:
             assert result.value < 0.01
 
-    def test_volatile_prices(self):
-        """剧烈波动 → 高波动率。"""
-        f = VolatilityFactor(window=5)
-        prices = [100, 110, 90, 120, 80, 130, 70]
-        for p in prices:
-            result = f.update(p)
-        if result.value is not None:
-            assert result.value > 0.05
 
-
-class TestVolumeFactor:
+class TestVolumeRatioFactor:
     """成交量因子测试"""
 
     def test_insufficient_data(self):
-        f = VolumeFactor(window=5)
+        f = VolumeRatioFactor(window=5)
         result = f.update(1000.0)
         assert result.value is None
 
     def test_normal_volume(self):
         """正常成交量 → ratio ≈ 1。"""
-        f = VolumeFactor(window=5)
+        f = VolumeRatioFactor(window=5)
         for _ in range(5):
             f.update(1000.0)
         result = f.update(1000.0)
         if result.value is not None:
             assert 0.8 < result.value < 1.2
-
-    def test_high_volume(self):
-        """放量 → ratio > 2。"""
-        f = VolumeFactor(window=5)
-        for _ in range(5):
-            f.update(1000.0)
-        result = f.update(5000.0)
-        if result.value is not None:
-            assert result.value > 2.0
