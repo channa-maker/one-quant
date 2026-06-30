@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'one-quant-api'
+    static_configs:
+      - targets: ['one-api:8000']
+  - job_name: 'one-quant-runner'
+    static_configs:
+      - targets: ['one-runner:8000']

@@ -1,0 +1,109 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: one_quant
+      POSTGRES_USER: one_quant
+      POSTGRES_PASSWORD: one_quant_dev
+    ports: ["5432:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U one_quant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: one_quant_ts
+      POSTGRES_USER: one_quant
+      POSTGRES_PASSWORD: one_quant_dev
+    ports: ["5433:5432"]
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports: ["8123:8123", "9000:9000"]
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["9000:9000", "9001:9001"]
+    volumes:
+      - minio_data:/data
+
+  # 应用服务
+  one-api:
+    build:
+      context: ../../server
+      dockerfile: ../deploy/docker/Dockerfile
+    command: uvicorn one_quant.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports: ["8000:8000"]
+    env_file: ../../server/.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    volumes:
+      - ../../server/src:/app/src
+
+  one-runner:
+    build:
+      context: ../../server
+      dockerfile: ../deploy/docker/Dockerfile
+    command: python -m one_quant.runner.main
+    env_file: ../../server/.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  one-collector:
+    build:
+      context: ../../server
+      dockerfile: ../deploy/docker/Dockerfile
+    command: python -m one_quant.data.collector_main
+    env_file: ../../server/.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  # 监控
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ["9090:9090"]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  postgres_data:
+  timescale_data:
+  redis_data:
+  clickhouse_data:
+  minio_data:
+  grafana_data:
