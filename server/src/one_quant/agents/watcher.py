@@ -80,13 +80,15 @@ class WatcherAgent(BaseAgent):
 
             change = abs(ticker.get("change_pct", 0))
             if change > self.PRICE_SPIKE_PCT:
-                alerts.append({
-                    "level": "P1",
-                    "type": "price_spike",
-                    "symbol": symbol,
-                    "message": f"{symbol} 价格突变 {change:.2f}%",
-                    "data": ticker,
-                })
+                alerts.append(
+                    {
+                        "level": "P1",
+                        "type": "price_spike",
+                        "symbol": symbol,
+                        "message": f"{symbol} 价格突变 {change:.2f}%",
+                        "data": ticker,
+                    }
+                )
 
         return alerts
 
@@ -96,13 +98,15 @@ class WatcherAgent(BaseAgent):
         for pos in positions:
             pnl_pct = pos.get("pnl_pct", 0)
             if pnl_pct < -self.LOSS_ALERT_PCT:
-                alerts.append({
-                    "level": "P1",
-                    "type": "position_loss",
-                    "symbol": pos.get("symbol", "?"),
-                    "message": f"{pos.get('symbol', '?')} 亏损 {pnl_pct:.2f}%",
-                    "data": pos,
-                })
+                alerts.append(
+                    {
+                        "level": "P1",
+                        "type": "position_loss",
+                        "symbol": pos.get("symbol", "?"),
+                        "message": f"{pos.get('symbol', '?')} 亏损 {pnl_pct:.2f}%",
+                        "data": pos,
+                    }
+                )
 
         return alerts
 
@@ -113,12 +117,14 @@ class WatcherAgent(BaseAgent):
         # 行情延迟检查
         latency = metrics.get("market_latency_ms", 0)
         if latency > 1000:
-            alerts.append({
-                "level": "P2",
-                "type": "high_latency",
-                "message": f"行情延迟 {latency:.0f}ms 超过阈值",
-                "data": {"latency_ms": latency},
-            })
+            alerts.append(
+                {
+                    "level": "P2",
+                    "type": "high_latency",
+                    "message": f"行情延迟 {latency:.0f}ms 超过阈值",
+                    "data": {"latency_ms": latency},
+                }
+            )
 
         return alerts
 

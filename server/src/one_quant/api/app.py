@@ -6,8 +6,9 @@ ONE量化 - FastAPI 应用工厂
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -112,8 +113,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # ── 初始化数据库连接池 ──
     logger.info("初始化数据库连接池...")
     try:
-        from sqlalchemy.ext.asyncio import create_async_engine
         import sqlalchemy as sa
+        from sqlalchemy.ext.asyncio import create_async_engine
 
         db_engine = create_async_engine(
             settings.database.DATABASE_URL,

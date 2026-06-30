@@ -92,9 +92,7 @@ async def get_strategy(strategy_name: str) -> dict[str, Any]:
 
 
 @router.post("/{strategy_name}/toggle")
-async def toggle_strategy(
-    strategy_name: str, req: StrategyToggleRequest
-) -> dict[str, Any]:
+async def toggle_strategy(strategy_name: str, req: StrategyToggleRequest) -> dict[str, Any]:
     """启停策略。
 
     修改策略类的 enabled 类属性。

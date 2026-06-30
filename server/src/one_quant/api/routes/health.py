@@ -55,7 +55,7 @@ def init_health_checker(
     return _health_checker
 
 
-@router.get("/health")
+@router.get("")
 async def health_check() -> dict[str, Any]:
     """K8s liveness 探针 — 快速存活检查。
 
@@ -76,7 +76,7 @@ async def health_check() -> dict[str, Any]:
     }
 
 
-@router.get("/health/ready")
+@router.get("/ready")
 async def readiness_check(request: Request) -> JSONResponse:
     """K8s readiness 探针 — 完整就绪检查。
 
@@ -109,7 +109,7 @@ async def readiness_check(request: Request) -> JSONResponse:
     )
 
 
-@router.get("/health/detail")
+@router.get("/detail")
 async def health_detail(request: Request) -> JSONResponse:
     """详细健康报告（供运维排查使用）。
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from one_quant.agents.base import BaseAgent
 from one_quant.infra.logging import get_logger
@@ -120,10 +120,8 @@ class BullAgent(BaseAgent):
         # 基于数据生成多头论点
         key_points = self._find_bull_points(context)
 
-        argument = (
-            f"【多头论证】{topic}\n\n"
-            f"核心观点: 当前具备看涨条件。\n\n"
-            f"论据:\n" + "\n".join(f"  {i+1}. {p}" for i, p in enumerate(key_points))
+        argument = f"【多头论证】{topic}\n\n核心观点: 当前具备看涨条件。\n\n论据:\n" + "\n".join(
+            f"  {i + 1}. {p}" for i, p in enumerate(key_points)
         )
 
         return {
@@ -197,10 +195,8 @@ class BearAgent(BaseAgent):
 
         key_points = self._find_bear_points(context)
 
-        argument = (
-            f"【空头论证】{topic}\n\n"
-            f"核心观点: 当前存在看跌风险。\n\n"
-            f"论据:\n" + "\n".join(f"  {i+1}. {p}" for i, p in enumerate(key_points))
+        argument = f"【空头论证】{topic}\n\n核心观点: 当前存在看跌风险。\n\n论据:\n" + "\n".join(
+            f"  {i + 1}. {p}" for i, p in enumerate(key_points)
         )
 
         return {
@@ -373,7 +369,7 @@ class JudgeAgent(BaseAgent):
         Returns:
             裁判结论和决策。
         """
-        topic = input_data.get("topic", "")
+        _topic = input_data.get("topic", "")  # noqa: F841
         bull = input_data.get("bull_result", {})
         bear = input_data.get("bear_result", {})
         risk = input_data.get("risk_result", {})
@@ -389,10 +385,7 @@ class JudgeAgent(BaseAgent):
         bear_score = len(bear_points) * bear_conf
 
         # 风控否决检查
-        has_risk_veto = any(
-            w in str(risk_points)
-            for w in ["仓位过重", "杠杆过高", "接近风控阈值"]
-        )
+        has_risk_veto = any(w in str(risk_points) for w in ["仓位过重", "杠杆过高", "接近风控阈值"])
 
         # 决策
         if has_risk_veto:
@@ -400,10 +393,14 @@ class JudgeAgent(BaseAgent):
             verdict = "风控提示存在显著风险，建议观望"
         elif bull_score > bear_score * 1.5:
             decision = "buy"
-            verdict = f"多方论据更充分 (多头{len(bull_points)}条 vs 空头{len(bear_points)}条)，看涨倾向"
+            verdict = (
+                f"多方论据更充分 (多头{len(bull_points)}条 vs 空头{len(bear_points)}条)，看涨倾向"
+            )
         elif bear_score > bull_score * 1.5:
             decision = "sell"
-            verdict = f"空方论据更充分 (空头{len(bear_points)}条 vs 多头{len(bull_points)}条)，看跌倾向"
+            verdict = (
+                f"空方论据更充分 (空头{len(bear_points)}条 vs 多头{len(bull_points)}条)，看跌倾向"
+            )
         else:
             decision = "hold"
             verdict = "多空力量均衡，建议观望等待明确信号"
@@ -500,13 +497,15 @@ class DebateGroup:
         arguments: list[DebateArgument] = []
         for result in [bull_result, bear_result, risk_result]:
             if result.get("success"):
-                arguments.append(DebateArgument(
-                    role=result.get("role", ""),
-                    role_zh=result.get("role_zh", ""),
-                    argument=result.get("argument", ""),
-                    confidence=result.get("confidence", 0),
-                    key_points=result.get("key_points", []),
-                ))
+                arguments.append(
+                    DebateArgument(
+                        role=result.get("role", ""),
+                        role_zh=result.get("role_zh", ""),
+                        argument=result.get("argument", ""),
+                        confidence=result.get("confidence", 0),
+                        key_points=result.get("key_points", []),
+                    )
+                )
 
         decision = judge_result.get("decision", "hold")
         verdict = judge_result.get("verdict", "无法得出结论")
@@ -546,7 +545,7 @@ class DebateGroup:
         result = await self.debate(topic, context)
 
         # 生成中文报告
-        lines: list[str] = [f"## 🎯 多空辩论报告\n"]
+        lines: list[str] = ["## 🎯 多空辩论报告\n"]
         lines.append(f"**辩题**: {topic}\n")
 
         # 各方论点

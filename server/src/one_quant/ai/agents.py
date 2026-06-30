@@ -32,6 +32,7 @@ class BaseAgent:
 
 class BriefingAgent(BaseAgent):
     """简报官 — 每日市场综述"""
+
     name = "briefing"
     role_zh = "简报官"
     system_prompt = "你是量化交易系统的简报官。用中文简洁总结市场行情、关键事件和今日关注点。"
@@ -39,6 +40,7 @@ class BriefingAgent(BaseAgent):
 
 class SentinelAgent(BaseAgent):
     """哨兵 — 实时异常监控"""
+
     name = "sentinel"
     role_zh = "哨兵"
     system_prompt = "你是市场哨兵，负责检测异常行情、大额成交、价格跳变等。发现异常立即用中文告警。"
@@ -46,6 +48,7 @@ class SentinelAgent(BaseAgent):
 
 class TriageAgent(BaseAgent):
     """分诊员 — 信号初筛"""
+
     name = "triage"
     role_zh = "分诊员"
     system_prompt = "你是信号分诊员，快速评估交易信号的有效性。用中文给出评级(强/中/弱)和简要理由。"
@@ -53,29 +56,40 @@ class TriageAgent(BaseAgent):
 
 class InterpreterAgent(BaseAgent):
     """解读员 — 行情深度解读"""
+
     name = "interpreter"
     role_zh = "解读员"
-    system_prompt = "你是行情解读员，深入分析市场走势背后的原因（资金流、情绪、宏观等），用中文撰写分析。"
+    system_prompt = (
+        "你是行情解读员，深入分析市场走势背后的原因（资金流、情绪、宏观等），用中文撰写分析。"
+    )
 
 
 class SentimentAgent(BaseAgent):
     """情绪分析师 — 新闻/社交媒体情绪"""
+
     name = "sentiment"
     role_zh = "情绪分析师"
-    system_prompt = "你是情绪分析师，分析新闻和社交媒体对市场的情绪影响。输出情绪分数(-1到1)和中文解读。"
+    system_prompt = (
+        "你是情绪分析师，分析新闻和社交媒体对市场的情绪影响。输出情绪分数(-1到1)和中文解读。"
+    )
 
 
 class MacroAgent(BaseAgent):
     """宏观分析师 — 宏观经济因素"""
+
     name = "macro"
     role_zh = "宏观分析师"
-    system_prompt = "你是宏观分析师，分析利率、通胀、政策等宏观因素对市场的影响，用中文撰写宏观研判。"
+    system_prompt = (
+        "你是宏观分析师，分析利率、通胀、政策等宏观因素对市场的影响，用中文撰写宏观研判。"
+    )
 
 
 class DebateGroup:
     """多空辩论组 — 多个智能体从多/空角度辩论"""
 
-    def __init__(self, bull_agent: BaseAgent, bear_agent: BaseAgent, judge_agent: BaseAgent) -> None:
+    def __init__(
+        self, bull_agent: BaseAgent, bear_agent: BaseAgent, judge_agent: BaseAgent
+    ) -> None:
         self._bull = bull_agent
         self._bear = bear_agent
         self._judge = judge_agent
@@ -93,8 +107,8 @@ class DebateGroup:
         bear_resp = await self._bear.run(f"从空头角度论证: {topic}")
 
         judge_prompt = f"""多空辩论：
-多方论点: {bull_resp.content if bull_resp else '无'}
-空方论点: {bear_resp.content if bear_resp else '无'}
+多方论点: {bull_resp.content if bull_resp else "无"}
+空方论点: {bear_resp.content if bear_resp else "无"}
 
 请作为裁判，综合评估并给出结论（中文）。"""
         judge_resp = await self._judge.run(judge_prompt)

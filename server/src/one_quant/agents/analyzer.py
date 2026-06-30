@@ -145,8 +145,8 @@ class AnalyzerAgent(BaseAgent):
 
 | 指标 | 数值 | 评级 |
 |------|------|------|
-| 总收益率 | {total_return:+.2%} | {'正收益' if total_return > 0 else '负收益'} |
-| 年化收益率 | {annual_return:+.2%} | {'可观' if annual_return > 0.15 else '一般' if annual_return > 0 else '亏损'} |
+| 总收益率 | {total_return:+.2%} | {"正收益" if total_return > 0 else "负收益"} |
+| 年化收益率 | {annual_return:+.2%} | {"可观" if annual_return > 0.15 else "一般" if annual_return > 0 else "亏损"} |
 | 夏普比率 | {sharpe:.2f} | {rating} |
 
 **解读**: 该策略{self._describe_sharpe(sharpe)}，{self._describe_return(total_return)}。"""
@@ -185,8 +185,8 @@ class AnalyzerAgent(BaseAgent):
 | 指标 | 数值 | 评级 |
 |------|------|------|
 | 最大回撤 | {max_dd:.2%} | {rating} |
-| 年化波动率 | {volatility:.2%} | {'低波动' if volatility < 0.15 else '中波动' if volatility < 0.25 else '高波动'} |
-| 卡玛比率 | {calmar:.2f} | {'优秀' if calmar > 3 else '良好' if calmar > 1 else '一般'} |
+| 年化波动率 | {volatility:.2%} | {"低波动" if volatility < 0.15 else "中波动" if volatility < 0.25 else "高波动"} |
+| 卡玛比率 | {calmar:.2f} | {"优秀" if calmar > 3 else "良好" if calmar > 1 else "一般"} |
 
 **解读**: {self._describe_drawdown(max_dd)}。"""
 
@@ -228,10 +228,10 @@ class AnalyzerAgent(BaseAgent):
 
 | 指标 | 数值 | 评级 |
 |------|------|------|
-| 总交易次数 | {total_trades} | {'样本充足' if total_trades >= 100 else '样本偏少'} |
+| 总交易次数 | {total_trades} | {"样本充足" if total_trades >= 100 else "样本偏少"} |
 | 胜率 | {win_rate:.2%} | {rating} |
-| 盈利因子 | {profit_factor:.2f} | {'优秀' if profit_factor >= 2 else '良好' if profit_factor >= 1.5 else '一般'} |
-| 盈亏比 | {pnl_ratio:.2f} | {'优秀' if pnl_ratio >= 2 else '良好' if pnl_ratio >= 1.5 else '一般'} |
+| 盈利因子 | {profit_factor:.2f} | {"优秀" if profit_factor >= 2 else "良好" if profit_factor >= 1.5 else "一般"} |
+| 盈亏比 | {pnl_ratio:.2f} | {"优秀" if pnl_ratio >= 2 else "良好" if pnl_ratio >= 1.5 else "一般"} |
 | 平均盈利 | {avg_win:+.2f} | — |
 | 平均亏损 | {avg_loss:+.2f} | — |
 
@@ -275,7 +275,7 @@ class AnalyzerAgent(BaseAgent):
 
 {desc}
 
-各维度评级: {' → '.join(f'{k}={v}' for k, v in evaluation.items())}"""
+各维度评级: {" → ".join(f"{k}={v}" for k, v in evaluation.items())}"""
 
         return {"section": section, "rating": desc, "grade": grade}
 

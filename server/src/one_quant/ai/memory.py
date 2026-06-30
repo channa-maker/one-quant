@@ -327,12 +327,14 @@ class InstitutionalMemory:
             score = sum(a * b for a, b in zip(query_vec, doc.embedding))
 
             if score >= min_score:
-                results.append(SearchResult(
-                    doc_id=doc.doc_id,
-                    content=doc.content,
-                    metadata=doc.metadata,
-                    score=score,
-                ))
+                results.append(
+                    SearchResult(
+                        doc_id=doc.doc_id,
+                        content=doc.content,
+                        metadata=doc.metadata,
+                        score=score,
+                    )
+                )
 
         # 排序并截取 top_k
         results.sort(key=lambda r: r.score, reverse=True)

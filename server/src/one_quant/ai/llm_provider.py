@@ -17,11 +17,11 @@ from __future__ import annotations
 import re
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import field
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -268,7 +268,11 @@ class ClaudeProvider(LLMProvider):
 
         logger.info(
             "Claude 调用完成: model=%s tokens_in=%d tokens_out=%d cost=$%s latency=%.0fms",
-            model, tokens_in, tokens_out, cost, latency,
+            model,
+            tokens_in,
+            tokens_out,
+            cost,
+            latency,
         )
 
         return LLMResponse(
@@ -297,10 +301,7 @@ class ClaudeProvider(LLMProvider):
         """估算 Claude 调用成本。"""
         model = model or self._default_model
         pricing = self.PRICING.get(model, self.PRICING[self._default_model])
-        return (
-            Decimal(input_tokens) * pricing["input"]
-            + Decimal(output_tokens) * pricing["output"]
-        )
+        return Decimal(input_tokens) * pricing["input"] + Decimal(output_tokens) * pricing["output"]
 
 
 # ──────────────────── DeepSeek Provider ────────────────────
@@ -371,7 +372,11 @@ class DeepSeekProvider(LLMProvider):
 
         logger.info(
             "DeepSeek 调用完成: model=%s tokens_in=%d tokens_out=%d cost=$%s latency=%.0fms",
-            model, tokens_in, tokens_out, cost, latency,
+            model,
+            tokens_in,
+            tokens_out,
+            cost,
+            latency,
         )
 
         return LLMResponse(
@@ -399,10 +404,7 @@ class DeepSeekProvider(LLMProvider):
         """估算 DeepSeek 调用成本。"""
         model = model or "deepseek-chat"
         pricing = self.PRICING.get(model, self.PRICING["deepseek-chat"])
-        return (
-            Decimal(input_tokens) * pricing["input"]
-            + Decimal(output_tokens) * pricing["output"]
-        )
+        return Decimal(input_tokens) * pricing["input"] + Decimal(output_tokens) * pricing["output"]
 
 
 # ──────────────────── 本地开源模型 Provider ────────────────────
@@ -417,7 +419,9 @@ class LocalProvider(LLMProvider):
     name = "local"
     supported_models = ["local-default"]
 
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "local-default") -> None:
+    def __init__(
+        self, base_url: str = "http://localhost:11434", model: str = "local-default"
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._default_model = model
 
@@ -458,7 +462,10 @@ class LocalProvider(LLMProvider):
 
         logger.info(
             "本地模型调用完成: model=%s tokens_in=%d tokens_out=%d latency=%.0fms",
-            model, tokens_in, tokens_out, latency,
+            model,
+            tokens_in,
+            tokens_out,
+            latency,
         )
 
         return LLMResponse(
@@ -651,7 +658,9 @@ class TokenMeter:
             if self._current_date:
                 logger.info(
                     "Token 计量跨日重置: %s → %s, 昨日消费: $%s",
-                    self._current_date, today, self._daily_usage,
+                    self._current_date,
+                    today,
+                    self._daily_usage,
                 )
             self._daily_usage = Decimal("0")
             self._current_date = today

@@ -10,17 +10,14 @@
 from __future__ import annotations
 
 import hashlib
-import json
-import math
 import time
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 from one_quant.strategy.backtest import BacktestEngine
-from one_quant.strategy.smc import SMCAnalyzer
 
 logger = get_logger(__name__)
 
@@ -30,38 +27,41 @@ logger = get_logger(__name__)
 
 class StrategyLifecycle(str, Enum):
     """策略生命周期阶段"""
-    DRAFT = "draft"              # 草稿 — 因子/策略刚生成
+
+    DRAFT = "draft"  # 草稿 — 因子/策略刚生成
     BACKTESTING = "backtesting"  # 回测中
-    SHADOW = "shadow"            # 影子运行（只读跟单）
-    GRAYSCALE = "grayscale"      # 灰度（小资金实盘）
-    LIVE = "live"                # 全量实盘
-    CHALLENGER = "challenger"    # 挑战者（待PK）
-    DECAYING = "decaying"        # 衰减中（待确认退役）
-    RETIRED = "retired"          # 已退役
+    SHADOW = "shadow"  # 影子运行（只读跟单）
+    GRAYSCALE = "grayscale"  # 灰度（小资金实盘）
+    LIVE = "live"  # 全量实盘
+    CHALLENGER = "challenger"  # 挑战者（待PK）
+    DECAYING = "decaying"  # 衰减中（待确认退役）
+    RETIRED = "retired"  # 已退役
 
 
 class FactorSource(str, Enum):
     """因子来源"""
-    LLM = "llm"              # LLM 生成
-    GENETIC = "genetic"      # 遗传算法
-    MANUAL = "manual"        # 人工
-    LIBRARY = "library"      # 因子库已有
+
+    LLM = "llm"  # LLM 生成
+    GENETIC = "genetic"  # 遗传算法
+    MANUAL = "manual"  # 人工
+    LIBRARY = "library"  # 因子库已有
 
 
 @dataclass
 class Strategy:
     """策略实体"""
+
     strategy_id: str
     name: str
     version: str
     lifecycle: StrategyLifecycle
-    factors: list[str] = field(default_factory=list)          # 使用的因子列表
-    params: dict[str, Any] = field(default_factory=dict)      # 策略参数
-    config: dict[str, Any] = field(default_factory=dict)      # 运行配置
-    metrics: dict[str, Any] = field(default_factory=dict)     # 实盘/回测指标
+    factors: list[str] = field(default_factory=list)  # 使用的因子列表
+    params: dict[str, Any] = field(default_factory=dict)  # 策略参数
+    config: dict[str, Any] = field(default_factory=dict)  # 运行配置
+    metrics: dict[str, Any] = field(default_factory=dict)  # 实盘/回测指标
     backtest_result: dict[str, Any] = field(default_factory=dict)
     risk_assessment: dict[str, Any] = field(default_factory=dict)
-    slot: str = ""                                             # 所属槽位
+    slot: str = ""  # 所属槽位
     created_at: int = 0
     updated_at: int = 0
 
@@ -76,13 +76,14 @@ class Strategy:
 @dataclass
 class Factor:
     """候选因子"""
+
     factor_id: str
     name: str
-    expression: str                # 因子表达式（如 "close / shift(close, 5) - 1"）
+    expression: str  # 因子表达式（如 "close / shift(close, 5) - 1"）
     source: FactorSource
-    ic: float = 0.0                # 信息系数
-    icir: float = 0.0              # IC 信息比率
-    turnover: float = 0.0          # 换手率
+    ic: float = 0.0  # 信息系数
+    icir: float = 0.0  # IC 信息比率
+    turnover: float = 0.0  # 换手率
     created_at: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -94,6 +95,7 @@ class Factor:
 @dataclass
 class BacktestResult:
     """回测结果"""
+
     strategy_id: str
     total_return: float = 0.0
     annual_return: float = 0.0
@@ -106,17 +108,17 @@ class BacktestResult:
     total_trades: int = 0
     avg_holding_period: float = 0.0
     # 样本外指标
-    oos_return: float = 0.0       # 样本外收益
-    oos_sharpe: float = 0.0       # 样本外夏普
+    oos_return: float = 0.0  # 样本外收益
+    oos_sharpe: float = 0.0  # 样本外夏普
     # 多周期稳健性
     multi_period_stable: bool = False
     period_results: dict[str, float] = field(default_factory=dict)
     # IC/ICIR 衰减
-    ic_decay_rate: float = 0.0    # IC 衰减率（越低越好）
+    ic_decay_rate: float = 0.0  # IC 衰减率（越低越好）
     # 过拟合风险
-    overfit_score: float = 0.0    # 过拟合评分 0-1（越低越好）
-    train_test_gap: float = 0.0   # 训练集/测试集差异
-    passed: bool = False          # 是否通过验证
+    overfit_score: float = 0.0  # 过拟合评分 0-1（越低越好）
+    train_test_gap: float = 0.0  # 训练集/测试集差异
+    passed: bool = False  # 是否通过验证
     reject_reasons: list[str] = field(default_factory=list)
     timestamp_ns: int = 0
 
@@ -128,6 +130,7 @@ class BacktestResult:
 @dataclass
 class ShadowResult:
     """影子运行结果"""
+
     strategy_id: str
     shadow_days: int = 0
     total_signals: int = 0
@@ -149,6 +152,7 @@ class ShadowResult:
 @dataclass
 class ChampionRecord:
     """冠军策略记录"""
+
     strategy: Strategy
     promoted_at: int = 0
     metrics_at_promotion: dict[str, Any] = field(default_factory=dict)
@@ -158,6 +162,7 @@ class ChampionRecord:
 @dataclass
 class ChallengerRecord:
     """挑战者记录"""
+
     strategy: Strategy
     submitted_at: int = 0
     comparison_results: list[dict[str, Any]] = field(default_factory=list)
@@ -166,6 +171,7 @@ class ChallengerRecord:
 @dataclass
 class ComparisonResult:
     """冠军-挑战者对比结果"""
+
     slot: str
     champion_id: str
     challenger_id: str
@@ -176,7 +182,7 @@ class ComparisonResult:
     champion_win_rate: float = 0.0
     challenger_win_rate: float = 0.0
     outperformance: float = 0.0
-    stability_score: float = 0.0    # 稳定性评分
+    stability_score: float = 0.0  # 稳定性评分
     promoted: bool = False
     reason: str = ""
     timestamp_ns: int = 0
@@ -189,13 +195,14 @@ class ComparisonResult:
 @dataclass
 class EvolutionAuditRecord:
     """进化审计记录 — 全链路追溯"""
-    event: str                       # 事件类型
+
+    event: str  # 事件类型
     strategy_id: str
-    stage: str                       # 生命周期阶段
-    data_used: dict[str, Any] = field(default_factory=dict)      # 依据什么数据
-    comparison: dict[str, Any] = field(default_factory=dict)     # 对比了什么
-    decision: str = ""               # 决策结论
-    reason: str = ""                 # 为什么
+    stage: str  # 生命周期阶段
+    data_used: dict[str, Any] = field(default_factory=dict)  # 依据什么数据
+    comparison: dict[str, Any] = field(default_factory=dict)  # 对比了什么
+    decision: str = ""  # 决策结论
+    reason: str = ""  # 为什么
     metrics_snapshot: dict[str, Any] = field(default_factory=dict)
     timestamp_ns: int = 0
 
@@ -211,11 +218,11 @@ class OverfitValidator:
     """防过拟合验证器 — 样本外 + IC/ICIR衰减 + 多周期稳健"""
 
     # 硬阈值 — AI 改不动
-    MIN_OOS_SHARPE: float = 0.5          # 样本外最低夏普
-    MAX_TRAIN_TEST_GAP: float = 0.3      # 训练/测试最大差异
-    MAX_IC_DECAY_RATE: float = 0.5       # IC 最大衰减率
+    MIN_OOS_SHARPE: float = 0.5  # 样本外最低夏普
+    MAX_TRAIN_TEST_GAP: float = 0.3  # 训练/测试最大差异
+    MAX_IC_DECAY_RATE: float = 0.5  # IC 最大衰减率
     MIN_MULTI_PERIOD_STABLE_RATIO: float = 0.6  # 多周期稳定比例
-    MAX_OVERFIT_SCORE: float = 0.7       # 最大过拟合评分
+    MAX_OVERFIT_SCORE: float = 0.7  # 最大过拟合评分
 
     def validate(self, backtest: BacktestResult, train_metrics: dict[str, Any]) -> BacktestResult:
         """综合防过拟合验证
@@ -259,13 +266,17 @@ class OverfitValidator:
         backtest.passed = len(reasons) == 0
 
         if not backtest.passed:
-            logger.warning("策略 %s 防过拟合验证未通过: %s", backtest.strategy_id, "; ".join(reasons))
+            logger.warning(
+                "策略 %s 防过拟合验证未通过: %s", backtest.strategy_id, "; ".join(reasons)
+            )
         else:
             logger.info("策略 %s 防过拟合验证通过", backtest.strategy_id)
 
         return backtest
 
-    def _compute_overfit_score(self, backtest: BacktestResult, train_metrics: dict[str, Any]) -> float:
+    def _compute_overfit_score(
+        self, backtest: BacktestResult, train_metrics: dict[str, Any]
+    ) -> float:
         """计算综合过拟合评分 (0-1, 越低越好)
 
         综合考虑：
@@ -357,7 +368,10 @@ class EvolutionAuditor:
         self._records.append(record)
         logger.info(
             "审计记录: event=%s strategy=%s stage=%s decision=%s",
-            record.event, record.strategy_id, record.stage, record.decision,
+            record.event,
+            record.strategy_id,
+            record.stage,
+            record.decision,
         )
 
     def get_trail(self, strategy_id: str) -> list[dict[str, Any]]:
@@ -418,9 +432,9 @@ class EvolutionPlatform:
             backtest_engine_cls: 回测引擎类（用于样本外/多周期回测）
             event_bus: 事件总线（用于实盘数据获取）
         """
-        self._champions: dict[str, Strategy] = {}       # 槽位→冠军策略
+        self._champions: dict[str, Strategy] = {}  # 槽位→冠军策略
         self._challengers: dict[str, list[Strategy]] = {}  # 槽位→挑战者列表
-        self._strategies: dict[str, Strategy] = {}       # 全量策略索引
+        self._strategies: dict[str, Strategy] = {}  # 全量策略索引
         self._auditor = auditor or EvolutionAuditor()
         self._overfit_validator = OverfitValidator()
         self._llm_router = llm_router
@@ -461,18 +475,21 @@ class EvolutionPlatform:
 
         # 快速 IC 筛选
         valid_factors = [
-            f for f in candidates
+            f
+            for f in candidates
             if abs(f.ic) >= 0.02  # IC 绝对值阈值
         ]
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="discover_factors",
-            strategy_id="",
-            stage="factor_discovery",
-            data_used={"market_data_keys": list((market_data or {}).keys())},
-            decision=f"发现 {len(valid_factors)}/{len(candidates)} 个有效因子",
-            reason="LLM+遗传生成，IC 筛选",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="discover_factors",
+                strategy_id="",
+                stage="factor_discovery",
+                data_used={"market_data_keys": list((market_data or {}).keys())},
+                decision=f"发现 {len(valid_factors)}/{len(candidates)} 个有效因子",
+                reason="LLM+遗传生成，IC 筛选",
+            )
+        )
 
         logger.info("因子发现: %d/%d 个因子通过初筛", len(valid_factors), len(candidates))
         return valid_factors
@@ -502,9 +519,11 @@ class EvolutionPlatform:
                 prices = market_data["prices"]
                 if len(prices) >= 2:
                     change = (prices[-1] - prices[0]) / prices[0] * 100 if prices[0] != 0 else 0
-                    context_parts.append(f"近期价格区间: {min(prices):.2f} ~ {max(prices):.2f}, 变动: {change:.1f}%")
+                    context_parts.append(
+                        f"近期价格区间: {min(prices):.2f} ~ {max(prices):.2f}, 变动: {change:.1f}%"
+                    )
             if "volume" in market_data:
-                context_parts.append(f"成交量数据可用")
+                context_parts.append("成交量数据可用")
             if "funding_rate" in market_data:
                 context_parts.append(f"资金费率: {market_data['funding_rate']}")
         context_text = "\n".join(context_parts) if context_parts else "无特定市场上下文"
@@ -513,12 +532,12 @@ class EvolutionPlatform:
             "你是一位资深量化研究员，擅长设计 alpha 因子。"
             "请基于给定的市场数据特征，提出 3-5 个候选因子假设。\n"
             "每个因子输出格式为 JSON 数组，每个元素包含：\n"
-            '- name: 因子名称（英文，snake_case）\n'
-            '- expression: 因子数学表达式（使用 close/open/high/low/volume/returns 等变量）\n'
-            '- description: 中文描述（一句话说明因子逻辑）\n'
+            "- name: 因子名称（英文，snake_case）\n"
+            "- expression: 因子数学表达式（使用 close/open/high/low/volume/returns 等变量）\n"
+            "- description: 中文描述（一句话说明因子逻辑）\n"
             '- expected_direction: 预期方向（"positive" 或 "negative"）\n'
             '示例表达式: "close / shift(close, 5) - 1", "(high - low) / close", "volume / mean(volume, 20)"\n'
-            '只输出 JSON 数组，不要其他内容。'
+            "只输出 JSON 数组，不要其他内容。"
         )
 
         user_text = f"当前市场数据特征:\n{context_text}\n\n请提出候选因子。"
@@ -526,6 +545,7 @@ class EvolutionPlatform:
         factors: list[Factor] = []
         try:
             from one_quant.ai.llm_provider import sanitize_user_text, wrap_user_content
+
             safe_text = sanitize_user_text(user_text)
             wrapped = wrap_user_content(safe_text)
             messages = [
@@ -541,6 +561,7 @@ class EvolutionPlatform:
 
             # 解析 LLM 返回的 JSON 因子列表
             import json as _json
+
             content = response.content.strip()
             # 尝试提取 JSON 部分（兼容 markdown 代码块）
             if "```" in content:
@@ -563,13 +584,18 @@ class EvolutionPlatform:
                 if not name or not expr:
                     continue
                 factor_id = self._make_id("llm_factor", f"{name}_{expr}")
-                factors.append(Factor(
-                    factor_id=factor_id,
-                    name=name,
-                    expression=expr,
-                    source=FactorSource.LLM,
-                    metadata={"description": desc, "expected_direction": fd.get("expected_direction", "")},
-                ))
+                factors.append(
+                    Factor(
+                        factor_id=factor_id,
+                        name=name,
+                        expression=expr,
+                        source=FactorSource.LLM,
+                        metadata={
+                            "description": desc,
+                            "expected_direction": fd.get("expected_direction", ""),
+                        },
+                    )
+                )
             logger.info("LLM 生成 %d 个候选因子", len(factors))
 
         except Exception:
@@ -609,19 +635,35 @@ class EvolutionPlatform:
         # 预定义的参数变异模板
         mutation_templates = [
             # RSI 周期变异
-            {"base": "momentum_rsi", "param_range": [6, 8, 10, 14, 18, 21, 28], "expr_fmt": "rsi(close, {p})"},
+            {
+                "base": "momentum_rsi",
+                "param_range": [6, 8, 10, 14, 18, 21, 28],
+                "expr_fmt": "rsi(close, {p})",
+            },
             # EMA 快慢线组合
-            {"base": "trend_ema_cross", "param_range": [(5, 20), (8, 21), (10, 30), (12, 26), (20, 50)],
-             "expr_fmt": "ema(close, {p0}) / ema(close, {p1}) - 1"},
+            {
+                "base": "trend_ema_cross",
+                "param_range": [(5, 20), (8, 21), (10, 30), (12, 26), (20, 50)],
+                "expr_fmt": "ema(close, {p0}) / ema(close, {p1}) - 1",
+            },
             # 布林带宽度
-            {"base": "volatility_bb", "param_range": [(14, 1.5), (20, 2.0), (20, 2.5), (30, 2.0)],
-             "expr_fmt": "(upper_bb(close, {p0}, {p1}) - lower_bb(close, {p0}, {p1})) / close"},
+            {
+                "base": "volatility_bb",
+                "param_range": [(14, 1.5), (20, 2.0), (20, 2.5), (30, 2.0)],
+                "expr_fmt": "(upper_bb(close, {p0}, {p1}) - lower_bb(close, {p0}, {p1})) / close",
+            },
             # 动量组合
-            {"base": "momentum_roc", "param_range": [3, 5, 10, 15, 20],
-             "expr_fmt": "close / shift(close, {p}) - 1"},
+            {
+                "base": "momentum_roc",
+                "param_range": [3, 5, 10, 15, 20],
+                "expr_fmt": "close / shift(close, {p}) - 1",
+            },
             # 波动率
-            {"base": "volatility_atr", "param_range": [7, 14, 21, 28],
-             "expr_fmt": "atr(high, low, close, {p}) / close"},
+            {
+                "base": "volatility_atr",
+                "param_range": [7, 14, 21, 28],
+                "expr_fmt": "atr(high, low, close, {p}) / close",
+            },
         ]
 
         # 变异操作
@@ -649,13 +691,17 @@ class EvolutionPlatform:
                 name = f"cross_{f1}_{f2}_{random.randint(100, 999)}"
 
             factor_id = self._make_id("genetic_factor", f"{name}_{expr}")
-            factors.append(Factor(
-                factor_id=factor_id,
-                name=name,
-                expression=expr,
-                source=FactorSource.GENETIC,
-                metadata={"mutation_type": "param_tweak" if "cross" not in name else "crossover"},
-            ))
+            factors.append(
+                Factor(
+                    factor_id=factor_id,
+                    name=name,
+                    expression=expr,
+                    source=FactorSource.GENETIC,
+                    metadata={
+                        "mutation_type": "param_tweak" if "cross" not in name else "crossover"
+                    },
+                )
+            )
 
         logger.info("遗传变异生成 %d 个候选因子", len(factors))
         return factors
@@ -690,14 +736,16 @@ class EvolutionPlatform:
 
         self._strategies[strategy_id] = strategy
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="generate_strategy",
-            strategy_id=strategy_id,
-            stage="draft",
-            data_used={"factors": factor_names, "params": params or {}},
-            decision="策略生成完成",
-            reason=f"基于 {len(factor_names)} 个因子组合",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="generate_strategy",
+                strategy_id=strategy_id,
+                stage="draft",
+                data_used={"factors": factor_names, "params": params or {}},
+                decision="策略生成完成",
+                reason=f"基于 {len(factor_names)} 个因子组合",
+            )
+        )
 
         logger.info("策略生成: %s (因子: %s)", strategy_id, factor_names)
         return strategy
@@ -760,9 +808,7 @@ class EvolutionPlatform:
         # 多周期稳健性：在 1h/4h/1d 三个周期分别回测，取夏普均值
         period_results = await self._run_multi_period_backtest(strategy, data)
         backtest.period_results = period_results
-        backtest.multi_period_stable, _ = self._overfit_validator.check_multi_period(
-            period_results
-        )
+        backtest.multi_period_stable, _ = self._overfit_validator.check_multi_period(period_results)
 
         # IC 衰减：计算最近 N 期的 IC 均值 vs 历史均值
         ic_series = self._compute_ic_series(strategy, data)
@@ -781,24 +827,28 @@ class EvolutionPlatform:
             "passed": backtest.passed,
         }
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="backtest_validate",
-            strategy_id=strategy.strategy_id,
-            stage="backtesting",
-            data_used={
-                "total_data_points": len(data),
-                "train_points": len(train_data),
-                "test_points": len(test_data),
-            },
-            comparison={
-                "train_sharpe": (train_metrics or {}).get("sharpe_ratio", "N/A"),
-                "oos_sharpe": backtest.oos_sharpe,
-                "overfit_score": backtest.overfit_score,
-            },
-            decision="通过" if backtest.passed else "未通过",
-            reason="; ".join(backtest.reject_reasons) if backtest.reject_reasons else "全部检验通过",
-            metrics_snapshot=strategy.backtest_result,
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="backtest_validate",
+                strategy_id=strategy.strategy_id,
+                stage="backtesting",
+                data_used={
+                    "total_data_points": len(data),
+                    "train_points": len(train_data),
+                    "test_points": len(test_data),
+                },
+                comparison={
+                    "train_sharpe": (train_metrics or {}).get("sharpe_ratio", "N/A"),
+                    "oos_sharpe": backtest.oos_sharpe,
+                    "overfit_score": backtest.overfit_score,
+                },
+                decision="通过" if backtest.passed else "未通过",
+                reason="; ".join(backtest.reject_reasons)
+                if backtest.reject_reasons
+                else "全部检验通过",
+                metrics_snapshot=strategy.backtest_result,
+            )
+        )
 
         return backtest
 
@@ -843,16 +893,20 @@ class EvolutionPlatform:
         assessment["passed"] = len(assessment["reject_reasons"]) == 0
         strategy.risk_assessment = assessment
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="risk_assess",
-            strategy_id=strategy.strategy_id,
-            stage="risk_assessment",
-            data_used={"existing_champions": list(self._champions.keys())},
-            comparison=assessment["correlation_with_live"],
-            decision="通过" if assessment["passed"] else "未通过",
-            reason="; ".join(assessment["reject_reasons"]) if assessment["reject_reasons"] else "风险可控",
-            metrics_snapshot={"risk_level": assessment["overall_risk_level"]},
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="risk_assess",
+                strategy_id=strategy.strategy_id,
+                stage="risk_assessment",
+                data_used={"existing_champions": list(self._champions.keys())},
+                comparison=assessment["correlation_with_live"],
+                decision="通过" if assessment["passed"] else "未通过",
+                reason="; ".join(assessment["reject_reasons"])
+                if assessment["reject_reasons"]
+                else "风险可控",
+                metrics_snapshot={"risk_level": assessment["overall_risk_level"]},
+            )
+        )
 
         return assessment
 
@@ -874,7 +928,7 @@ class EvolutionPlatform:
         strategy.lifecycle = StrategyLifecycle.SHADOW
 
         # 影子运行：用历史数据模拟策略预测，统计准确率和收益
-        shadow_signals: list[dict[str, Any]] = []
+        _shadow_signals: list[dict[str, Any]] = []  # noqa: F841
         correct_count = 0
         total_count = 0
         simulated_pnl = 0.0
@@ -888,7 +942,7 @@ class EvolutionPlatform:
                 # 基于当前数据预测方向
                 if i < 5:
                     continue
-                window = prices[max(0, i - 20):i + 1]
+                window = prices[max(0, i - 20) : i + 1]
                 predicted_direction = 1 if window[-1] > sum(window) / len(window) else -1
 
                 # 实际方向
@@ -923,24 +977,23 @@ class EvolutionPlatform:
         )
 
         # 通过标准：信号准确率 > 55% 且 模拟收益 > 冠军收益
-        result.passed = (
-            result.signal_accuracy > 0.55
-            and result.outperformance > 0
-        )
+        result.passed = result.signal_accuracy > 0.55 and result.outperformance > 0
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="shadow_run",
-            strategy_id=strategy.strategy_id,
-            stage="shadow",
-            data_used={"shadow_days": days},
-            comparison={
-                "signal_accuracy": result.signal_accuracy,
-                "simulated_return": result.simulated_return,
-                "champion_return": result.champion_return,
-            },
-            decision="通过" if result.passed else "未通过",
-            reason=f"信号准确率 {result.signal_accuracy:.1%}, 超额 {result.outperformance:.2%}",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="shadow_run",
+                strategy_id=strategy.strategy_id,
+                stage="shadow",
+                data_used={"shadow_days": days},
+                comparison={
+                    "signal_accuracy": result.signal_accuracy,
+                    "simulated_return": result.simulated_return,
+                    "champion_return": result.champion_return,
+                },
+                decision="通过" if result.passed else "未通过",
+                reason=f"信号准确率 {result.signal_accuracy:.1%}, 超额 {result.outperformance:.2%}",
+            )
+        )
 
         return result
 
@@ -958,14 +1011,16 @@ class EvolutionPlatform:
         strategy.lifecycle = StrategyLifecycle.GRAYSCALE
         strategy.config["grayscale_pct"] = capital_pct
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="grayscale_deploy",
-            strategy_id=strategy.strategy_id,
-            stage="grayscale",
-            data_used={"capital_pct": capital_pct},
-            decision="灰度上线",
-            reason=f"分配 {capital_pct:.0%} 资金进行灰度验证",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="grayscale_deploy",
+                strategy_id=strategy.strategy_id,
+                stage="grayscale",
+                data_used={"capital_pct": capital_pct},
+                decision="灰度上线",
+                reason=f"分配 {capital_pct:.0%} 资金进行灰度验证",
+            )
+        )
 
         logger.info("策略 %s 灰度上线: %d%% 资金", strategy.strategy_id, int(capital_pct * 100))
 
@@ -986,14 +1041,16 @@ class EvolutionPlatform:
 
         self._strategies[strategy.strategy_id] = strategy
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="full_deploy",
-            strategy_id=strategy.strategy_id,
-            stage="live",
-            data_used={"slot": slot},
-            decision="全量上线",
-            reason=f"部署到槽位 {slot}",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="full_deploy",
+                strategy_id=strategy.strategy_id,
+                stage="live",
+                data_used={"slot": slot},
+                decision="全量上线",
+                reason=f"部署到槽位 {slot}",
+            )
+        )
 
         logger.info("策略 %s 全量上线: 槽位 %s", strategy.strategy_id, slot)
 
@@ -1038,9 +1095,9 @@ class EvolutionPlatform:
         # 计算与回测的偏差
         bt_sharpe = float(strategy.backtest_result.get("sharpe_ratio", 0))
         if bt_sharpe > 0:
-            live_metrics["deviation_from_backtest"] = abs(
-                live_metrics["live_sharpe"] - bt_sharpe
-            ) / bt_sharpe
+            live_metrics["deviation_from_backtest"] = (
+                abs(live_metrics["live_sharpe"] - bt_sharpe) / bt_sharpe
+            )
 
         strategy.metrics = live_metrics
         return live_metrics
@@ -1083,19 +1140,21 @@ class EvolutionPlatform:
 
         if decay_detected:
             strategy.lifecycle = StrategyLifecycle.DECAYING
-            self._auditor.record(EvolutionAuditRecord(
-                event="detect_decay",
-                strategy_id=strategy.strategy_id,
-                stage="decaying",
-                comparison={
-                    "bt_sharpe": bt_sharpe,
-                    "live_sharpe": live_sharpe,
-                    "bt_max_dd": bt_max_dd,
-                    "live_max_dd": live_max_dd,
-                },
-                decision="检测到衰减",
-                reason="; ".join(reasons),
-            ))
+            self._auditor.record(
+                EvolutionAuditRecord(
+                    event="detect_decay",
+                    strategy_id=strategy.strategy_id,
+                    stage="decaying",
+                    comparison={
+                        "bt_sharpe": bt_sharpe,
+                        "live_sharpe": live_sharpe,
+                        "bt_max_dd": bt_max_dd,
+                        "live_max_dd": live_max_dd,
+                    },
+                    decision="检测到衰减",
+                    reason="; ".join(reasons),
+                )
+            )
             logger.warning("策略 %s 衰减检测: %s", strategy.strategy_id, "; ".join(reasons))
 
         return decay_detected
@@ -1116,15 +1175,17 @@ class EvolutionPlatform:
         strategy.lifecycle = StrategyLifecycle.RETIRED
         strategy.updated_at = time.time_ns()
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="retire_strategy",
-            strategy_id=strategy.strategy_id,
-            stage="retired",
-            data_used={"final_metrics": strategy.metrics},
-            decision="退役",
-            reason=reason or "手动退役",
-            metrics_snapshot=strategy.metrics,
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="retire_strategy",
+                strategy_id=strategy.strategy_id,
+                stage="retired",
+                data_used={"final_metrics": strategy.metrics},
+                decision="退役",
+                reason=reason or "手动退役",
+                metrics_snapshot=strategy.metrics,
+            )
+        )
 
         logger.info("策略 %s 已退役: %s", strategy.strategy_id, reason)
 
@@ -1235,14 +1296,22 @@ class EvolutionPlatform:
 
         for i in range(window_size, len(prices) - window_size):
             # 简化 IC 计算：用动量因子与未来收益的秩相关
-            window = prices[i - window_size:i]
+            window = prices[i - window_size : i]
             momentum = (prices[i] - window[0]) / window[0] if window[0] != 0 else 0
 
-            future_window = prices[i:i + window_size]
+            future_window = prices[i : i + window_size]
             if len(future_window) >= 2:
-                future_return = (future_window[-1] - future_window[0]) / future_window[0] if future_window[0] != 0 else 0
+                future_return = (
+                    (future_window[-1] - future_window[0]) / future_window[0]
+                    if future_window[0] != 0
+                    else 0
+                )
                 # 简化：用符号一致性作为 IC 近似
-                ic = 1.0 if (momentum > 0 and future_return > 0) or (momentum < 0 and future_return < 0) else -1.0
+                ic = (
+                    1.0
+                    if (momentum > 0 and future_return > 0) or (momentum < 0 and future_return < 0)
+                    else -1.0
+                )
                 ic_series.append(ic * abs(momentum))
 
         return ic_series
@@ -1288,9 +1357,7 @@ class EvolutionPlatform:
         correlation = cov / (std_a * std_b)
         return max(-1.0, min(1.0, correlation))
 
-    async def _fetch_shadow_data(
-        self, strategy: Strategy, days: int
-    ) -> list[dict[str, Any]]:
+    async def _fetch_shadow_data(self, strategy: Strategy, days: int) -> list[dict[str, Any]]:
         """获取影子运行所需的近期市场数据
 
         Args:
@@ -1379,7 +1446,7 @@ class EvolutionPlatform:
             return 0.0
 
         # 年化夏普（假设日频数据）
-        return (mean_ret / std_ret) * (252 ** 0.5)
+        return (mean_ret / std_ret) * (252**0.5)
 
 
 # ──────────────────────────── 冠军-挑战者机制 ────────────────────────────
@@ -1396,11 +1463,11 @@ class ChampionChallenger:
     """
 
     # 硬阈值 — AI 改不动
-    MIN_SHADOW_DAYS: int = 14           # 最少影子运行天数
-    MIN_TRADES: int = 50                # 最少交易次数
+    MIN_SHADOW_DAYS: int = 14  # 最少影子运行天数
+    MIN_TRADES: int = 50  # 最少交易次数
     OUTPERFORMANCE_THRESHOLD: float = 0.1  # 超额收益阈值（10%）
-    SHARPE_IMPROVEMENT: float = 0.2     # 夏普提升阈值
-    MAX_DD_IMPROVEMENT: float = 0.05    # 最大回撤改善阈值
+    SHARPE_IMPROVEMENT: float = 0.2  # 夏普提升阈值
+    MAX_DD_IMPROVEMENT: float = 0.05  # 最大回撤改善阈值
 
     def __init__(self, auditor: EvolutionAuditor | None = None) -> None:
         self._champions: dict[str, ChampionRecord] = {}
@@ -1427,14 +1494,16 @@ class ChampionChallenger:
             metrics_at_promotion=dict(strategy.metrics),
         )
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="register_champion",
-            strategy_id=strategy.strategy_id,
-            stage="live",
-            data_used={"slot": slot},
-            decision="注册冠军",
-            reason=f"成为槽位 {slot} 的冠军策略",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="register_champion",
+                strategy_id=strategy.strategy_id,
+                stage="live",
+                data_used={"slot": slot},
+                decision="注册冠军",
+                reason=f"成为槽位 {slot} 的冠军策略",
+            )
+        )
 
         logger.info("冠军注册: 槽位=%s 策略=%s", slot, strategy.strategy_id)
 
@@ -1451,23 +1520,29 @@ class ChampionChallenger:
         if slot not in self._challengers:
             self._challengers[slot] = []
 
-        self._challengers[slot].append(ChallengerRecord(
-            strategy=strategy,
-            submitted_at=time.time_ns(),
-        ))
+        self._challengers[slot].append(
+            ChallengerRecord(
+                strategy=strategy,
+                submitted_at=time.time_ns(),
+            )
+        )
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="register_challenger",
-            strategy_id=strategy.strategy_id,
-            stage="challenger",
-            data_used={"slot": slot},
-            decision="注册挑战者",
-            reason=f"挑战槽位 {slot} 的冠军",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="register_challenger",
+                strategy_id=strategy.strategy_id,
+                stage="challenger",
+                data_used={"slot": slot},
+                decision="注册挑战者",
+                reason=f"挑战槽位 {slot} 的冠军",
+            )
+        )
 
         logger.info("挑战者注册: 槽位=%s 策略=%s", slot, strategy.strategy_id)
 
-    async def run_comparison(self, slot: str, market_data: list[dict[str, Any]]) -> list[ComparisonResult]:
+    async def run_comparison(
+        self, slot: str, market_data: list[dict[str, Any]]
+    ) -> list[ComparisonResult]:
         """影子运行 PK
 
         对比维度：
@@ -1509,10 +1584,14 @@ class ChampionChallenger:
 
             # 计算超额
             if comp.champion_sharpe > 0:
-                comp.outperformance = (comp.challenger_sharpe - comp.champion_sharpe) / comp.champion_sharpe
+                comp.outperformance = (
+                    comp.challenger_sharpe - comp.champion_sharpe
+                ) / comp.champion_sharpe
 
             # 晋升判定（三维标准）
-            sharpe_pass = comp.challenger_sharpe >= comp.champion_sharpe * (1 + self.SHARPE_IMPROVEMENT)
+            sharpe_pass = comp.challenger_sharpe >= comp.champion_sharpe * (
+                1 + self.SHARPE_IMPROVEMENT
+            )
             dd_pass = comp.challenger_max_dd <= comp.champion_max_dd + self.MAX_DD_IMPROVEMENT
             return_pass = comp.outperformance >= self.OUTPERFORMANCE_THRESHOLD
 
@@ -1535,31 +1614,35 @@ class ChampionChallenger:
                     failed.append("超额收益不足")
                 comp.reason = f"未通过: {', '.join(failed)}"
 
-            ch_record.comparison_results.append({
-                "promoted": comp.promoted,
-                "outperformance": comp.outperformance,
-                "stability_score": comp.stability_score,
-                "timestamp_ns": time.time_ns(),
-            })
+            ch_record.comparison_results.append(
+                {
+                    "promoted": comp.promoted,
+                    "outperformance": comp.outperformance,
+                    "stability_score": comp.stability_score,
+                    "timestamp_ns": time.time_ns(),
+                }
+            )
 
             results.append(comp)
 
-            self._auditor.record(EvolutionAuditRecord(
-                event="run_comparison",
-                strategy_id=challenger.strategy_id,
-                stage="challenger",
-                data_used={"market_data_points": len(market_data)},
-                comparison={
-                    "champion_sharpe": comp.champion_sharpe,
-                    "challenger_sharpe": comp.challenger_sharpe,
-                    "champion_max_dd": comp.champion_max_dd,
-                    "challenger_max_dd": comp.challenger_max_dd,
-                    "outperformance": comp.outperformance,
-                    "stability_score": comp.stability_score,
-                },
-                decision="晋升" if comp.promoted else "保留冠军",
-                reason=comp.reason,
-            ))
+            self._auditor.record(
+                EvolutionAuditRecord(
+                    event="run_comparison",
+                    strategy_id=challenger.strategy_id,
+                    stage="challenger",
+                    data_used={"market_data_points": len(market_data)},
+                    comparison={
+                        "champion_sharpe": comp.champion_sharpe,
+                        "challenger_sharpe": comp.challenger_sharpe,
+                        "champion_max_dd": comp.champion_max_dd,
+                        "challenger_max_dd": comp.challenger_max_dd,
+                        "outperformance": comp.outperformance,
+                        "stability_score": comp.stability_score,
+                    },
+                    decision="晋升" if comp.promoted else "保留冠军",
+                    reason=comp.reason,
+                )
+            )
 
         # 自动晋升最优挑战者
         promoted = [r for r in results if r.promoted]
@@ -1608,17 +1691,19 @@ class ChampionChallenger:
             ch for ch in challengers if ch.strategy.strategy_id != challenger_id
         ]
 
-        self._auditor.record(EvolutionAuditRecord(
-            event="promote_challenger",
-            strategy_id=challenger_id,
-            stage="live",
-            data_used={
-                "slot": slot,
-                "old_champion": old_champion.strategy.strategy_id if old_champion else "none",
-            },
-            decision="晋升成功",
-            reason=f"挑战者 {challenger_id} 晋升为槽位 {slot} 新冠军",
-        ))
+        self._auditor.record(
+            EvolutionAuditRecord(
+                event="promote_challenger",
+                strategy_id=challenger_id,
+                stage="live",
+                data_used={
+                    "slot": slot,
+                    "old_champion": old_champion.strategy.strategy_id if old_champion else "none",
+                },
+                decision="晋升成功",
+                reason=f"挑战者 {challenger_id} 晋升为槽位 {slot} 新冠军",
+            )
+        )
 
         logger.info(
             "挑战者晋升: 槽位=%s 旧冠军=%s 新冠军=%s",
@@ -1641,12 +1726,14 @@ class ChampionChallenger:
         # 当前冠军
         champion = self._champions.get(slot)
         if champion:
-            records.append({
-                "event": "current_champion",
-                "strategy_id": champion.strategy.strategy_id,
-                "promoted_at": champion.promoted_at,
-                "metrics_at_promotion": champion.metrics_at_promotion,
-            })
+            records.append(
+                {
+                    "event": "current_champion",
+                    "strategy_id": champion.strategy.strategy_id,
+                    "promoted_at": champion.promoted_at,
+                    "metrics_at_promotion": champion.metrics_at_promotion,
+                }
+            )
 
         # 历史审计
         all_audits = self._auditor.get_all()
@@ -1740,7 +1827,12 @@ class AutoRetrainer:
                 else:
                     # 样本外验证
                     oos_score = getattr(train_result, "ic", 0.0)
-                    logger.info("再训练完成: %s, IC=%.4f, AUC=%.4f", symbol, oos_score, getattr(train_result, "auc", 0))
+                    logger.info(
+                        "再训练完成: %s, IC=%.4f, AUC=%.4f",
+                        symbol,
+                        oos_score,
+                        getattr(train_result, "auc", 0),
+                    )
                     record = {
                         "symbol": symbol,
                         "action": "daily_retrain",
@@ -1754,12 +1846,14 @@ class AutoRetrainer:
 
             except Exception:
                 logger.exception("再训练失败: %s", symbol)
-                self._retrain_history.append({
-                    "symbol": symbol,
-                    "action": "daily_retrain",
-                    "timestamp_ns": time.time_ns(),
-                    "status": "failed",
-                })
+                self._retrain_history.append(
+                    {
+                        "symbol": symbol,
+                        "action": "daily_retrain",
+                        "timestamp_ns": time.time_ns(),
+                        "status": "failed",
+                    }
+                )
 
     async def check_concept_drift(self, model_name: str) -> bool:
         """概念漂移检测
@@ -1787,8 +1881,12 @@ class AutoRetrainer:
             drifted = self._drift_detector.detect_page_hinkley(recent_errors)
 
         if drifted:
-            logger.warning("概念漂移检测: model=%s, recent_n=%d, baseline_n=%d",
-                           model_name, len(recent_errors), len(baseline_errors))
+            logger.warning(
+                "概念漂移检测: model=%s, recent_n=%d, baseline_n=%d",
+                model_name,
+                len(recent_errors),
+                len(baseline_errors),
+            )
             # 自动触发再训练
             await self.daily_retrain([model_name])
 
@@ -1840,7 +1938,9 @@ class AutoRetrainer:
 
         return recent_errors, baseline_errors
 
-    async def grayscale_model(self, new_model: Any, current_model: Any, traffic_pct: float = 0.1) -> bool:
+    async def grayscale_model(
+        self, new_model: Any, current_model: Any, traffic_pct: float = 0.1
+    ) -> bool:
         """模型版本灰度 — A/B 测试
 
         随机分配 traffic_pct 比例流量到新模型，
@@ -1907,7 +2007,10 @@ class AutoRetrainer:
 
         logger.info(
             "A/B 测试结果: 当前模型=%.4f, 新模型=%.4f, 提升=%.2f%%, 通过=%s",
-            mean_a, mean_b, improvement * 100, passed,
+            mean_a,
+            mean_b,
+            improvement * 100,
+            passed,
         )
 
         return passed
@@ -1918,7 +2021,7 @@ class AutoRetrainer:
         Args:
             model_name: 模型名称
         """
-        versions = self._model_versions.get(model_name, [])
+        _versions = self._model_versions.get(model_name, [])  # noqa: F841
         active_idx = self._active_versions.get(model_name, 0)
 
         if active_idx > 0:
@@ -1976,12 +2079,17 @@ class DriftDetector:
         if detected:
             logger.warning(
                 "漂移检测: drift=%.4f (阈值=%.4f), recent_mean=%.4f, baseline_mean=%.4f",
-                drift, self._threshold, recent_mean, baseline_mean,
+                drift,
+                self._threshold,
+                recent_mean,
+                baseline_mean,
             )
 
         return detected
 
-    def detect_page_hinkley(self, series: list[float], delta: float = 0.005, threshold: float = 50.0) -> bool:
+    def detect_page_hinkley(
+        self, series: list[float], delta: float = 0.005, threshold: float = 50.0
+    ) -> bool:
         """Page-Hinkley 检验
 
         适用于连续监控场景，对均值偏移敏感。

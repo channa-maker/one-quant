@@ -116,7 +116,7 @@ class SettlementEngine:
                 fill.quantity,
                 fill.price,
                 fill.fee,
-                fill.fill_currency if hasattr(fill, 'fill_currency') else fill.fee_currency,
+                fill.fill_currency if hasattr(fill, "fill_currency") else fill.fee_currency,
             )
 
             return fee_entry
@@ -175,9 +175,7 @@ class SettlementEngine:
         if not fill.order_id:
             raise InvalidFillError("订单ID不能为空")
 
-    async def _publish_settlement_event(
-        self, fill: Fill, fee_entry: LedgerEntry | None
-    ) -> None:
+    async def _publish_settlement_event(self, fill: Fill, fee_entry: LedgerEntry | None) -> None:
         """发布结算事件到 EventBus。
 
         Args:
@@ -251,7 +249,7 @@ class SettlementMonitor:
         """
         self._settlement_times.append(duration_ns)
         if len(self._settlement_times) > self._max_history:
-            self._settlement_times = self._settlement_times[-self._max_history:]
+            self._settlement_times = self._settlement_times[-self._max_history :]
 
     def record_error(self, fill: Fill, error: Exception) -> None:
         """记录结算错误。
@@ -260,14 +258,16 @@ class SettlementMonitor:
             fill: 失败的成交。
             error: 异常。
         """
-        self._errors.append({
-            "order_id": fill.order_id,
-            "symbol": fill.symbol,
-            "error": str(error),
-            "timestamp_ns": time.time_ns(),
-        })
+        self._errors.append(
+            {
+                "order_id": fill.order_id,
+                "symbol": fill.symbol,
+                "error": str(error),
+                "timestamp_ns": time.time_ns(),
+            }
+        )
         if len(self._errors) > self._max_history:
-            self._errors = self._errors[-self._max_history:]
+            self._errors = self._errors[-self._max_history :]
 
     @property
     def avg_settlement_time_ms(self) -> float:

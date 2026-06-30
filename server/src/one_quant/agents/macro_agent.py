@@ -89,7 +89,9 @@ class MacroAgent(BaseAgent):
         impact_score = self._calculate_impact(event_analyses, indicator_insights)
 
         # 生成中文报告
-        report = self._generate_report(event_analyses, indicator_insights, impact_score, market_state)
+        report = self._generate_report(
+            event_analyses, indicator_insights, impact_score, market_state
+        )
 
         # 风险等级
         risk_level = self._assess_risk_level(impact_score)
@@ -127,14 +129,16 @@ class MacroAgent(BaseAgent):
             severity = self._assess_event_severity(event_type, impact_direction)
             market_impact = self._predict_market_impact(event_type, impact_direction)
 
-            analyses.append({
-                "type": event_type,
-                "type_zh": type_zh,
-                "description": description,
-                "impact_direction": impact_direction,
-                "severity": severity,
-                "market_impact": market_impact,
-            })
+            analyses.append(
+                {
+                    "type": event_type,
+                    "type_zh": type_zh,
+                    "description": description,
+                    "impact_direction": impact_direction,
+                    "severity": severity,
+                    "market_impact": market_impact,
+                }
+            )
 
         return analyses
 
@@ -291,7 +295,9 @@ class MacroAgent(BaseAgent):
 
         # 事件影响
         for event in events:
-            severity_weight = {"高": 1.0, "中": 0.6, "低": 0.3}.get(event.get("severity", "低"), 0.3)
+            severity_weight = {"高": 1.0, "中": 0.6, "低": 0.3}.get(
+                event.get("severity", "低"), 0.3
+            )
             direction = event.get("impact_direction", "neutral")
             if direction == "positive":
                 score += severity_weight

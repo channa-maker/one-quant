@@ -5,26 +5,27 @@ ONE量化 · 前端降级态处理
 
 from __future__ import annotations
 
-import time
-import json
 import asyncio
+import json
+import time
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
-from dataclasses import dataclass, field
 from pathlib import Path
 
 
 class DegradationLevel(str, Enum):
     """降级级别"""
-    NORMAL = "normal"           # 正常运行
-    PARTIAL = "partial"         # 部分降级（某些服务不可用）
-    READONLY = "readonly"       # 只读模式（写操作不可用）
-    CACHE_ONLY = "cache_only"   # 仅缓存（后端完全不可用）
+
+    NORMAL = "normal"  # 正常运行
+    PARTIAL = "partial"  # 部分降级（某些服务不可用）
+    READONLY = "readonly"  # 只读模式（写操作不可用）
+    CACHE_ONLY = "cache_only"  # 仅缓存（后端完全不可用）
 
 
 @dataclass
 class CacheEntry:
     """缓存条目"""
+
     data: dict
     cached_at: float
     ttl: float
@@ -55,13 +56,13 @@ class CacheEntry:
 class DegradationHandler:
     """
     前端降级态处理
-    
+
     降级策略:
     1. 正常模式: 后端正常，直接返回实时数据
     2. 部分降级: 某些服务不可用，混合返回缓存和实时数据
     3. 只读模式: 写操作被拒绝，读操作返回缓存
     4. 仅缓存: 后端完全不可用，返回只读缓存数据
-    
+
     缓存策略:
     - 总览页: 缓存 30 秒
     - 持仓页: 缓存 10 秒
@@ -79,7 +80,7 @@ class DegradationHandler:
         "risk": 15.0,
     }
 
-    def __init__(self, cache_dir: Optional[str] = None):
+    def __init__(self, cache_dir: str | None = None):
         self._level = DegradationLevel.NORMAL
         self._cache: dict[str, CacheEntry] = {}
         self._cache_dir = Path(cache_dir) if cache_dir else None
@@ -111,10 +112,10 @@ class DegradationHandler:
     async def get_cached_data(self, page: str) -> dict:
         """
         后端不可用时返回只读缓存
-        
+
         Args:
             page: 页面标识（如 "dashboard", "positions"）
-            
+
         Returns:
             dict: 包含 data, cached, stale, age 等字段
         """
@@ -144,11 +145,11 @@ class DegradationHandler:
         page: str,
         data: dict,
         source: str = "api",
-        ttl: Optional[float] = None,
+        ttl: float | None = None,
     ) -> None:
         """
         更新缓存
-        
+
         Args:
             page: 页面标识
             data: 缓存数据
@@ -168,10 +169,10 @@ class DegradationHandler:
         if self._cache_dir:
             asyncio.create_task(self._persist_cache(page))
 
-    def invalidate_cache(self, page: Optional[str] = None) -> None:
+    def invalidate_cache(self, page: str | None = None) -> None:
         """
         清除缓存
-        
+
         Args:
             page: 页面标识，为 None 则清除全部
         """
@@ -195,7 +196,7 @@ class DegradationHandler:
     def get_degradation_response(self, page: str) -> dict:
         """
         获取降级态的标准化响应
-        
+
         用于 API 端点返回
         """
         return {
@@ -212,10 +213,10 @@ class DegradationHandler:
     def check_write_allowed(self, action: str) -> dict:
         """
         检查写操作是否允许
-        
+
         Args:
             action: 操作描述
-            
+
         Returns:
             dict: { "allowed": bool, "reason": str }
         """
@@ -249,12 +250,18 @@ class DegradationHandler:
             entry = self._cache.get(page)
             if entry:
                 cache_file = self._cache_dir / f"{page}.json"
-                cache_file.write_text(json.dumps({
-                    "data": entry.data,
-                    "cached_at": entry.cached_at,
-                    "ttl": entry.ttl,
-                    "source": entry.source,
-                }, ensure_ascii=False, indent=2))
+                cache_file.write_text(
+                    json.dumps(
+                        {
+                            "data": entry.data,
+                            "cached_at": entry.cached_at,
+                            "ttl": entry.ttl,
+                            "source": entry.source,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
         except Exception as e:
             print(f"[降级] 缓存持久化失败: {e}")
 
@@ -283,6 +290,7 @@ degradation_handler = DegradationHandler()
 
 
 # ── 便捷函数 ──────────────────────────────────────────────
+
 
 async def get_cached_page(page: str) -> dict:
     """获取页面缓存数据"""

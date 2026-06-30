@@ -41,9 +41,7 @@ class ConnectionManager:
     def disconnect(self, ws: WebSocket, channel: str) -> None:
         """断开连接。"""
         if channel in self._connections:
-            self._connections[channel] = [
-                c for c in self._connections[channel] if c != ws
-            ]
+            self._connections[channel] = [c for c in self._connections[channel] if c != ws]
         self._queues.pop(ws, None)
         logger.info("WebSocket 连接离开频道: %s", channel)
 

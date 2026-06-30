@@ -17,11 +17,10 @@ from __future__ import annotations
 import math
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
-from one_quant.core.types import Signal
 from one_quant.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -38,6 +37,7 @@ class EvidenceSource(Protocol):
     - name: 源名称
     - compute: 返回 (strength, direction)
     """
+
     name: str
 
     def compute(self, symbol: str, market_data: dict[str, Any]) -> tuple[float, float]:
@@ -61,25 +61,27 @@ class SignalCard:
 
     frozen=True 保证不可变，线程安全
     """
+
     signal_id: str
     symbol: str
-    direction: str                           # "long" / "short" / "neutral"
-    score: float                             # 0-100 校准后综合评分
-    confidence_interval: tuple[float, float] # 置信区间
-    level: str                               # "S" / "A" / "B" / "C"
-    time_horizon: str                        # "短炒" / "日内" / "波段" / "中线"
-    risk_note: str                           # 风险提示
-    suggested_stop: Decimal                  # 建议止损价
-    risk_reward_ratio: float                 # 风险回报比
-    reason: str                              # 中文理由
-    evidence_details: dict[str, float]       # 各源贡献 {源名: 贡献分}
-    historical_win_rate: float               # 历史同类胜率
-    timestamp_ns: int                        # 纳秒时间戳
+    direction: str  # "long" / "short" / "neutral"
+    score: float  # 0-100 校准后综合评分
+    confidence_interval: tuple[float, float]  # 置信区间
+    level: str  # "S" / "A" / "B" / "C"
+    time_horizon: str  # "短炒" / "日内" / "波段" / "中线"
+    risk_note: str  # 风险提示
+    suggested_stop: Decimal  # 建议止损价
+    risk_reward_ratio: float  # 风险回报比
+    reason: str  # 中文理由
+    evidence_details: dict[str, float]  # 各源贡献 {源名: 贡献分}
+    historical_win_rate: float  # 历史同类胜率
+    timestamp_ns: int  # 纳秒时间戳
 
 
 @dataclass
 class ScoreRecord:
     """评分记录 — 用于校准器滚动更新"""
+
     raw_score: float
     calibrated_score: float
     outcome: bool | None = None  # 最终结果（True=盈利, False=亏损, None=待定）
@@ -221,11 +223,13 @@ class ScoreCalibrator:
 
         # 存储记录
         for pred, outcome in zip(predictions, outcomes):
-            self._records.append(ScoreRecord(
-                raw_score=pred,
-                calibrated_score=pred,  # 待校准
-                outcome=outcome,
-            ))
+            self._records.append(
+                ScoreRecord(
+                    raw_score=pred,
+                    calibrated_score=pred,  # 待校准
+                    outcome=outcome,
+                )
+            )
 
         if self._method == "platt":
             self._fit_platt(predictions, outcomes)
@@ -235,7 +239,10 @@ class ScoreCalibrator:
         self._is_fitted = True
         logger.info(
             "校准器更新: method=%s, samples=%d, a=%.4f, b=%.4f",
-            self._method, len(predictions), self._platt_a, self._platt_b,
+            self._method,
+            len(predictions),
+            self._platt_a,
+            self._platt_b,
         )
 
     def _fit_platt(self, predictions: list[float], outcomes: list[bool]) -> None:
@@ -296,7 +303,7 @@ class ScoreCalibrator:
         ys: list[float] = []
 
         for i in range(0, len(paired), bucket_size):
-            bucket = paired[i:i + bucket_size]
+            bucket = paired[i : i + bucket_size]
             avg_x = sum(p[0] for p in bucket) / len(bucket)
             avg_y = sum(1.0 if p[1] else 0.0 for p in bucket) / len(bucket)
             xs.append(avg_x / 100.0)  # 归一化
@@ -363,24 +370,24 @@ class SignalScorer:
 
     # 默认权重
     DEFAULT_WEIGHTS: dict[str, float] = {
-        "order_flow": 0.20,      # 订单流
-        "smc": 0.15,             # SMC（Smart Money Concepts）
-        "volume_price": 0.15,    # 量价
-        "ml_model": 0.15,        # ML 模型
-        "llm_analysis": 0.10,    # LLM 分析
-        "crypto_structure": 0.15,# 加密结构
-        "onchain": 0.10,         # 链上数据
+        "order_flow": 0.20,  # 订单流
+        "smc": 0.15,  # SMC（Smart Money Concepts）
+        "volume_price": 0.15,  # 量价
+        "ml_model": 0.15,  # ML 模型
+        "llm_analysis": 0.10,  # LLM 分析
+        "crypto_structure": 0.15,  # 加密结构
+        "onchain": 0.10,  # 链上数据
     }
 
     # 单源封顶（最大贡献比例）
     SINGLE_SOURCE_CAP: float = 0.35
 
     # 共振加成参数
-    RESONANCE_MIN_SOURCES: int = 3    # 最少同向源数
-    RESONANCE_BONUS: float = 0.15     # 共振加成比例
+    RESONANCE_MIN_SOURCES: int = 3  # 最少同向源数
+    RESONANCE_BONUS: float = 0.15  # 共振加成比例
 
     # 冲突衰减参数
-    CONFLICT_THRESHOLD: float = 0.3   # 冲突检测阈值
+    CONFLICT_THRESHOLD: float = 0.3  # 冲突检测阈值
 
     def __init__(self, calibrator: ScoreCalibrator | None = None) -> None:
         self._calibrator = calibrator or ScoreCalibrator()
@@ -464,14 +471,8 @@ class SignalScorer:
             raw_score = 0.0
 
         # ③ 共振加成
-        bullish_sources = [
-            name for name, (s, d) in raw_scores.items()
-            if d > 0 and s > 0.3
-        ]
-        bearish_sources = [
-            name for name, (s, d) in raw_scores.items()
-            if d < 0 and s > 0.3
-        ]
+        bullish_sources = [name for name, (s, d) in raw_scores.items() if d > 0 and s > 0.3]
+        bearish_sources = [name for name, (s, d) in raw_scores.items() if d < 0 and s > 0.3]
 
         resonance_bonus = 0.0
         if len(bullish_sources) >= self.RESONANCE_MIN_SOURCES:
@@ -494,7 +495,9 @@ class SignalScorer:
                 raw_score = raw_score * (1 - decay) + 50 * decay
                 logger.debug(
                     "冲突衰减: 多头%d源 vs 空头%d源 → 衰减%.1f%%",
-                    len(bullish_sources), len(bearish_sources), decay * 100,
+                    len(bullish_sources),
+                    len(bearish_sources),
+                    decay * 100,
                 )
 
         # 限制范围
@@ -555,15 +558,20 @@ class SignalScorer:
         )
 
         # 记录评分历史
-        self._score_history.append(ScoreRecord(
-            raw_score=raw_score,
-            calibrated_score=calibrated_score,
-            symbol=symbol,
-        ))
+        self._score_history.append(
+            ScoreRecord(
+                raw_score=raw_score,
+                calibrated_score=calibrated_score,
+                symbol=symbol,
+            )
+        )
 
         logger.info(
             "信号评分: %s → %.1f分 (%s级, %s, %d源共振)",
-            symbol, calibrated_score, level, direction,
+            symbol,
+            calibrated_score,
+            level,
+            direction,
             max(len(bullish_sources), len(bearish_sources)),
         )
 
@@ -626,9 +634,7 @@ class SignalScorer:
             "onchain": "链上数据",
         }
 
-        top_desc = "、".join(
-            source_names.get(name, name) for name, _ in top_sources if _ > 0
-        )
+        top_desc = "、".join(source_names.get(name, name) for name, _ in top_sources if _ > 0)
 
         return f"{symbol} {dir_zh}信号（{level}级，{score:.0f}分），主要依据：{top_desc}"
 
@@ -690,7 +696,9 @@ class AntiNoise:
         """
         self._cooldown = cooldown_sec
         self._last_signal: dict[str, int] = {}  # symbol → last signal timestamp_ns
-        self._recent_signals: dict[str, list[SignalCard]] = defaultdict(list)  # symbol → [recent signals]
+        self._recent_signals: dict[str, list[SignalCard]] = defaultdict(
+            list
+        )  # symbol → [recent signals]
         self._regime_threshold_boost: float = 0.0  # regime 感知阈值提升
 
     def should_push(self, signal: SignalCard) -> bool:
@@ -714,8 +722,11 @@ class AntiNoise:
         last_ts = self._last_signal.get(symbol, 0)
         cooldown_ns = self._cooldown * 1_000_000_000
         if now - last_ts < cooldown_ns:
-            logger.debug("信号过滤（冷却期）: %s, 剩余 %ds",
-                         symbol, (cooldown_ns - (now - last_ts)) // 1_000_000_000)
+            logger.debug(
+                "信号过滤（冷却期）: %s, 剩余 %ds",
+                symbol,
+                (cooldown_ns - (now - last_ts)) // 1_000_000_000,
+            )
             return False
 
         # ② 去重检查
@@ -726,15 +737,20 @@ class AntiNoise:
                 and abs(prev.score - signal.score) < 5
                 and (now - prev.timestamp_ns) < cooldown_ns * 3
             ):
-                logger.debug("信号过滤（去重）: %s, 方向=%s, 分差=%.1f",
-                             symbol, signal.direction, abs(prev.score - signal.score))
+                logger.debug(
+                    "信号过滤（去重）: %s, 方向=%s, 分差=%.1f",
+                    symbol,
+                    signal.direction,
+                    abs(prev.score - signal.score),
+                )
                 return False
 
         # ③ Regime 感知：高波动环境提高门槛
         min_score = 70 + self._regime_threshold_boost
         if signal.score < min_score:
-            logger.debug("信号过滤（Regime门限）: %s, score=%.1f < min=%.1f",
-                         symbol, signal.score, min_score)
+            logger.debug(
+                "信号过滤（Regime门限）: %s, score=%.1f < min=%.1f", symbol, signal.score, min_score
+            )
             return False
 
         # 通过所有过滤 → 允许推送
@@ -760,7 +776,9 @@ class AntiNoise:
             "extreme": 20.0,
         }
         self._regime_threshold_boost = boosts.get(volatility_level, 0.0)
-        logger.info("Regime 设置: %s, 阈值提升 +%.0f", volatility_level, self._regime_threshold_boost)
+        logger.info(
+            "Regime 设置: %s, 阈值提升 +%.0f", volatility_level, self._regime_threshold_boost
+        )
 
     def reset_cooldown(self, symbol: str) -> None:
         """手动重置某标的的冷却期
@@ -842,7 +860,9 @@ class VolumePriceSource:
 
         # 简化实现：最近 K 线的量价关系
         recent = klines[-5:]
-        price_change = (recent[-1].get("close", 0) - recent[0].get("open", 0)) / recent[0].get("open", 1)
+        price_change = (recent[-1].get("close", 0) - recent[0].get("open", 0)) / recent[0].get(
+            "open", 1
+        )
         volume_change = recent[-1].get("volume", 0) / max(recent[0].get("volume", 1), 1)
 
         # 价涨量增 → 看多；价跌量增 → 看空
@@ -887,6 +907,7 @@ class SMCSource:
         if self._analyzer is None:
             try:
                 from one_quant.strategy.smc import SMCAnalyzer
+
                 self._analyzer = SMCAnalyzer()
             except ImportError:
                 return 0.0, 0.0
@@ -898,6 +919,7 @@ class SMCSource:
 
         # 从 K 线提取 high/low 序列
         from decimal import Decimal
+
         if klines and not highs_raw:
             highs_raw = [float(k.get("high", k.get("close", 0))) for k in klines]
             lows_raw = [float(k.get("low", k.get("close", 0))) for k in klines]
@@ -926,7 +948,7 @@ class SMCSource:
         try:
             # 根据近期走势判断当前趋势
             recent_highs = highs_raw[-20:]
-            recent_lows = lows_raw[-20:]
+            _recent_lows = lows_raw[-20:]  # noqa: F841
             trend = "bullish" if recent_highs[-1] > recent_highs[0] else "bearish"
             choch = self._analyzer.detect_choch(highs, lows, trend)
             if choch:
@@ -941,23 +963,27 @@ class SMCSource:
         # ③ Order Block 检测（订单块）
         try:
             if klines:
-                from one_quant.core.types import Kline, Market
                 from decimal import Decimal as D
+
+                from one_quant.core.types import Kline, Market
+
                 kline_objs = []
                 for k in klines[-50:]:  # 只取最近 50 根
                     try:
-                        kline_objs.append(Kline(
-                            symbol=symbol,
-                            market=Market.SPOT,
-                            exchange="",
-                            interval="1h",
-                            open=D(str(k.get("open", 0))),
-                            high=D(str(k.get("high", 0))),
-                            low=D(str(k.get("low", 0))),
-                            close=D(str(k.get("close", 0))),
-                            volume=D(str(k.get("volume", 0))),
-                            timestamp_ns=k.get("timestamp_ns", 0),
-                        ))
+                        kline_objs.append(
+                            Kline(
+                                symbol=symbol,
+                                market=Market.SPOT,
+                                exchange="",
+                                interval="1h",
+                                open=D(str(k.get("open", 0))),
+                                high=D(str(k.get("high", 0))),
+                                low=D(str(k.get("low", 0))),
+                                close=D(str(k.get("close", 0))),
+                                volume=D(str(k.get("volume", 0))),
+                                timestamp_ns=k.get("timestamp_ns", 0),
+                            )
+                        )
                     except Exception:
                         continue
 
@@ -977,23 +1003,27 @@ class SMCSource:
         # ④ FVG 检测（公允价值缺口）
         try:
             if klines:
-                from one_quant.core.types import Kline, Market
                 from decimal import Decimal as D
+
+                from one_quant.core.types import Kline, Market
+
                 kline_objs = []
                 for k in klines[-50:]:
                     try:
-                        kline_objs.append(Kline(
-                            symbol=symbol,
-                            market=Market.SPOT,
-                            exchange="",
-                            interval="1h",
-                            open=D(str(k.get("open", 0))),
-                            high=D(str(k.get("high", 0))),
-                            low=D(str(k.get("low", 0))),
-                            close=D(str(k.get("close", 0))),
-                            volume=D(str(k.get("volume", 0))),
-                            timestamp_ns=k.get("timestamp_ns", 0),
-                        ))
+                        kline_objs.append(
+                            Kline(
+                                symbol=symbol,
+                                market=Market.SPOT,
+                                exchange="",
+                                interval="1h",
+                                open=D(str(k.get("open", 0))),
+                                high=D(str(k.get("high", 0))),
+                                low=D(str(k.get("low", 0))),
+                                close=D(str(k.get("close", 0))),
+                                volume=D(str(k.get("volume", 0))),
+                                timestamp_ns=k.get("timestamp_ns", 0),
+                            )
+                        )
                     except Exception:
                         continue
 
@@ -1081,7 +1111,9 @@ class MLModelSource:
             logger.debug("ML 模型推理失败: %s", symbol)
             return 0.0, 0.0
 
-    def _predict_with_trainer(self, symbol: str, market_data: dict[str, Any]) -> tuple[float, float]:
+    def _predict_with_trainer(
+        self, symbol: str, market_data: dict[str, Any]
+    ) -> tuple[float, float]:
         """使用 MLTrainer 进行推理
 
         Args:
@@ -1098,8 +1130,8 @@ class MLModelSource:
         if features is None or len(features) == 0:
             return 0.0, 0.0
 
-        X = np.array(features).reshape(1, -1) if len(features) > 0 else None
-        if X is None:
+        X = np.array(features).reshape(1, -1) if len(features) > 0 else None  # noqa: N806
+        if X is None:  # noqa: N806
             return 0.0, 0.0
 
         # 调用 MLTrainer.predict
@@ -1139,7 +1171,7 @@ class MLModelSource:
         if features is None or len(features) == 0:
             return 0.0, 0.0
 
-        X = np.array(features).reshape(1, -1)
+        X = np.array(features).reshape(1, -1)  # noqa: N806
 
         # 调用模型的 predict 或 predict_proba
         if hasattr(self._model, "predict_proba"):
@@ -1199,10 +1231,16 @@ class MLModelSource:
                 features.append(0.0)
 
         # 波动率特征
-        returns = [(prices[i] - prices[i-1]) / prices[i-1] for i in range(1, len(prices)) if prices[i-1] != 0]
+        returns = [
+            (prices[i] - prices[i - 1]) / prices[i - 1]
+            for i in range(1, len(prices))
+            if prices[i - 1] != 0
+        ]
         if returns:
             mean_ret = sum(returns[-20:]) / min(20, len(returns))
-            features.append((sum((r - mean_ret)**2 for r in returns[-20:]) / min(20, len(returns))) ** 0.5)
+            features.append(
+                (sum((r - mean_ret) ** 2 for r in returns[-20:]) / min(20, len(returns))) ** 0.5
+            )
         else:
             features.append(0.0)
 
@@ -1270,7 +1308,6 @@ class LLMAnalysisSource:
 
         # 调用 LLM 进行情绪分析
         try:
-            import asyncio
             return self._call_llm_sync(symbol, text_parts)
         except Exception:
             logger.debug("LLM 情绪分析异常，回退到本地分析")
@@ -1292,18 +1329,19 @@ class LLMAnalysisSource:
 
         system_prompt = (
             "你是加密货币/金融市场情绪分析专家。"
-            "分析给定的新闻/事件文本，判断对标的 {symbol} 的影响。\n"
+            f"分析给定的新闻/事件文本，判断对标的 {symbol} 的影响。\n"
             "输出格式（严格 JSON）：\n"
-            '{{"sentiment": float, "confidence": float, "summary": "一句话中文摘要"}}\n'
-            'sentiment: -1.0（极度利空）到 1.0（极度利好），0 为中性。\n'
-            'confidence: 0.0 到 1.0，表示分析置信度。\n'
-            '只输出 JSON，不要其他内容。'
-        ).format(symbol=symbol)
+            '{"sentiment": float, "confidence": float, "summary": "一句话中文摘要"}\n'
+            "sentiment: -1.0（极度利空）到 1.0（极度利好），0 为中性。\n"
+            "confidence: 0.0 到 1.0，表示分析置信度。\n"
+            "只输出 JSON，不要其他内容。"
+        )
 
         user_text = "\n---\n".join(text_parts)
 
         try:
             from one_quant.ai.llm_provider import sanitize_user_text, wrap_user_content
+
             safe_text = sanitize_user_text(user_text)
             wrapped = wrap_user_content(safe_text)
             messages = [
@@ -1313,28 +1351,35 @@ class LLMAnalysisSource:
 
             # 尝试获取事件循环
             try:
-                loop = asyncio.get_running_loop()
+                _loop = asyncio.get_running_loop()  # noqa: F841
                 # 已在异步上下文中，创建任务
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    future = pool.submit(asyncio.run, self._llm_router.route(
+                    future = pool.submit(
+                        asyncio.run,
+                        self._llm_router.route(
+                            task_complexity="low",
+                            messages=messages,
+                            max_tokens=256,
+                            temperature=0.3,
+                        ),
+                    )
+                    response = future.result(timeout=30)
+            except RuntimeError:
+                # 无运行中的事件循环
+                response = asyncio.run(
+                    self._llm_router.route(
                         task_complexity="low",
                         messages=messages,
                         max_tokens=256,
                         temperature=0.3,
-                    ))
-                    response = future.result(timeout=30)
-            except RuntimeError:
-                # 无运行中的事件循环
-                response = asyncio.run(self._llm_router.route(
-                    task_complexity="low",
-                    messages=messages,
-                    max_tokens=256,
-                    temperature=0.3,
-                ))
+                    )
+                )
 
             # 解析 LLM 返回
             import json as _json
+
             content = response.content.strip()
             if "```" in content:
                 for block in content.split("```"):
@@ -1378,7 +1423,11 @@ class LLMAnalysisSource:
         # 短期动量
         short_ret = (prices[-1] - prices[-5]) / prices[-5] if prices[-5] != 0 else 0
         # 中期动量
-        mid_ret = (prices[-1] - prices[-min(20, len(prices))]) / prices[-min(20, len(prices))] if prices[-min(20, len(prices))] != 0 else 0
+        mid_ret = (
+            (prices[-1] - prices[-min(20, len(prices))]) / prices[-min(20, len(prices))]
+            if prices[-min(20, len(prices))] != 0
+            else 0
+        )
 
         # 综合情绪
         sentiment = short_ret * 0.6 + mid_ret * 0.4

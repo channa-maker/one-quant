@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import statistics
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -29,29 +30,33 @@ logger = get_logger(__name__)
 
 class ModelStatus(str, Enum):
     """模型生命周期状态"""
-    DRAFT = "draft"              # 草稿：刚创建，未提交验证
-    VALIDATION = "validation"    # 验证中：已提交独立验证
-    APPROVED = "approved"        # 已审批：通过验证和审批
-    LIVE = "live"                # 上线：正在生产环境运行
-    RETIRED = "retired"          # 退役：已下线
+
+    DRAFT = "draft"  # 草稿：刚创建，未提交验证
+    VALIDATION = "validation"  # 验证中：已提交独立验证
+    APPROVED = "approved"  # 已审批：通过验证和审批
+    LIVE = "live"  # 上线：正在生产环境运行
+    RETIRED = "retired"  # 退役：已下线
 
 
 class ApprovalAction(str, Enum):
     """审批动作"""
-    APPROVE = "approve"    # 通过
-    REJECT = "reject"      # 拒回
+
+    APPROVE = "approve"  # 通过
+    REJECT = "reject"  # 拒回
     REQUEST_CHANGES = "request_changes"  # 要求修改
 
 
 class DriftType(str, Enum):
     """漂移类型"""
-    DATA_DRIFT = "data_drift"         # 输入数据分布漂移
-    CONCEPT_DRIFT = "concept_drift"   # 概念漂移（输入输出关系变化）
+
+    DATA_DRIFT = "data_drift"  # 输入数据分布漂移
+    CONCEPT_DRIFT = "concept_drift"  # 概念漂移（输入输出关系变化）
     PERFORMANCE_DRIFT = "performance_drift"  # 性能漂移（准确率下降等）
 
 
 class AlertSeverity(str, Enum):
     """告警严重度"""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -72,6 +77,7 @@ class ModelCard:
     - 血缘信息
     - 监控配置
     """
+
     model_id: str
     name: str
     version: str
@@ -100,18 +106,16 @@ class ModelCard:
     @property
     def approval_count(self) -> int:
         """通过审批次数"""
-        return len([
-            a for a in self.approval_chain
-            if a.get("action") == ApprovalAction.APPROVE.value
-        ])
+        return len(
+            [a for a in self.approval_chain if a.get("action") == ApprovalAction.APPROVE.value]
+        )
 
     @property
     def rejection_count(self) -> int:
         """被拒绝次数"""
-        return len([
-            a for a in self.approval_chain
-            if a.get("action") == ApprovalAction.REJECT.value
-        ])
+        return len(
+            [a for a in self.approval_chain if a.get("action") == ApprovalAction.REJECT.value]
+        )
 
 
 @dataclass
@@ -120,10 +124,11 @@ class LineageRecord:
 
     记录模型从哪里来（训练数据、特征工程）和到哪里去（被谁使用）。
     """
+
     model_id: str
-    upstream_datasets: list[str] = field(default_factory=list)     # 训练数据集
-    upstream_features: list[str] = field(default_factory=list)     # 使用的特征
-    upstream_models: list[str] = field(default_factory=list)       # 上游模型（如基座模型）
+    upstream_datasets: list[str] = field(default_factory=list)  # 训练数据集
+    upstream_features: list[str] = field(default_factory=list)  # 使用的特征
+    upstream_models: list[str] = field(default_factory=list)  # 上游模型（如基座模型）
     downstream_consumers: list[str] = field(default_factory=list)  # 下游消费者
     training_config: dict[str, Any] = field(default_factory=dict)  # 训练配置
     training_metrics: dict[str, float] = field(default_factory=dict)  # 训练指标
@@ -137,12 +142,13 @@ class LineageRecord:
 @dataclass
 class ValidationReport:
     """验证报告 — 独立验证的结果记录。"""
+
     model_id: str
-    validator: str                      # 验证人/系统
-    passed: bool                        # 是否通过
-    metrics: dict[str, float] = field(default_factory=dict)      # 验证指标
+    validator: str  # 验证人/系统
+    passed: bool  # 是否通过
+    metrics: dict[str, float] = field(default_factory=dict)  # 验证指标
     backtest_results: dict[str, Any] = field(default_factory=dict)  # 回测结果
-    risk_assessment: dict[str, Any] = field(default_factory=dict)   # 风险评估
+    risk_assessment: dict[str, Any] = field(default_factory=dict)  # 风险评估
     notes: str = ""
     timestamp_ns: int = 0
 
@@ -154,6 +160,7 @@ class ValidationReport:
 @dataclass
 class DriftAlert:
     """漂移告警 — 检测到模型漂移时触发。"""
+
     model_id: str
     drift_type: DriftType
     severity: AlertSeverity
@@ -179,6 +186,7 @@ class DriftAlert:
 @dataclass
 class MonitoringSnapshot:
     """监控快照 — 模型运行时的指标快照。"""
+
     model_id: str
     metrics: dict[str, float]
     prediction_count: int = 0
@@ -255,8 +263,8 @@ class ModelRiskManager:
                 "default": 0.15,  # 分布偏移 15%
             },
             DriftType.PERFORMANCE_DRIFT.value: {
-                "accuracy": 0.05,    # 准确率下降 5%
-                "sharpe": 0.20,      # 夏普比率下降 20%
+                "accuracy": 0.05,  # 准确率下降 5%
+                "sharpe": 0.20,  # 夏普比率下降 20%
                 "max_drawdown": 0.10,  # 最大回撤增加 10%
             },
         }
@@ -403,12 +411,14 @@ class ModelRiskManager:
             logger.warning("模型不在验证状态，无法审批: %s (当前: %s)", model_id, card.status.value)
             return False
 
-        card.approval_chain.append({
-            "approver": approver,
-            "action": ApprovalAction.APPROVE.value,
-            "notes": notes,
-            "timestamp_ns": time.time_ns(),
-        })
+        card.approval_chain.append(
+            {
+                "approver": approver,
+                "action": ApprovalAction.APPROVE.value,
+                "notes": notes,
+                "timestamp_ns": time.time_ns(),
+            }
+        )
         card.status = ModelStatus.APPROVED
         card.approved_at = time.time_ns()
         logger.info("模型审批通过: %s by %s", model_id, approver)
@@ -429,12 +439,14 @@ class ModelRiskManager:
         if not card:
             return False
 
-        card.approval_chain.append({
-            "approver": approver,
-            "action": ApprovalAction.REJECT.value,
-            "notes": reason,
-            "timestamp_ns": time.time_ns(),
-        })
+        card.approval_chain.append(
+            {
+                "approver": approver,
+                "action": ApprovalAction.REJECT.value,
+                "notes": reason,
+                "timestamp_ns": time.time_ns(),
+            }
+        )
         card.status = ModelStatus.DRAFT
         logger.info("模型审批拒绝: %s by %s (原因: %s)", model_id, approver, reason)
         return True
@@ -454,12 +466,14 @@ class ModelRiskManager:
         if not card:
             return False
 
-        card.approval_chain.append({
-            "approver": approver,
-            "action": ApprovalAction.REQUEST_CHANGES.value,
-            "notes": feedback,
-            "timestamp_ns": time.time_ns(),
-        })
+        card.approval_chain.append(
+            {
+                "approver": approver,
+                "action": ApprovalAction.REQUEST_CHANGES.value,
+                "notes": feedback,
+                "timestamp_ns": time.time_ns(),
+            }
+        )
         card.status = ModelStatus.DRAFT
         logger.info("要求修改: %s by %s", model_id, approver)
         return True
@@ -530,13 +544,17 @@ class ModelRiskManager:
 
         old_status = card.status
         card.status = target_status
-        card.approval_chain.append({
-            "approver": "system",
-            "action": "rollback",
-            "notes": f"从 {old_status.value} 回退到 {target_status.value}: {reason}",
-            "timestamp_ns": time.time_ns(),
-        })
-        logger.info("模型回退: %s %s → %s (%s)", model_id, old_status.value, target_status.value, reason)
+        card.approval_chain.append(
+            {
+                "approver": "system",
+                "action": "rollback",
+                "notes": f"从 {old_status.value} 回退到 {target_status.value}: {reason}",
+                "timestamp_ns": time.time_ns(),
+            }
+        )
+        logger.info(
+            "模型回退: %s %s → %s (%s)", model_id, old_status.value, target_status.value, reason
+        )
         return True
 
     # ──────────────── 血缘追踪 ────────────────
@@ -730,9 +748,7 @@ class ModelRiskManager:
             recent_mean = statistics.mean(recent_values)
 
             # 获取该指标的漂移阈值
-            perf_thresholds = self._drift_thresholds.get(
-                DriftType.PERFORMANCE_DRIFT.value, {}
-            )
+            perf_thresholds = self._drift_thresholds.get(DriftType.PERFORMANCE_DRIFT.value, {})
             threshold = perf_thresholds.get(metric_name, perf_thresholds.get("default", 0.10))
 
             if baseline_mean == 0:
@@ -741,7 +757,9 @@ class ModelRiskManager:
             deviation = abs(recent_mean - baseline_mean) / abs(baseline_mean)
 
             if deviation > threshold:
-                severity = AlertSeverity.CRITICAL if deviation > threshold * 2 else AlertSeverity.WARNING
+                severity = (
+                    AlertSeverity.CRITICAL if deviation > threshold * 2 else AlertSeverity.WARNING
+                )
                 alert = DriftAlert(
                     model_id=model_id,
                     drift_type=DriftType.PERFORMANCE_DRIFT,
@@ -763,7 +781,9 @@ class ModelRiskManager:
             alert = DriftAlert(
                 model_id=model_id,
                 drift_type=DriftType.PERFORMANCE_DRIFT,
-                severity=AlertSeverity.CRITICAL if snapshot.error_rate > 0.10 else AlertSeverity.WARNING,
+                severity=AlertSeverity.CRITICAL
+                if snapshot.error_rate > 0.10
+                else AlertSeverity.WARNING,
                 metric_name="error_rate",
                 current_value=snapshot.error_rate,
                 baseline_value=0.0,
@@ -835,22 +855,19 @@ class ModelRiskManager:
         """
         status_counts: dict[str, int] = {}
         for status in ModelStatus:
-            status_counts[status.value] = len([
-                m for m in self._models.values() if m.status == status
-            ])
+            status_counts[status.value] = len(
+                [m for m in self._models.values() if m.status == status]
+            )
 
         total_alerts = len(self._drift_alerts)
-        critical_alerts = len([
-            a for a in self._drift_alerts if a.severity == AlertSeverity.CRITICAL
-        ])
+        critical_alerts = len(
+            [a for a in self._drift_alerts if a.severity == AlertSeverity.CRITICAL]
+        )
 
         # 最近 24 小时的告警
         now = time.time_ns()
         day_ns = 24 * 3600 * 1_000_000_000
-        recent_alerts = len([
-            a for a in self._drift_alerts
-            if (now - a.timestamp_ns) < day_ns
-        ])
+        recent_alerts = len([a for a in self._drift_alerts if (now - a.timestamp_ns) < day_ns])
 
         return {
             "total_models": len(self._models),
@@ -861,9 +878,7 @@ class ModelRiskManager:
                 len(reports) for reports in self._validation_reports.values()
             ),
             "monitoring": {
-                "total_snapshots": sum(
-                    len(s) for s in self._monitoring_snapshots.values()
-                ),
+                "total_snapshots": sum(len(s) for s in self._monitoring_snapshots.values()),
                 "monitored_models": len(self._monitoring_snapshots),
             },
             "alerts": {
@@ -987,11 +1002,13 @@ class AIDataPoisoning防护:
             source = c.get("source", "")
             if source not in self._source_history:
                 self._source_history[source] = []
-            self._source_history[source].append({
-                "claim": c.get("claim", ""),
-                "confidence": c.get("confidence", 0.0),
-                "timestamp_ns": time.time_ns(),
-            })
+            self._source_history[source].append(
+                {
+                    "claim": c.get("claim", ""),
+                    "confidence": c.get("confidence", 0.0),
+                    "timestamp_ns": time.time_ns(),
+                }
+            )
 
         credible = avg_confidence >= self._min_confidence
 
@@ -1023,13 +1040,18 @@ class AIDataPoisoning防护:
 
         historical_confidences = [h["confidence"] for h in history[-20:]]
         mean_conf = statistics.mean(historical_confidences)
-        stdev_conf = statistics.stdev(historical_confidences) if len(historical_confidences) > 1 else 0.0
+        stdev_conf = (
+            statistics.stdev(historical_confidences) if len(historical_confidences) > 1 else 0.0
+        )
 
         # 超过 3 个标准差视为异常
         if stdev_conf > 0 and abs(claim_confidence - mean_conf) > 3 * stdev_conf:
             logger.warning(
                 "数据源 %s 异常检测: 当前置信度 %.3f 偏离历史均值 %.3f ± %.3f",
-                source, claim_confidence, mean_conf, stdev_conf,
+                source,
+                claim_confidence,
+                mean_conf,
+                stdev_conf,
             )
             return True
 
@@ -1045,8 +1067,7 @@ class AIDataPoisoning防护:
                 "is_flagged": source in self._flagged_sources,
                 "history_count": len(history),
                 "avg_confidence": (
-                    statistics.mean([h["confidence"] for h in history])
-                    if history else 0.0
+                    statistics.mean([h["confidence"] for h in history]) if history else 0.0
                 ),
             }
         return stats

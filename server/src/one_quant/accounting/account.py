@@ -20,10 +20,10 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict, deque
-from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_UP
+from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 
-from one_quant.core.types import Fill, Market
+from one_quant.core.types import Fill
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +62,7 @@ class Balance:
         if amount < 0:
             raise ValueError(f"冻结金额不能为负: {amount}")
         if amount > self.available:
-            raise ValueError(
-                f"可用余额不足: 可用={self.available}, 冻结={amount}"
-            )
+            raise ValueError(f"可用余额不足: 可用={self.available}, 冻结={amount}")
         self.available -= amount
         self.frozen += amount
 
@@ -80,9 +78,7 @@ class Balance:
         if amount < 0:
             raise ValueError(f"解冻金额不能为负: {amount}")
         if amount > self.frozen:
-            raise ValueError(
-                f"冻结余额不足: 冻结={self.frozen}, 解冻={amount}"
-            )
+            raise ValueError(f"冻结余额不足: 冻结={self.frozen}, 解冻={amount}")
         self.frozen -= amount
         self.available += amount
 
@@ -108,9 +104,7 @@ class Balance:
         if amount < 0:
             raise ValueError(f"扣款金额不能为负: {amount}")
         if amount > self.available:
-            raise ValueError(
-                f"可用余额不足: 可用={self.available}, 扣款={amount}"
-            )
+            raise ValueError(f"可用余额不足: 可用={self.available}, 扣款={amount}")
         self.available -= amount
 
 
@@ -541,9 +535,7 @@ class AccountLedger:
         if total_qty <= 0:
             return Decimal("0")
 
-        return (total_notional / total_qty).quantize(
-            Decimal("0.00000001"), rounding=ROUND_HALF_UP
-        )
+        return (total_notional / total_qty).quantize(Decimal("0.00000001"), rounding=ROUND_HALF_UP)
 
     def get_realized_pnl(self, symbol: str) -> Decimal:
         """获取指定标的的累计已实现盈亏。
@@ -561,9 +553,7 @@ class AccountLedger:
             total += lot.realized_pnl
         return total
 
-    def calculate_unrealized_pnl(
-        self, symbol: str, current_price: Decimal
-    ) -> Decimal:
+    def calculate_unrealized_pnl(self, symbol: str, current_price: Decimal) -> Decimal:
         """计算未实现盈亏。
 
         Args:

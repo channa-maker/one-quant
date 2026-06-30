@@ -1,6 +1,7 @@
 """API 路由注册"""
 
 from fastapi import APIRouter
+
 from one_quant.api.routes.health import router as health_router
 from one_quant.api.routes.orders import router as orders_router
 from one_quant.api.routes.positions import router as positions_router

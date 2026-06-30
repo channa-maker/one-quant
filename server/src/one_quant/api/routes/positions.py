@@ -41,15 +41,17 @@ async def list_positions(request: Request) -> dict[str, Any]:
     total_realized = 0
 
     for pos in positions:
-        position_list.append({
-            "symbol": pos.symbol,
-            "market": pos.market.value,
-            "side": pos.side,
-            "quantity": str(pos.quantity),
-            "entry_price": str(pos.entry_price),
-            "unrealized_pnl": str(pos.unrealized_pnl),
-            "realized_pnl": str(pos.realized_pnl),
-        })
+        position_list.append(
+            {
+                "symbol": pos.symbol,
+                "market": pos.market.value,
+                "side": pos.side,
+                "quantity": str(pos.quantity),
+                "entry_price": str(pos.entry_price),
+                "unrealized_pnl": str(pos.unrealized_pnl),
+                "realized_pnl": str(pos.realized_pnl),
+            }
+        )
         total_unrealized += float(pos.unrealized_pnl)
         total_realized += float(pos.realized_pnl)
 
@@ -82,14 +84,16 @@ async def get_pnl_summary(request: Request) -> dict[str, Any]:
     for pos in positions:
         total_unrealized += float(pos.unrealized_pnl)
         total_realized += float(pos.realized_pnl)
-        position_details.append({
-            "symbol": pos.symbol,
-            "side": pos.side,
-            "quantity": str(pos.quantity),
-            "entry_price": str(pos.entry_price),
-            "unrealized_pnl": str(pos.unrealized_pnl),
-            "realized_pnl": str(pos.realized_pnl),
-        })
+        position_details.append(
+            {
+                "symbol": pos.symbol,
+                "side": pos.side,
+                "quantity": str(pos.quantity),
+                "entry_price": str(pos.entry_price),
+                "unrealized_pnl": str(pos.unrealized_pnl),
+                "realized_pnl": str(pos.realized_pnl),
+            }
+        )
 
     total_equity = total_unrealized + total_realized
 
