@@ -138,11 +138,56 @@ function SignalCard({ signal, onPress }: { signal: Signal; onPress: () => void }
   );
 }
 
+// ── 加载骨架 ────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <View style={[styles.card, { opacity: 0.5 }]}>
+      <View style={{ backgroundColor: '#2A2A2A', height: 14, width: 60, borderRadius: 4, marginBottom: 8 }} />
+      <View style={{ backgroundColor: '#2A2A2A', height: 32, width: 200, borderRadius: 4, marginBottom: 12 }} />
+      <View style={{ backgroundColor: '#2A2A2A', height: 14, width: 160, borderRadius: 4 }} />
+    </View>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <View style={[styles.positionRow, { opacity: 0.5 }]}>
+      <View>
+        <View style={{ backgroundColor: '#2A2A2A', height: 14, width: 80, borderRadius: 4, marginBottom: 6 }} />
+        <View style={{ backgroundColor: '#2A2A2A', height: 10, width: 50, borderRadius: 4 }} />
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <View style={{ backgroundColor: '#2A2A2A', height: 14, width: 70, borderRadius: 4, marginBottom: 6 }} />
+        <View style={{ backgroundColor: '#2A2A2A', height: 10, width: 50, borderRadius: 4 }} />
+      </View>
+    </View>
+  );
+}
+
+// ── 错误状态 ──────────────────────────────────────────────
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorEmoji}>😵</Text>
+      <Text style={styles.errorTitle}>加载失败</Text>
+      <Text style={styles.errorMessage}>{message}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+        <Text style={styles.retryButtonText}>重新加载</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ── 主组件 ────────────────────────────────────────────────
 export default function DashboardScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: portfolio, refetch: refetchPortfolio } = useQuery({
+  const {
+    data: portfolio,
+    refetch: refetchPortfolio,
+    isLoading: portfolioLoading,
+    error: portfolioError,
+  } = useQuery({
     queryKey: ['portfolio'],
     queryFn: async () => {
       // TODO: 替换为真实 API
@@ -151,7 +196,12 @@ export default function DashboardScreen({ navigation }: any) {
     },
   });
 
-  const { data: positions, refetch: refetchPositions } = useQuery({
+  const {
+    data: positions,
+    refetch: refetchPositions,
+    isLoading: positionsLoading,
+    error: positionsError,
+  } = useQuery({
     queryKey: ['positions'],
     queryFn: async () => {
       await new Promise((r) => setTimeout(r, 300));
@@ -159,7 +209,12 @@ export default function DashboardScreen({ navigation }: any) {
     },
   });
 
-  const { data: signals, refetch: refetchSignals } = useQuery({
+  const {
+    data: signals,
+    refetch: refetchSignals,
+    isLoading: signalsLoading,
+    error: signalsError,
+  } = useQuery({
     queryKey: ['signals', 'latest'],
     queryFn: async () => {
       await new Promise((r) => setTimeout(r, 300));
@@ -167,11 +222,48 @@ export default function DashboardScreen({ navigation }: any) {
     },
   });
 
+  const isLoading = portfolioLoading || positionsLoading || signalsLoading;
+  const hasError = portfolioError || positionsError || signalsError;
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetchPortfolio(), refetchPositions(), refetchSignals()]);
     setRefreshing(false);
   }, []);
+
+  const onRetry = useCallback(async () => {
+    await onRefresh();
+  }, [onRefresh]);
+
+  // 错误状态
+  if (hasError && !portfolio && !positions && !signals) {
+    return (
+      <ErrorState
+        message={(hasError as Error)?.message || '网络请求失败，请检查网络连接'}
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  // 首次加载骨架屏
+  if (isLoading && !portfolio) {
+    return (
+      <FlatList
+        style={styles.container}
+        data={[1, 2, 3]}
+        keyExtractor={(i) => String(i)}
+        ListHeaderComponent={
+          <>
+            <SkeletonCard />
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>⚡ 最新信号</Text>
+            </View>
+          </>
+        }
+        renderItem={() => <SkeletonRow />}
+      />
+    );
+  }
 
   return (
     <FlatList
@@ -213,7 +305,11 @@ export default function DashboardScreen({ navigation }: any) {
       }
       renderItem={({ item }) => <PositionRow item={item} />}
       ListEmptyComponent={
-        <Text style={styles.emptyText}>暂无持仓</Text>
+        positionsError ? (
+          <Text style={styles.emptyText}>持仓加载失败，下拉刷新重试</Text>
+        ) : (
+          <Text style={styles.emptyText}>暂无持仓</Text>
+        )
       }
     />
   );
@@ -351,5 +447,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 32,
     fontSize: 14,
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#141414',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  errorEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    color: '#E0E0E0',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  errorMessage: {
+    color: '#888',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  retryButton: {
+    backgroundColor: '#4FC3F7',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+  },
+  retryButtonText: {
+    color: '#141414',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

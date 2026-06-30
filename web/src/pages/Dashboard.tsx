@@ -1,3 +1,7 @@
+/**
+ * ONE量化 · 总览大盘
+ * 总资产、盈亏、净值曲线、持仓分布、风控状态、AI研报、实时告警
+ */
 import React, { useState, useEffect, useMemo } from 'react'
 import {
   Card,
@@ -12,6 +16,8 @@ import {
   Spin,
   Badge,
   Tooltip,
+  Table,
+  Button,
 } from 'antd'
 import {
   FundOutlined,
@@ -19,26 +25,27 @@ import {
   FileTextOutlined,
   AlertOutlined,
   PieChartOutlined,
+  ReloadOutlined,
+  RiseOutlined,
+  FallOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '@/store'
+import {
+  mockPositions,
+  mockOrders,
+  mockSignals,
+  generatePnlCurve,
+  mockStrategies,
+  mockRiskMetrics,
+  mockTradingStats,
+  formatMoney,
+  formatPercent,
+  pnlColor,
+  orderStatusText,
+  orderStatusColor,
+} from '@/utils/mockData'
 
 const { Text, Paragraph } = Typography
-
-/** 模拟净值数据点 */
-const generateNetValueData = () => {
-  const data: Array<{ date: string; value: number }> = []
-  let val = 1.0
-  for (let i = 30; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    val += (Math.random() - 0.45) * 0.02
-    data.push({
-      date: d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }),
-      value: +val.toFixed(4),
-    })
-  }
-  return data
-}
 
 /** 模拟持仓分布 */
 const positionDistribution = [
@@ -49,7 +56,7 @@ const positionDistribution = [
   { type: '现金', value: 8 },
 ]
 
-/** 模拟风控层级 */
+/** 风控层级 */
 const riskLevels = [
   { level: 'L1', name: '日内限额', status: '正常', color: '#52c41a' },
   { level: 'L2', name: '策略限额', status: '正常', color: '#52c41a' },
@@ -57,7 +64,7 @@ const riskLevels = [
   { level: 'L4', name: '熔断机制', status: '正常', color: '#52c41a' },
 ]
 
-/** 模拟 AI 研报 */
+/** AI 研报 */
 const aiReportSummary = {
   title: 'AI 每日研报摘要',
   date: new Date().toLocaleDateString('zh-CN'),
@@ -66,7 +73,7 @@ const aiReportSummary = {
   confidence: 78,
 }
 
-/** 模拟告警 */
+/** 告警数据 */
 const mockAlerts = [
   { id: 1, level: '高', msg: 'BTCUSDT 多头仓位接近策略限额 80%', time: '2 分钟前' },
   { id: 2, level: '中', msg: 'ETHUSDT 波动率突破 2 倍标准差', time: '15 分钟前' },
@@ -80,6 +87,14 @@ const alertLevelColor: Record<string, string> = {
   '低': '#1677ff',
 }
 
+/** 信号等级颜色 */
+const gradeColor: Record<string, string> = {
+  S: '#FFD700',
+  A: '#FF6D00',
+  B: '#1677ff',
+  C: '#888',
+}
+
 export default function Dashboard() {
   const tickers = useAppStore((s) => s.tickers)
   const positions = useAppStore((s) => s.positions)
@@ -87,16 +102,16 @@ export default function Dashboard() {
   const wsConnected = useAppStore((s) => s.wsConnected)
 
   const [loading, setLoading] = useState(true)
-  const netValueData = useMemo(() => generateNetValueData(), [])
+  const netValueData = useMemo(() => generatePnlCurve(30), [])
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 500)
     return () => clearTimeout(timer)
   }, [])
 
-  /** 计算总资产 */
+  /** 总资产 */
   const totalAssets = useMemo(() => {
-    const base = 1285632.45
+    const base = mockTradingStats.totalAssets
     const tickerSum = Object.values(tickers).reduce(
       (sum, t) => sum + parseFloat(t.last_price || '0') * 0.01,
       0
@@ -105,14 +120,11 @@ export default function Dashboard() {
   }, [tickers])
 
   /** 今日盈亏 */
-  const todayPnl = useMemo(() => {
-    const base = 12580.32
-    const rand = (Math.random() - 0.3) * 5000
-    return base + rand
-  }, [])
+  const todayPnl = mockTradingStats.todayPnl
+  const todayPnlPercent = mockTradingStats.todayPnlPercent
 
   /** 最新净值 */
-  const latestNav = netValueData[netValueData.length - 1]?.value || 1.0
+  const latestNav = netValueData[netValueData.length - 1]?.value || 1000000
 
   if (loading) {
     return (
@@ -122,12 +134,56 @@ export default function Dashboard() {
     )
   }
 
+  // 持仓表格列
+  const positionColumns = [
+    { title: '标的', dataIndex: 'name', key: 'name', render: (v: string, r: any) => (
+      <span><strong>{v}</strong> <Text type="secondary" style={{ fontSize: 11 }}>{r.symbol}</Text></span>
+    )},
+    { title: '方向', dataIndex: 'side', key: 'side', render: (v: string) => (
+      <Tag color={v === 'long' ? 'green' : 'red'}>{v === 'long' ? '多头' : '空头'}</Tag>
+    )},
+    { title: '数量', dataIndex: 'quantity', key: 'quantity', align: 'right' as const },
+    { title: '成本价', dataIndex: 'entryPrice', key: 'entryPrice', align: 'right' as const, render: (v: number) => `¥${v.toLocaleString()}` },
+    { title: '现价', dataIndex: 'currentPrice', key: 'currentPrice', align: 'right' as const, render: (v: number) => `¥${v.toLocaleString()}` },
+    { title: '盈亏', dataIndex: 'unrealizedPnl', key: 'pnl', align: 'right' as const, render: (v: number) => (
+      <Text style={{ color: pnlColor(v), fontWeight: 600 }}>{formatMoney(v)}</Text>
+    )},
+    { title: '盈亏%', dataIndex: 'unrealizedPnlPercent', key: 'pnlPct', align: 'right' as const, render: (v: number) => (
+      <Text style={{ color: pnlColor(v) }}>{formatPercent(v)}</Text>
+    )},
+    { title: '权重', dataIndex: 'weight', key: 'weight', align: 'right' as const, render: (v: number) => `${v}%` },
+  ]
+
+  // 最新信号表格列
+  const signalColumns = [
+    { title: '等级', dataIndex: 'grade', key: 'grade', render: (v: string) => (
+      <Tag color={gradeColor[v]} style={{ fontWeight: 'bold' }}>{v}级</Tag>
+    )},
+    { title: '标的', dataIndex: 'name', key: 'name', render: (v: string, r: any) => (
+      <span><strong>{v}</strong> <Text type="secondary" style={{ fontSize: 11 }}>{r.symbol}</Text></span>
+    )},
+    { title: '方向', dataIndex: 'direction', key: 'direction', render: (v: string) => (
+      <Tag color={v === 'LONG' ? '#FF5252' : '#4CAF50'}>{v === 'LONG' ? '📈 做多' : '📉 做空'}</Tag>
+    )},
+    { title: '置信度', dataIndex: 'confidence', key: 'confidence', align: 'right' as const, render: (v: number) => (
+      <Text style={{ color: v >= 0.8 ? '#FFD700' : '#4FC3F7', fontWeight: 600 }}>{(v * 100).toFixed(0)}%</Text>
+    )},
+    { title: '入场价', dataIndex: 'entryPrice', key: 'entryPrice', align: 'right' as const, render: (v: number) => `¥${v.toLocaleString()}` },
+    { title: '风险收益比', dataIndex: 'riskReward', key: 'rr', align: 'right' as const, render: (v: number) => `1:${v}` },
+    { title: '策略', dataIndex: 'strategyName', key: 'strategy', render: (v: string) => <Tag>{v}</Tag> },
+    { title: '状态', dataIndex: 'status', key: 'status', render: (v: string) => {
+      const c = v === 'active' ? 'green' : v === 'executed' ? 'blue' : 'default'
+      const t = v === 'active' ? '生效中' : v === 'executed' ? '已执行' : '已过期'
+      return <Tag color={c}>{t}</Tag>
+    }},
+  ]
+
   return (
     <div style={{ padding: 24 }}>
-      {/* 顶部统计 */}
+      {/* ── 顶部统计 ── */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title="总资产（CNY）"
               value={totalAssets}
@@ -138,35 +194,37 @@ export default function Dashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title="今日盈亏"
               value={todayPnl}
               precision={2}
-              prefix={todayPnl >= 0 ? '¥' : '-¥'}
-              suffix={<Tag color={todayPnl >= 0 ? 'green' : 'red'}>{todayPnl >= 0 ? '盈利' : '亏损'}</Tag>}
-              valueStyle={{ color: todayPnl >= 0 ? '#52c41a' : '#ff4d4f' }}
+              prefix={todayPnl >= 0 ? <RiseOutlined /> : <FallOutlined />}
+              suffix={<Tag color={todayPnl >= 0 ? 'green' : 'red'}>{formatPercent(todayPnlPercent)}</Tag>}
+              valueStyle={{ color: todayPnl >= 0 ? '#ff4d4f' : '#52c41a' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card hoverable>
             <Statistic
-              title="最新净值"
-              value={latestNav}
-              precision={4}
+              title="累计收益"
+              value={mockTradingStats.totalPnl}
+              precision={2}
+              prefix="¥"
+              suffix={<Tag color="blue">{formatPercent(mockTradingStats.totalPnlPercent)}</Tag>}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card hoverable>
+            <Statistic
+              title="夏普比率"
+              value={mockTradingStats.sharpeRatio}
+              precision={2}
               prefix={<FundOutlined />}
-              valueStyle={{ color: latestNav >= 1 ? '#52c41a' : '#ff4d4f' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="实时持仓"
-              value={positions.length || 5}
-              suffix="个"
-              prefix={<PieChartOutlined />}
+              valueStyle={{ color: '#722ed1' }}
             />
             <div style={{ marginTop: 8 }}>
               <Badge status={wsConnected ? 'success' : 'error'} text={wsConnected ? '行情已连接' : '行情断开'} />
@@ -175,23 +233,29 @@ export default function Dashboard() {
         </Col>
       </Row>
 
+      {/* ── 净值曲线 + 持仓分布 ── */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        {/* 净值曲线 */}
         <Col xs={24} lg={14}>
-          <Card title="📈 净值曲线（近30日）">
+          <Card
+            title="📈 净值曲线（近30日）"
+            extra={<Text type="secondary">最大回撤: {Math.max(...netValueData.map(d => d.drawdown)).toFixed(2)}%</Text>}
+          >
             <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
               {netValueData.map((d, i) => {
-                const height = ((d.value - 0.95) / 0.15) * 180
-                const isUp = d.value >= 1
+                const minVal = Math.min(...netValueData.map(n => n.value))
+                const maxVal = Math.max(...netValueData.map(n => n.value))
+                const range = maxVal - minVal || 1
+                const height = ((d.value - minVal) / range) * 180 + 20
+                const isUp = i > 0 ? d.value >= netValueData[i - 1].value : true
                 return (
-                  <Tooltip key={i} title={`${d.date}: ${d.value}`}>
+                  <Tooltip key={i} title={`${d.date}: ¥${d.value.toLocaleString()} | 日盈亏: ¥${d.dailyPnl.toLocaleString()}`}>
                     <div
                       style={{
                         flex: 1,
                         height: Math.max(4, height),
                         background: isUp
-                          ? 'linear-gradient(to top, #52c41a, #95de64)'
-                          : 'linear-gradient(to top, #ff4d4f, #ff7875)',
+                          ? 'linear-gradient(to top, #ff4d4f, #ff7875)'
+                          : 'linear-gradient(to top, #52c41a, #95de64)',
                         borderRadius: '2px 2px 0 0',
                         minWidth: 4,
                       }}
@@ -207,7 +271,6 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        {/* 持仓分布 */}
         <Col xs={24} lg={10}>
           <Card title="🥧 持仓分布">
             {positionDistribution.map((item) => (
@@ -234,13 +297,53 @@ export default function Dashboard() {
         </Col>
       </Row>
 
+      {/* ── 持仓明细 ── */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Card
+            title="📋 持仓明细"
+            extra={<Text type="secondary">共 {mockPositions.length} 个持仓</Text>}
+          >
+            <Table
+              dataSource={mockPositions}
+              columns={positionColumns}
+              rowKey="id"
+              size="small"
+              pagination={false}
+              scroll={{ x: 800 }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* ── 最新信号 ── */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Card
+            title="⚡ 最新信号"
+            extra={<Text type="secondary">S级信号高亮显示</Text>}
+          >
+            <Table
+              dataSource={mockSignals}
+              columns={signalColumns}
+              rowKey="id"
+              size="small"
+              pagination={false}
+              scroll={{ x: 900 }}
+              rowClassName={(record) => record.grade === 'S' ? 'signal-row-s' : ''}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* ── 风控 + AI研报 + 告警 ── */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         {/* 风险仪表盘 */}
         <Col xs={24} lg={8}>
           <Card title="🛡️ 风控状态" extra={<SafetyOutlined />}>
-            {riskLevels.map((r) => (
+            {mockRiskMetrics.map((r) => (
               <div
-                key={r.level}
+                key={r.name}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -249,13 +352,13 @@ export default function Dashboard() {
                   borderBottom: '1px solid #303030',
                 }}
               >
+                <Text>{r.name}</Text>
                 <Space>
-                  <Tag color={r.color}>{r.level}</Tag>
-                  <Text>{r.name}</Text>
+                  <Text type="secondary">{r.value}{r.unit}</Text>
+                  <Tag color={r.status === 'normal' ? 'green' : r.status === 'warning' ? 'orange' : 'red'}>
+                    {r.status === 'normal' ? '正常' : r.status === 'warning' ? '预警' : '危险'}
+                  </Tag>
                 </Space>
-                <Tag color={r.status === '正常' ? 'green' : r.status === '预警' ? 'orange' : 'red'}>
-                  {r.status}
-                </Tag>
               </div>
             ))}
           </Card>
@@ -305,6 +408,46 @@ export default function Dashboard() {
                 </List.Item>
               )}
             />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* ── 策略概览 ── */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Card title="📊 策略概览">
+            <Row gutter={[16, 16]}>
+              {mockStrategies.map((st) => (
+                <Col xs={24} sm={12} lg={8} xl={6} key={st.id}>
+                  <Card size="small" style={{ borderLeft: `3px solid ${st.enabled ? '#52c41a' : '#888'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <Text strong>{st.name}</Text>
+                      <Badge status={st.enabled ? 'success' : 'default'} text={st.enabled ? '运行中' : '已暂停'} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text type="secondary">今日盈亏</Text>
+                      <Text style={{ color: pnlColor(st.todayPnl) }}>{formatMoney(st.todayPnl)}</Text>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text type="secondary">累计盈亏</Text>
+                      <Text style={{ color: pnlColor(st.totalPnl) }}>{formatMoney(st.totalPnl)}</Text>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text type="secondary">胜率</Text>
+                      <Text>{(st.winRate * 100).toFixed(0)}%</Text>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text type="secondary">夏普</Text>
+                      <Text>{st.sharpeRatio.toFixed(2)}</Text>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Text type="secondary">最大回撤</Text>
+                      <Text style={{ color: '#faad14' }}>-{st.maxDrawdown}%</Text>
+                    </div>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           </Card>
         </Col>
       </Row>

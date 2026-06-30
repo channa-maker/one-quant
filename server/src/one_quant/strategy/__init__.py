@@ -50,6 +50,11 @@ from one_quant.strategy.smc import SMCAnalyzer, SmartMoneyIndex, SMCStrategy
 # 量价结构
 from one_quant.strategy.volume_structure import VPVR, TPOChart, VWAPFamily
 
+# 回测增强
+from one_quant.strategy.data_loader import DataLoader, load_and_merge
+from one_quant.strategy.backtest_report import BacktestReport
+from one_quant.strategy.backtest_visualizer import BacktestVisualizer
+
 # 加密专属结构
 from one_quant.strategy.crypto_structure import (
     DerivativesStructure,
@@ -105,6 +110,11 @@ __all__ = [
     "DerivativesStructure",
     "OptionStructure",
     "StrategyFusion",
+    # 回测增强
+    "DataLoader",
+    "load_and_merge",
+    "BacktestReport",
+    "BacktestVisualizer",
     # 注册表
     "STRATEGY_REGISTRY",
     "register_strategy",

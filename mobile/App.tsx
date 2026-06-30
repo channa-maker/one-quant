@@ -13,6 +13,8 @@ import { Text, View, StyleSheet } from 'react-native';
 import DashboardScreen from './src/screens/DashboardScreen';
 import AlertsScreen from './src/screens/AlertsScreen';
 import SignalScreen from './src/screens/SignalScreen';
+import TradingScreen from './src/screens/TradingScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import { useAuth } from './src/hooks/useAuth';
 import { registerPushNotifications } from './src/services/pushNotification';
 
@@ -35,7 +37,9 @@ const DarkTheme = {
 type TabParamList = {
   '总览': undefined;
   '信号': { signalId?: string };
+  '交易': undefined;
   '告警': undefined;
+  '设置': undefined;
 };
 
 type RootStackParamList = {
@@ -51,7 +55,9 @@ function TabIcon({ name, color, size }: { name: string; color: string; size: num
   const icons: Record<string, string> = {
     '总览': '📊',
     '信号': '⚡',
+    '交易': '💰',
     '告警': '🔔',
+    '设置': '⚙️',
   };
   return <Text style={{ fontSize: size, color }}>{icons[name] ?? '📱'}</Text>;
 }
@@ -85,9 +91,19 @@ function MainTabs() {
         options={{ title: '信号', headerTitle: 'ONE量化 · 信号' }}
       />
       <Tab.Screen
+        name="交易"
+        component={TradingScreen}
+        options={{ title: '交易', headerTitle: 'ONE量化 · 交易' }}
+      />
+      <Tab.Screen
         name="告警"
         component={AlertsScreen}
         options={{ title: '告警', headerTitle: 'ONE量化 · 告警' }}
+      />
+      <Tab.Screen
+        name="设置"
+        component={SettingsScreen}
+        options={{ title: '设置', headerTitle: 'ONE量化 · 设置' }}
       />
     </Tab.Navigator>
   );
