@@ -4,6 +4,73 @@
 
 ---
 
+## 📊 架构图谱
+
+👉 **[点击查看完整架构图谱](docs/ARCHITECTURE.md)** — 让任何人/AI一眼看懂整个系统
+
+```mermaid
+graph TB
+    subgraph 用户层
+        WEB[Web终端<br/>React+TS]
+        WS[盯盘工作站<br/>Canvas 60fps]
+        MOB[移动端<br/>Expo RN]
+        GRAF[Grafana<br/>中文大盘]
+    end
+
+    subgraph API层
+        FAST[FastAPI<br/>JWT鉴权 · RBAC · 限流]
+    end
+
+    subgraph EventBus
+        REDIS[Redis Pub/Sub + Streams<br/>消息信封: channel · seq · ts_ns · trace_id]
+    end
+
+    subgraph 热路径
+        MGW[行情网关<br/>币安/OKX WS]
+        STRAT[策略引擎<br/>EMA/RSI/网格/订单流/SMC/期权]
+        RISK[四层风控<br/>L1静态·L2实时·L3回撤·L4熔断]
+        EXEC[执行引擎<br/>OMS/EMS/TWAP/VWAP]
+        EXCH[交易所适配器<br/>币安/OKX/IBKR/Deribit]
+    end
+
+    subgraph 温路径
+        RUNNER[策略主循环]
+        AGENTS[AI智能体群<br/>简报/哨兵/分诊/解读/宏观/辩论]
+        SCREENER[选股选币<br/>六阶段管道]
+        SIGNAL[信号评分<br/>S/A/B/C四级]
+    end
+
+    subgraph 冷路径
+        DATA[数据湖<br/>Bronze·Silver·Gold]
+        ML[ML引擎<br/>因子库·XGBoost·SHAP]
+        EVOLVE[自进化<br/>冠军挑战者·自动再训练]
+        BT[回测引擎<br/>tick级·无未来函数]
+    end
+
+    subgraph AI双引擎
+        LLM[LLM定性<br/>Claude·DeepSeek]
+        MLM[ML定量<br/>XGBoost·LightGBM]
+    end
+
+    subgraph 存储层
+        PG[(PostgreSQL<br/>交易/审计)]
+        TS[(TimescaleDB<br/>tick/kline)]
+        CH[(ClickHouse<br/>OLAP)]
+        RD[(Redis<br/>缓存/总线)]
+        S3[(MinIO<br/>对象存储)]
+    end
+
+    WEB & WS & MOB & GRAF --> FAST
+    FAST --> REDIS
+    REDIS --> MGW --> STRAT --> RISK --> EXEC --> EXCH
+    REDIS --> RUNNER & AGENTS & SCREENER & SIGNAL
+    REDIS --> DATA --> ML --> EVOLVE --> BT
+    LLM & MLM -.-> AGENTS & SCREENER & SIGNAL
+    DATA --> PG & TS & CH & RD & S3
+```
+
+---
+
 ## 目录
 
 - [快速启动](#快速启动)
