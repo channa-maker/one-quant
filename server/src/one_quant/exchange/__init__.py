@@ -10,6 +10,7 @@ from one_quant.exchange.deribit_adapter import DeribitAdapter
 from one_quant.exchange.ibkr_adapter import IBKRAdapter
 from one_quant.exchange.okx_adapter import OKXAdapter
 from one_quant.exchange.unified_broker import BrokerPool, UnifiedBroker
+from one_quant.exchange.crypto_wallet import CryptoWalletManager
 
 __all__ = [
     "ExchangeAdapter",
@@ -19,4 +20,5 @@ __all__ = [
     "OKXAdapter",
     "IBKRAdapter",
     "DeribitAdapter",
+    "CryptoWalletManager",
 ]
