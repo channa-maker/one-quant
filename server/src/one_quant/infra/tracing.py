@@ -38,6 +38,7 @@ def get_tracer(name: str) -> Any:
     """获取 tracer 实例"""
     try:
         from opentelemetry import trace
+
         return trace.get_tracer(name)
     except ImportError:
         return _NoopTracer()
@@ -52,11 +53,15 @@ class _NoopTracer:
 
 class _NoopSpan:
     """无操作 span"""
-    def __enter__(self) -> "_NoopSpan":
+
+    def __enter__(self) -> _NoopSpan:
         return self
+
     def __exit__(self, *args: object) -> None:
         pass
+
     def set_attribute(self, key: str, value: Any) -> None:
         pass
+
     def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         pass

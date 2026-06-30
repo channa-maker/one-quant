@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 @dataclass
 class LedgerEntry:
     """记账条目（不可变）"""
+
     entry_id: str
     account: str
     currency: str
@@ -66,24 +67,41 @@ class Ledger:
 
         if side == "buy":
             # 买入：资产增加（借），现金减少（贷）
-            asset_entry = self._create_entry(account, base, quantity, Decimal("0"), f"买入 {symbol}", ts)
-            cash_entry = self._create_entry(account, quote, Decimal("0"), notional, f"买入 {symbol} 支付", ts)
+            asset_entry = self._create_entry(
+                account, base, quantity, Decimal("0"), f"买入 {symbol}", ts
+            )
+            cash_entry = self._create_entry(
+                account, quote, Decimal("0"), notional, f"买入 {symbol} 支付", ts
+            )
         else:
             # 卖出：现金增加（借），资产减少（贷）
-            asset_entry = self._create_entry(account, base, Decimal("0"), quantity, f"卖出 {symbol}", ts)
-            cash_entry = self._create_entry(account, quote, notional, Decimal("0"), f"卖出 {symbol} 收入", ts)
+            asset_entry = self._create_entry(
+                account, base, Decimal("0"), quantity, f"卖出 {symbol}", ts
+            )
+            cash_entry = self._create_entry(
+                account, quote, notional, Decimal("0"), f"卖出 {symbol} 收入", ts
+            )
 
         # 手续费
         fee_entry = self._create_entry(
-            account, commission_currency, commission, Decimal("0"),
-            f"手续费 {symbol}", ts,
+            account,
+            commission_currency,
+            commission,
+            Decimal("0"),
+            f"手续费 {symbol}",
+            ts,
         )
 
         return asset_entry, cash_entry, fee_entry
 
     def _create_entry(
-        self, account: str, currency: str, debit: Decimal, credit: Decimal,
-        description: str, timestamp_ns: int,
+        self,
+        account: str,
+        currency: str,
+        debit: Decimal,
+        credit: Decimal,
+        description: str,
+        timestamp_ns: int,
     ) -> LedgerEntry:
         self._entry_counter += 1
         entry = LedgerEntry(

@@ -11,9 +11,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -22,6 +23,7 @@ logger = get_logger(__name__)
 
 class ChangeType(str, Enum):
     """变更类型"""
+
     HOTFIX = "hotfix"
     FEATURE = "feature"
     INFRA = "infra"
@@ -31,6 +33,7 @@ class ChangeType(str, Enum):
 
 class RiskLevel(str, Enum):
     """风险等级"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -39,6 +42,7 @@ class RiskLevel(str, Enum):
 
 class ChangeStatus(str, Enum):
     """变更状态"""
+
     DRAFT = "draft"
     PENDING_APPROVAL = "pending_approval"
     APPROVED = "approved"
@@ -52,6 +56,7 @@ class ChangeStatus(str, Enum):
 @dataclass
 class ChangeRequest:
     """变更请求"""
+
     change_id: str
     title: str
     change_type: ChangeType
@@ -74,6 +79,7 @@ class ChangeRequest:
 @dataclass
 class FreezeEvent:
     """冻结事件"""
+
     name: str
     start_time: int  # Unix 时间戳
     end_time: int
@@ -132,7 +138,13 @@ class ChangeManager:
         change.updated_at = time.time_ns()
         change.status = ChangeStatus.PENDING_APPROVAL
         self._changes.append(change)
-        logger.info("变更请求已提交: %s %s [%s/%s]", change.change_id, change.title, change.change_type.value, change.risk_level.value)
+        logger.info(
+            "变更请求已提交: %s %s [%s/%s]",
+            change.change_id,
+            change.title,
+            change.change_type.value,
+            change.risk_level.value,
+        )
         return change.change_id
 
     # ── 变更审批 ──────────────────────────────────────────────────
@@ -347,13 +359,15 @@ class ChangeManager:
                 continue  # 已过期
 
             status = "active" if event.start_time <= now <= event.end_time else "upcoming"
-            upcoming.append({
-                "name": event.name,
-                "status": status,
-                "start_time": event.start_time,
-                "end_time": event.end_time,
-                "reason": event.reason,
-            })
+            upcoming.append(
+                {
+                    "name": event.name,
+                    "status": status,
+                    "start_time": event.start_time,
+                    "end_time": event.end_time,
+                    "reason": event.reason,
+                }
+            )
 
         return upcoming
 
@@ -417,7 +431,9 @@ class ChangeManager:
         frozen, reason = self.is_freeze_period()
         return {
             "total_changes": len(self._changes),
-            "pending_approval": sum(1 for c in self._changes if c.status == ChangeStatus.PENDING_APPROVAL),
+            "pending_approval": sum(
+                1 for c in self._changes if c.status == ChangeStatus.PENDING_APPROVAL
+            ),
             "executed": sum(1 for c in self._changes if c.status == ChangeStatus.EXECUTED),
             "rolled_back": sum(1 for c in self._changes if c.status == ChangeStatus.ROLLED_BACK),
             "frozen": frozen,
@@ -429,9 +445,11 @@ class ChangeManager:
 
 # ── 灾备指标（兼容旧接口）──────────────────────────────────────
 
+
 @dataclass
 class DRMetrics:
     """灾备指标"""
+
     rto_target_sec: int = 300  # RTO < 5 分钟
     rpo_target_sec: int = 1  # RPO < 1 秒
     last_backup_ts: int = 0

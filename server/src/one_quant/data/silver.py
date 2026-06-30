@@ -1,7 +1,6 @@
 """Silver 层 — 清洗对齐：去重、事件时间对齐、归一化"""
 
 import time
-from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -45,7 +44,18 @@ class SilverProcessor:
 
         # 3. 归一化价格字段为 Decimal
         cleaned = dict(raw_data)
-        price_fields = ["last_price", "bid", "ask", "open", "high", "low", "close", "price", "quantity", "volume"]
+        price_fields = [
+            "last_price",
+            "bid",
+            "ask",
+            "open",
+            "high",
+            "low",
+            "close",
+            "price",
+            "quantity",
+            "volume",
+        ]
         for field in price_fields:
             if field in cleaned and cleaned[field] is not None:
                 try:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from one_quant.infra.logging import get_logger
@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 @dataclass(frozen=True)
 class AuditRecord:
     """审计记录（不可变）"""
+
     record_id: str
     event_type: str  # order.submit / order.fill / risk.decision / system.state_change
     source: str  # 策略名 / 风控规则名 / 系统
@@ -74,7 +75,9 @@ class AuditLog:
 
         logger.debug(
             "审计记录: %s %s/%s",
-            rec.record_id, event_type, source,
+            rec.record_id,
+            event_type,
+            source,
         )
         return rec
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import uuid
 from decimal import Decimal
-from typing import Any
 
 from one_quant.core.types import (
     Fill,

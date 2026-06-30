@@ -51,9 +51,19 @@ PING_TIMEOUT = 10
 
 # OKX K 线周期映射
 OKX_INTERVAL_MAP = {
-    "1m": "1m", "3m": "3m", "5m": "5m", "15m": "15m", "30m": "30m",
-    "1h": "1H", "2h": "2H", "4h": "4H", "6h": "6H", "12h": "12H",
-    "1d": "1D", "1w": "1W", "1M": "1M",
+    "1m": "1m",
+    "3m": "3m",
+    "5m": "5m",
+    "15m": "15m",
+    "30m": "30m",
+    "1h": "1H",
+    "2h": "2H",
+    "4h": "4H",
+    "6h": "6H",
+    "12h": "12H",
+    "1d": "1D",
+    "1w": "1W",
+    "1M": "1M",
 }
 
 
@@ -185,7 +195,8 @@ class OKXMarketGateway(MarketGateway):
             if event == "error":
                 logger.error(
                     "OKX网关: 错误 code=%s msg=%s",
-                    msg.get("code"), msg.get("msg"),
+                    msg.get("code"),
+                    msg.get("msg"),
                 )
             elif event == "subscribe":
                 logger.debug("OKX网关: 订阅确认 %s", msg.get("arg"))
@@ -225,13 +236,9 @@ class OKXMarketGateway(MarketGateway):
             volume_24h=Decimal(data.get("vol24h", "0")),
             timestamp_ns=int(data.get("ts", time.time_ns() // 1_000_000)) * 1_000_000,
         )
-        await self._event_bus.publish(
-            "market.ticker", ticker.model_dump(mode="json")
-        )
+        await self._event_bus.publish("market.ticker", ticker.model_dump(mode="json"))
 
-    async def _handle_candle(
-        self, data: list[Any], interval: str, inst_id: str
-    ) -> None:
+    async def _handle_candle(self, data: list[Any], interval: str, inst_id: str) -> None:
         """
         归一化 candles → Kline
 
@@ -252,9 +259,7 @@ class OKXMarketGateway(MarketGateway):
             volume=Decimal(data[5]),
             timestamp_ns=int(data[0]) * 1_000_000,
         )
-        await self._event_bus.publish(
-            "market.kline", kline.model_dump(mode="json")
-        )
+        await self._event_bus.publish("market.kline", kline.model_dump(mode="json"))
 
     async def _handle_book(self, data: dict[str, Any], inst_id: str) -> None:
         """归一化 books/books5 → OrderBook"""
@@ -274,9 +279,7 @@ class OKXMarketGateway(MarketGateway):
             asks=asks,
             timestamp_ns=int(data.get("ts", time.time_ns() // 1_000_000)) * 1_000_000,
         )
-        await self._event_bus.publish(
-            "market.orderbook", orderbook.model_dump(mode="json")
-        )
+        await self._event_bus.publish("market.orderbook", orderbook.model_dump(mode="json"))
 
     async def _handle_trade(self, data: dict[str, Any]) -> None:
         """归一化 trades → Trade"""
@@ -291,9 +294,7 @@ class OKXMarketGateway(MarketGateway):
             trade_id=data.get("tradeId", ""),
             timestamp_ns=int(data.get("ts", time.time_ns() // 1_000_000)) * 1_000_000,
         )
-        await self._event_bus.publish(
-            "market.trade", trade.model_dump(mode="json")
-        )
+        await self._event_bus.publish("market.trade", trade.model_dump(mode="json"))
 
     async def _send_subscribe(self, args: list[dict[str, str]]) -> None:
         """发送订阅请求"""
@@ -312,10 +313,7 @@ class OKXMarketGateway(MarketGateway):
     async def subscribe_kline(self, symbols: list[str], interval: str = "1m") -> None:
         """订阅 candles"""
         okx_interval = OKX_INTERVAL_MAP.get(interval, interval)
-        args = [
-            {"channel": f"candle{okx_interval}", "instId": _to_okx_inst_id(s)}
-            for s in symbols
-        ]
+        args = [{"channel": f"candle{okx_interval}", "instId": _to_okx_inst_id(s)} for s in symbols]
         self._subscribed_args.extend(args)
         await self._send_subscribe(args)
 

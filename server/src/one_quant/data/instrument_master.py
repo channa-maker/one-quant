@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -101,11 +101,15 @@ class InstrumentMaster:
     def register(self, instrument: Instrument) -> None:
         """注册标的（公开接口）"""
         self._register(instrument)
-        self._record_change("register", instrument.internal_id, {
-            "symbol": instrument.symbol,
-            "exchange": instrument.exchange,
-            "market": instrument.market.value,
-        })
+        self._record_change(
+            "register",
+            instrument.internal_id,
+            {
+                "symbol": instrument.symbol,
+                "exchange": instrument.exchange,
+                "market": instrument.market.value,
+            },
+        )
 
     def _register(self, instrument: Instrument) -> None:
         """内部注册"""
@@ -171,7 +175,9 @@ class InstrumentMaster:
         logger.info("自动注册标的", internal_id=internal_id)
         return internal_id
 
-    def list_active(self, exchange: str | None = None, market: Market | None = None) -> list[Instrument]:
+    def list_active(
+        self, exchange: str | None = None, market: Market | None = None
+    ) -> list[Instrument]:
         """列出所有活跃标的，可按交易所/市场过滤"""
         results = []
         for inst in self._instruments.values():
@@ -222,13 +228,15 @@ class InstrumentMaster:
 
     def _record_change(self, action: str, internal_id: str, details: dict[str, Any]) -> None:
         """记录变更（只增不改）"""
-        self._history.append({
-            "action": action,
-            "internal_id": internal_id,
-            "details": details,
-            "timestamp_ns": time.time_ns(),
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        })
+        self._history.append(
+            {
+                "action": action,
+                "internal_id": internal_id,
+                "details": details,
+                "timestamp_ns": time.time_ns(),
+                "timestamp_utc": datetime.now(UTC).isoformat(),
+            }
+        )
 
     @property
     def history(self) -> list[dict[str, Any]]:

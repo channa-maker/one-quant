@@ -152,7 +152,7 @@ class IBKRAdapter(UnifiedBroker):
         """
         self._ensure_connected()
 
-        from ib_insync import Contract, LimitOrder, MarketOrder, StopLimitOrder
+        from ib_insync import LimitOrder, MarketOrder, StopLimitOrder
 
         # 构建合约
         contract = self._build_contract(order.symbol, order.market)
@@ -184,7 +184,7 @@ class IBKRAdapter(UnifiedBroker):
         ib_order.account = self._account or ""
 
         # 提交
-        trade = self._client.placeOrder(contract, ib_order)
+        _trade = self._client.placeOrder(contract, ib_order)  # noqa: F841
         ib_order_id = str(ib_order.orderId)
 
         # 保存映射
@@ -378,7 +378,7 @@ class IBKRAdapter(UnifiedBroker):
             统一持仓信息列表
         """
         positions = await self.get_positions()
-        balance = await self.get_balance()
+        _balance = await self.get_balance()  # noqa: F841
 
         result = []
         for pos in positions:

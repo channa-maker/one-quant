@@ -86,7 +86,7 @@ class RateLimiter:
                 )
                 await asyncio.sleep(wait_time)
 
-    async def __aenter__(self) -> "RateLimiter":
+    async def __aenter__(self) -> RateLimiter:
         """异步上下文管理器入口。"""
         await self.acquire()
         return self

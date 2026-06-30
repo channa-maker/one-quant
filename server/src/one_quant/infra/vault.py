@@ -103,9 +103,7 @@ class VaultProvider(SecretProvider):
             try:
                 import httpx
             except ImportError as exc:
-                raise ImportError(
-                    "Vault Provider 需要 httpx: pip install httpx"
-                ) from exc
+                raise ImportError("Vault Provider 需要 httpx: pip install httpx") from exc
             self._client = httpx.AsyncClient(
                 base_url=self._url,
                 headers={"X-Vault-Token": self._token},
@@ -132,8 +130,10 @@ class VaultProvider(SecretProvider):
                 # KV v2 返回格式: { data: { data: { key: value }, metadata: {...} } }
                 secret_data = data.get("data", {}).get("data", {})
                 # 取第一个值（约定密钥名与路径一致时取 "value" 字段）
-                return secret_data.get("value") or secret_data.get(key) or next(
-                    iter(secret_data.values()), None
+                return (
+                    secret_data.get("value")
+                    or secret_data.get(key)
+                    or next(iter(secret_data.values()), None)
                 )
             elif resp.status_code == 404:
                 logger.debug("Vault 密钥不存在: %s", key)
@@ -239,7 +239,8 @@ class OnePasswordProvider(SecretProvider):
         import asyncio
 
         proc = await asyncio.create_subprocess_exec(
-            "op", *args,
+            "op",
+            *args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -262,12 +263,18 @@ class OnePasswordProvider(SecretProvider):
         """
         try:
             output = await self._run_op(
-                "item", "get", key,
-                "--vault", self._vault,
-                "--fields", "password",
-                "--format", "json",
+                "item",
+                "get",
+                key,
+                "--vault",
+                self._vault,
+                "--fields",
+                "password",
+                "--format",
+                "json",
             )
             import json
+
             data = json.loads(output)
             return data.get("value") or data.get("password")
         except Exception as exc:
@@ -286,10 +293,14 @@ class OnePasswordProvider(SecretProvider):
         """
         try:
             await self._run_op(
-                "item", "create",
-                "--category", "API Credential",
-                "--title", key,
-                "--vault", self._vault,
+                "item",
+                "create",
+                "--category",
+                "API Credential",
+                "--title",
+                key,
+                "--vault",
+                self._vault,
                 f"password={value}",
             )
             logger.info("1Password 密钥已写入: %s", key)
@@ -356,6 +367,7 @@ class EnvProvider(SecretProvider):
             环境变量值，不存在返回 None。
         """
         import os
+
         return os.environ.get(self._env_key(key))
 
     async def set_secret(self, key: str, value: str) -> None:
@@ -366,6 +378,7 @@ class EnvProvider(SecretProvider):
             value: 密钥值。
         """
         import os
+
         os.environ[self._env_key(key)] = value
 
     async def rotate_secret(self, key: str) -> str:
@@ -389,6 +402,7 @@ class EnvProvider(SecretProvider):
             key: 密钥名称。
         """
         import os
+
         env_key = self._env_key(key)
         os.environ.pop(env_key, None)
         logger.info("环境变量已删除: %s", env_key)
@@ -590,8 +604,6 @@ def create_secret_manager(
         logger.warning("密钥后端: 环境变量（仅限开发环境！）")
 
     else:
-        raise ValueError(
-            f"不支持的密钥后端: {backend}，可选: vault, 1password, env"
-        )
+        raise ValueError(f"不支持的密钥后端: {backend}，可选: vault, 1password, env")
 
     return SecretManager(provider=provider, cache_ttl=cache_ttl)

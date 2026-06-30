@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -21,6 +22,7 @@ RestartFn = Callable[[], Awaitable[None]]
 
 class ProcessStatus(str, Enum):
     """进程状态枚举"""
+
     UNKNOWN = "unknown"
     HEALTHY = "healthy"
     DEGRADED = "degraded"
@@ -31,6 +33,7 @@ class ProcessStatus(str, Enum):
 @dataclass
 class ProcessInfo:
     """进程注册信息"""
+
     name: str
     pid: int = 0
     healthcheck_fn: HealthCheckFn | None = None
@@ -46,6 +49,7 @@ class ProcessInfo:
 @dataclass
 class DeadlockIndicator:
     """死锁指标"""
+
     event_loop_blocked: bool = False  # 事件循环卡顿
     market_data_stale: bool = False  # 行情停更
     order_no_response: bool = False  # 订单超时未回报
@@ -148,7 +152,11 @@ class Watchdog:
         """启动看门狗监控。"""
         self._running = True
         self._monitor_task = asyncio.create_task(self._monitor_loop())
-        logger.info("看门狗已启动 (心跳超时=%ds, 最大失败=%d)", self._heartbeat_timeout_sec, self._max_failures)
+        logger.info(
+            "看门狗已启动 (心跳超时=%ds, 最大失败=%d)",
+            self._heartbeat_timeout_sec,
+            self._max_failures,
+        )
 
     async def stop(self) -> None:
         """停止看门狗监控。"""
@@ -192,7 +200,10 @@ class Watchdog:
                     )
                     logger.warning(
                         "进程心跳超时: %s (%.1fs, 连续失败 %d/%d)",
-                        name, age_sec, proc.consecutive_failures, self._max_failures,
+                        name,
+                        age_sec,
+                        proc.consecutive_failures,
+                        self._max_failures,
                     )
 
             # 健康检查函数
@@ -259,10 +270,17 @@ class Watchdog:
         if proc.last_restart_ns > 0:
             since_last = (now - proc.last_restart_ns) / 1e9
             if since_last < 60 and proc.restart_count >= 3:
-                logger.critical("重启风暴检测: %s 60秒内已重启 %d 次，暂停重启", name, proc.restart_count)
+                logger.critical(
+                    "重启风暴检测: %s 60秒内已重启 %d 次，暂停重启", name, proc.restart_count
+                )
                 return False
 
-        logger.error("触发重启: %s (连续失败 %d 次, 累计重启 %d 次)", name, proc.consecutive_failures, proc.restart_count)
+        logger.error(
+            "触发重启: %s (连续失败 %d 次, 累计重启 %d 次)",
+            name,
+            proc.consecutive_failures,
+            proc.restart_count,
+        )
         proc.status = ProcessStatus.RECOVERING
 
         try:

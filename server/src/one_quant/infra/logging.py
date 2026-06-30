@@ -14,7 +14,6 @@ import sys
 import time
 from typing import Any
 
-
 # 需要脱敏的字段名模式
 _SENSITIVE_PATTERNS = [
     re.compile(r"(?i)(api[_-]?key|secret|password|token|passphrase|private[_-]?key)"),
@@ -70,9 +69,7 @@ class StructuredFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_data: dict[str, Any] = {
-            "timestamp": time.strftime(
-                "%Y-%m-%dT%H:%M:%S", time.gmtime(record.created)
-            ),
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(record.created)),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -106,9 +103,7 @@ def setup_logging(level: str = "INFO", json_format: bool = True) -> None:
     if json_format:
         handler.setFormatter(StructuredFormatter())
     else:
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-        )
+        handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
 
     root.addHandler(handler)
 

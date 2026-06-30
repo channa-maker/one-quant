@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import time
-from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Callable, Awaitable
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from datetime import datetime
+from typing import Any
 
 from one_quant.data.bronze import BronzeStorage
-from one_quant.data.quality import DataQualityGate
 from one_quant.data.silver import SilverProcessor
 from one_quant.infra.event_bus import EventBus
 from one_quant.infra.logging import get_logger

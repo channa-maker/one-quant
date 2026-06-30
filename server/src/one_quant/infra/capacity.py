@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -18,7 +19,8 @@ logger = get_logger(__name__)
 @dataclass
 class CapacityThreshold:
     """容量阈值"""
-    warning: float = 0.0   # 告警阈值
+
+    warning: float = 0.0  # 告警阈值
     critical: float = 0.0  # 严重阈值
     unit: str = ""
 
@@ -26,6 +28,7 @@ class CapacityThreshold:
 @dataclass
 class CapacityMetric:
     """容量指标"""
+
     name: str
     current: float = 0.0
     threshold: CapacityThreshold = field(default_factory=CapacityThreshold)
@@ -105,11 +108,15 @@ class CapacityManager:
 
                 if tick_rate > tick_metric.threshold.critical:
                     tick_metric.status = "critical"
-                    tick_metric.detail = f"tick/s 超过严重阈值: {tick_rate:.0f} > {tick_metric.threshold.critical}"
+                    tick_metric.detail = (
+                        f"tick/s 超过严重阈值: {tick_rate:.0f} > {tick_metric.threshold.critical}"
+                    )
                     result["status"] = "critical"
                 elif tick_rate > tick_metric.threshold.warning:
                     tick_metric.status = "warning"
-                    tick_metric.detail = f"tick/s 超过告警阈值: {tick_rate:.0f} > {tick_metric.threshold.warning}"
+                    tick_metric.detail = (
+                        f"tick/s 超过告警阈值: {tick_rate:.0f} > {tick_metric.threshold.warning}"
+                    )
                     if result["status"] != "critical":
                         result["status"] = "warning"
 
@@ -343,10 +350,12 @@ class CapacityManager:
             report["sections"]["llm_cost"] = {"error": str(llm_cost)}
 
         # 记录历史
-        self._history.append({
-            "time": time.time_ns(),
-            "overall_status": report["overall_status"],
-        })
+        self._history.append(
+            {
+                "time": time.time_ns(),
+                "overall_status": report["overall_status"],
+            }
+        )
 
         return report
 
@@ -373,6 +382,3 @@ class CapacityManager:
     def history(self) -> list[dict[str, Any]]:
         """获取检查历史。"""
         return self._history[-100:]  # 最近 100 条
-
-
-

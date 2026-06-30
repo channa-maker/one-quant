@@ -22,9 +22,9 @@ import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 
-from one_quant.core.types import Fill, Kline, Order
+from one_quant.core.types import Fill, Order
 from one_quant.exchange.contracts import ExchangeAdapter
 
 logger = logging.getLogger(__name__)
@@ -416,7 +416,7 @@ class VWAPAlgo(ExecutionAlgo):
                     timestamp_ns=_time_ns(),
                 )
 
-                exchange_order_id = await adapter.submit_order(child_order)
+                exchange_order_id = await adapter.submit_order(child_order)  # noqa: F841
 
                 fill = Fill(
                     order_id=order.client_order_id,
@@ -453,9 +453,7 @@ class VWAPAlgo(ExecutionAlgo):
 
         return fills
 
-    async def _get_volume_profile(
-        self, adapter: ExchangeAdapter, symbol: str
-    ) -> list[Decimal]:
+    async def _get_volume_profile(self, adapter: ExchangeAdapter, symbol: str) -> list[Decimal]:
         """获取历史成交量分布。
 
         通过适配器获取 K 线数据，提取每个时间窗口的成交量。
@@ -628,7 +626,7 @@ class POVAlgo(ExecutionAlgo):
                             timestamp_ns=_time_ns(),
                         )
 
-                        exchange_order_id = await adapter.submit_order(child_order)
+                        exchange_order_id = await adapter.submit_order(child_order)  # noqa: F841
 
                         fill = Fill(
                             order_id=order.client_order_id,
@@ -672,9 +670,7 @@ class POVAlgo(ExecutionAlgo):
 
         return fills
 
-    async def _get_market_volume(
-        self, adapter: ExchangeAdapter, symbol: str
-    ) -> Decimal:
+    async def _get_market_volume(self, adapter: ExchangeAdapter, symbol: str) -> Decimal:
         """获取当前市场成交量（增量）。
 
         优先通过 WebSocket 订阅获取实时成交量；
@@ -706,9 +702,7 @@ class POVAlgo(ExecutionAlgo):
         if callable(get_trades):
             try:
                 trades = await get_trades(symbol, limit=100)
-                total_vol = sum(
-                    Decimal(str(getattr(t, "quantity", 0))) for t in trades
-                )
+                total_vol = sum(Decimal(str(getattr(t, "quantity", 0))) for t in trades)
                 if total_vol > 0:
                     return total_vol
             except Exception as exc:
@@ -746,9 +740,9 @@ class ExecutionManager:
     """
 
     # 算法选择阈值
-    TWAP_NOTIONAL_THRESHOLD = Decimal("10000")   # 大于此值用 TWAP
-    VWAP_NOTIONAL_THRESHOLD = Decimal("50000")   # 大于此值用 VWAP
-    POV_NOTIONAL_THRESHOLD = Decimal("100000")   # 大于此值用 POV
+    TWAP_NOTIONAL_THRESHOLD = Decimal("10000")  # 大于此值用 TWAP
+    VWAP_NOTIONAL_THRESHOLD = Decimal("50000")  # 大于此值用 VWAP
+    POV_NOTIONAL_THRESHOLD = Decimal("100000")  # 大于此值用 POV
 
     def __init__(self, adapter: ExchangeAdapter) -> None:
         """初始化执行管理器。
@@ -861,7 +855,7 @@ class _InstantAlgo(ExecutionAlgo):
     async def execute(self, order: Order, adapter: ExchangeAdapter) -> list[Fill]:
         """直接提交订单，不拆分。"""
         try:
-            exchange_order_id = await adapter.submit_order(order)
+            exchange_order_id = await adapter.submit_order(order)  # noqa: F841
 
             fill = Fill(
                 order_id=order.client_order_id,

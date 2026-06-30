@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 from decimal import Decimal
@@ -51,10 +50,22 @@ def _from_binance_symbol(binance: str, market: Market) -> str:
 # ── K线周期映射 ──────────────────────────────────────────────────────
 
 _INTERVAL_MAP: dict[str, str] = {
-    "1s": "1s", "1m": "1m", "3m": "3m", "5m": "5m",
-    "15m": "15m", "30m": "30m", "1h": "1h", "2h": "2h",
-    "4h": "4h", "6h": "6h", "8h": "8h", "12h": "12h",
-    "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M",
+    "1s": "1s",
+    "1m": "1m",
+    "3m": "3m",
+    "5m": "5m",
+    "15m": "15m",
+    "30m": "30m",
+    "1h": "1h",
+    "2h": "2h",
+    "4h": "4h",
+    "6h": "6h",
+    "8h": "8h",
+    "12h": "12h",
+    "1d": "1d",
+    "3d": "3d",
+    "1w": "1w",
+    "1M": "1M",
 }
 
 
@@ -115,11 +126,13 @@ class BinanceWSGateway(MarketDataGateway):
         streams: list[str] = []
         for sym in symbols:
             bn = _to_binance_symbol(sym)
-            streams.extend([
-                f"{bn}@miniTicker",
-                f"{bn}@depth@100ms",
-                f"{bn}@trade",
-            ])
+            streams.extend(
+                [
+                    f"{bn}@miniTicker",
+                    f"{bn}@depth@100ms",
+                    f"{bn}@trade",
+                ]
+            )
             for interval in self._kline_intervals:
                 mapped = _INTERVAL_MAP.get(interval, interval)
                 streams.append(f"{bn}@kline_{mapped}")
@@ -127,7 +140,7 @@ class BinanceWSGateway(MarketDataGateway):
         # 分批订阅（币安单次最多 200 个 stream）
         batch_size = 200
         for i in range(0, len(streams), batch_size):
-            batch = streams[i:i + batch_size]
+            batch = streams[i : i + batch_size]
             msg = json.dumps({"method": "SUBSCRIBE", "params": batch, "id": 1})
             if self._ws is not None:
                 await self._ws.send(msg)

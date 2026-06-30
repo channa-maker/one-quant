@@ -77,7 +77,7 @@ class ModelRegistry:
         """从磁盘加载元数据。"""
         if self._metadata_file.exists():
             try:
-                with open(self._metadata_file, "r", encoding="utf-8") as f:
+                with open(self._metadata_file, encoding="utf-8") as f:
                     return json.load(f)
             except (json.JSONDecodeError, OSError) as e:
                 logger.warning("加载模型注册表失败: %s，使用空注册表", e)
@@ -235,12 +235,14 @@ class ModelRegistry:
                     versions.keys(), key=lambda v: versions[v].get("registered_at", 0)
                 )
 
-            result.append({
-                "name": name,
-                "latest_version": latest_version,
-                "production_version": prod_version,
-                "version_count": len(versions),
-            })
+            result.append(
+                {
+                    "name": name,
+                    "latest_version": latest_version,
+                    "production_version": prod_version,
+                    "version_count": len(versions),
+                }
+            )
 
         return result
 
@@ -331,9 +333,7 @@ class ModelRegistry:
             versions = self._registry[model_name]["versions"]
 
             # 找到最近的 archived 版本
-            archived = [
-                v for v, meta in versions.items() if meta["stage"] == STAGE_ARCHIVED
-            ]
+            archived = [v for v, meta in versions.items() if meta["stage"] == STAGE_ARCHIVED]
             if not archived:
                 raise ModelRegistryError(f"模型 '{model_name}' 无可回滚的 archived 版本")
 

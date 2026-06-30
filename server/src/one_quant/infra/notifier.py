@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -186,12 +185,7 @@ class EmailNotifier:
         source = alert.get("source", "unknown")
         timestamp = alert.get("timestamp", "")
 
-        content = (
-            f"来源: {source}\n"
-            f"时间: {timestamp}\n"
-            f"级别: {severity}\n"
-            f"\n---\n\n{message}"
-        )
+        content = f"来源: {source}\n时间: {timestamp}\n级别: {severity}\n\n---\n\n{message}"
 
         # severity 映射到 level
         level_map = {"low": "info", "medium": "warning", "high": "error", "critical": "critical"}
@@ -256,11 +250,14 @@ class WebhookNotifier:
             return False
 
         # 允许调用方传入自定义 payload
-        payload = kwargs.get("payload", {
-            "title": title,
-            "content": content,
-            "level": level,
-        })
+        payload = kwargs.get(
+            "payload",
+            {
+                "title": title,
+                "content": content,
+                "level": level,
+            },
+        )
 
         headers = {**self._headers, **kwargs.get("extra_headers", {})}
 
@@ -306,7 +303,7 @@ class WebhookNotifier:
         message = alert.get("message", "")
         severity = alert.get("severity", "info")
         source = alert.get("source", "unknown")
-        timestamp = alert.get("timestamp", "")
+        _timestamp = alert.get("timestamp", "")  # noqa: F841
 
         level_map = {"low": "info", "medium": "warning", "high": "error", "critical": "critical"}
         level = level_map.get(severity, "info")

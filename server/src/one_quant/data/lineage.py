@@ -7,6 +7,7 @@ from typing import Any
 @dataclass
 class LineageNode:
     """血缘节点"""
+
     name: str
     node_type: str  # "source", "bronze", "silver", "gold", "feature"
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -15,6 +16,7 @@ class LineageNode:
 @dataclass
 class LineageEdge:
     """血缘边：描述数据流转关系"""
+
     source: LineageNode
     target: LineageNode
     transformation: str  # 转换描述

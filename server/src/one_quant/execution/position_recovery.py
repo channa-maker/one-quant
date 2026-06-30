@@ -63,17 +63,21 @@ class PositionRecoveryManager:
                 else:
                     # 不一致，以交易所为准
                     self._recovered_positions[symbol] = exchange_pos
-                    self._discrepancies.append({
-                        "symbol": symbol,
-                        "exchange_qty": str(exchange_pos.quantity),
-                        "local_qty": str(local_pos.quantity),
-                        "resolution": "以交易所数据为准",
-                        "timestamp_ns": time.time_ns(),
-                    })
+                    self._discrepancies.append(
+                        {
+                            "symbol": symbol,
+                            "exchange_qty": str(exchange_pos.quantity),
+                            "local_qty": str(local_pos.quantity),
+                            "resolution": "以交易所数据为准",
+                            "timestamp_ns": time.time_ns(),
+                        }
+                    )
                     discrepancies += 1
                     logger.warning(
                         "持仓不一致: %s 交易所=%s 本地=%s",
-                        symbol, exchange_pos.quantity, local_pos.quantity,
+                        symbol,
+                        exchange_pos.quantity,
+                        local_pos.quantity,
                     )
             elif exchange_pos:
                 # 交易所有但本地没有
@@ -82,12 +86,14 @@ class PositionRecoveryManager:
                 logger.info("发现未知持仓: %s %s", symbol, exchange_pos.quantity)
             elif local_pos:
                 # 本地有但交易所没有
-                self._discrepancies.append({
-                    "symbol": symbol,
-                    "local_qty": str(local_pos.quantity),
-                    "resolution": "交易所已无持仓，清除本地状态",
-                    "timestamp_ns": time.time_ns(),
-                })
+                self._discrepancies.append(
+                    {
+                        "symbol": symbol,
+                        "local_qty": str(local_pos.quantity),
+                        "resolution": "交易所已无持仓，清除本地状态",
+                        "timestamp_ns": time.time_ns(),
+                    }
+                )
                 discrepancies += 1
 
         # 发送恢复事件
@@ -100,16 +106,16 @@ class PositionRecoveryManager:
             "total_positions": len(self._recovered_positions),
             "discrepancy_details": self._discrepancies,
         }
-        logger.info("持仓恢复完成", **{k: v for k, v in report.items() if k != "discrepancy_details"})
+        logger.info(
+            "持仓恢复完成",
+            **{k: v for k, v in report.items() if k != "discrepancy_details"},
+        )
         return report
 
     def _positions_match(self, exchange: PositionState, local: PositionState) -> bool:
         """检查两个持仓是否一致（允许微小误差）"""
         tolerance = Decimal("0.0001")
-        return (
-            exchange.side == local.side
-            and abs(exchange.quantity - local.quantity) < tolerance
-        )
+        return exchange.side == local.side and abs(exchange.quantity - local.quantity) < tolerance
 
     @property
     def recovered(self) -> dict[str, PositionState]:

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 from decimal import Decimal
 from typing import Any
 
-import httpx
 import websockets
 
 from one_quant.core.types import Kline, Market, OrderBook, OrderBookLevel, Ticker, Trade
@@ -92,18 +90,20 @@ class OKXWSGateway(MarketDataGateway):
         args: list[dict[str, str]] = []
         for sym in symbols:
             inst_id = _to_okx_inst_id(sym)
-            args.extend([
-                {"channel": "tickers", "instId": inst_id},
-                {"channel": "books5", "instId": inst_id},
-                {"channel": "trades", "instId": inst_id},
-            ])
+            args.extend(
+                [
+                    {"channel": "tickers", "instId": inst_id},
+                    {"channel": "books5", "instId": inst_id},
+                    {"channel": "trades", "instId": inst_id},
+                ]
+            )
             for interval in self._kline_intervals:
                 args.append({"channel": f"candle{interval}", "instId": inst_id})
 
         # OKX 单次订阅最多 200 个 channel
         batch_size = 200
         for i in range(0, len(args), batch_size):
-            batch = args[i:i + batch_size]
+            batch = args[i : i + batch_size]
             msg = json.dumps({"op": "subscribe", "args": batch})
             if self._ws is not None:
                 await self._ws.send(msg)

@@ -2,12 +2,11 @@
 
 import asyncio
 import signal
-import sys
 
 from one_quant.data.bronze import BronzeStorage
 from one_quant.data.quality import DataQualityGate
 from one_quant.data.tick_collector import TickCollector
-from one_quant.infra.event_bus import EventBus, RedisEventBus
+from one_quant.infra.event_bus import RedisEventBus
 from one_quant.infra.logging import get_logger
 
 logger = get_logger("collector")

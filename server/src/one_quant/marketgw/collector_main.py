@@ -54,7 +54,10 @@ class CollectorStats:
 
     def __init__(self) -> None:
         self._counters: dict[str, int] = {
-            "ticker": 0, "kline": 0, "orderbook": 0, "trade": 0,
+            "ticker": 0,
+            "kline": 0,
+            "orderbook": 0,
+            "trade": 0,
         }
         self._start_ns: int = time.time_ns()
 
@@ -77,8 +80,10 @@ class CollectorStats:
 
 async def _make_counter(channel: str, stats: CollectorStats) -> Any:
     """创建统计计数器回调"""
+
     async def handler(data: Any) -> None:
         stats.record(channel)
+
     return handler
 
 
@@ -86,9 +91,12 @@ async def _print_ticker(data: Any) -> None:
     """打印 Ticker（调试用）"""
     logger.info(
         "[Ticker] %s %s | 最新=%s 买=%s 卖=%s 量=%s",
-        data.get("exchange"), data.get("symbol"),
-        data.get("last_price"), data.get("bid"),
-        data.get("ask"), data.get("volume_24h"),
+        data.get("exchange"),
+        data.get("symbol"),
+        data.get("last_price"),
+        data.get("bid"),
+        data.get("ask"),
+        data.get("volume_24h"),
     )
 
 
@@ -96,8 +104,11 @@ async def _print_trade(data: Any) -> None:
     """打印 Trade（调试用）"""
     logger.info(
         "[Trade] %s %s | %s %s @ %s",
-        data.get("exchange"), data.get("symbol"),
-        data.get("side"), data.get("quantity"), data.get("price"),
+        data.get("exchange"),
+        data.get("symbol"),
+        data.get("side"),
+        data.get("quantity"),
+        data.get("price"),
     )
 
 
@@ -133,7 +144,7 @@ def load_config(config_path: str | None = None) -> dict[str, Any]:
         logger.warning("配置文件不存在: %s，使用默认配置", config_path)
         return default
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         user_config = json.load(f)
     default.update(user_config)
     return default
@@ -212,8 +223,7 @@ async def run_collector(config: dict[str, Any]) -> None:
 
     # 启动所有网关
     tasks = [
-        asyncio.create_task(_run_gateway(name, gw), name=f"gw-{name}")
-        for name, gw in gateways
+        asyncio.create_task(_run_gateway(name, gw), name=f"gw-{name}") for name, gw in gateways
     ]
 
     # 信号处理
@@ -231,9 +241,12 @@ async def run_collector(config: dict[str, Any]) -> None:
             snap = stats.snapshot()
             logger.info(
                 "采集统计: %.1fs | 总消息 %d | Ticker=%d Kline=%d OrderBook=%d Trade=%d",
-                snap["elapsed_s"], snap["total"],
-                snap["counters"]["ticker"], snap["counters"]["kline"],
-                snap["counters"]["orderbook"], snap["counters"]["trade"],
+                snap["elapsed_s"],
+                snap["total"],
+                snap["counters"]["ticker"],
+                snap["counters"]["kline"],
+                snap["counters"]["orderbook"],
+                snap["counters"]["trade"],
             )
 
     stats_task = asyncio.create_task(_stats_loop())

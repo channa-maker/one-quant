@@ -40,6 +40,7 @@ class StreamPersistence:
         """连接 Redis"""
         try:
             import redis.asyncio as aioredis
+
             self._redis = aioredis.from_url(
                 self._redis_url,
                 decode_responses=True,

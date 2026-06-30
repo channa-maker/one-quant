@@ -1,7 +1,6 @@
 """特征商店 — 离线(Parquet) + 在线(Redis) 双存储"""
 
 import json
-import time
 from pathlib import Path
 from typing import Any
 

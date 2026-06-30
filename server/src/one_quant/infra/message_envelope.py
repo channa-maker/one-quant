@@ -52,7 +52,7 @@ class MessageEnvelope:
         )
 
     @classmethod
-    def from_json(cls, raw: str) -> "MessageEnvelope":
+    def from_json(cls, raw: str) -> MessageEnvelope:
         """从 JSON 字符串反序列化。"""
         obj = json.loads(raw)
         return cls(

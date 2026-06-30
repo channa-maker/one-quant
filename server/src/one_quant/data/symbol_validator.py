@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 @dataclass
 class ValidationResult:
     """校验结果"""
+
     passed: bool
     checks: dict[str, bool] = field(default_factory=dict)
     reasons: list[str] = field(default_factory=list)
@@ -47,7 +48,9 @@ class SymbolValidator:
         self._min_history_days = min_history_days
         self._blacklist: set[str] = set()
 
-    def validate(self, instrument: Instrument, market_data: dict[str, Any] | None = None) -> ValidationResult:
+    def validate(
+        self, instrument: Instrument, market_data: dict[str, Any] | None = None
+    ) -> ValidationResult:
         """执行四项校验。
 
         Args:

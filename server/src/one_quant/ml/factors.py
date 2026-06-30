@@ -15,8 +15,8 @@ from __future__ import annotations
 import logging
 import math
 import time
-from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation, DivisionByZero
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 协议与结果
 # ---------------------------------------------------------------------------
+
 
 @runtime_checkable
 class Factor(Protocol):
@@ -86,6 +87,7 @@ def _safe_decimal(val: float | Decimal | None) -> Decimal | None:
 # ---------------------------------------------------------------------------
 # 动量因子
 # ---------------------------------------------------------------------------
+
 
 class MomentumFactor:
     """动量因子：N 期收益率。
@@ -178,7 +180,11 @@ class RSIFactor:
             name=self.name,
             value=round(float(rsi), 2),
             timestamp_ns=_now_ns(),
-            metadata={"window": self.window, "avg_gain": float(avg_gain), "avg_loss": float(avg_loss)},
+            metadata={
+                "window": self.window,
+                "avg_gain": float(avg_gain),
+                "avg_loss": float(avg_loss),
+            },
         )
 
 
@@ -262,14 +268,16 @@ class MomentumMACDFactor:
         slow_ema = self._ema(prices_f, self.slow)
 
         # MACD 线 = fast_ema - slow_ema
-        macd_line = [f - s for f, s in zip(fast_ema[-self.signal:], slow_ema[-self.signal:])]
+        macd_line = [f - s for f, s in zip(fast_ema[-self.signal :], slow_ema[-self.signal :])]
 
         # 信号线 = EMA(MACD, signal)
         signal_ema = self._ema_from_list(macd_line, self.signal)
 
         macd_val = macd_line[-1] if macd_line else None
         signal_val = signal_ema[-1] if signal_ema else None
-        histogram = (macd_val - signal_val) if macd_val is not None and signal_val is not None else None
+        histogram = (
+            (macd_val - signal_val) if macd_val is not None and signal_val is not None else None
+        )
 
         return {
             "macd": round(macd_val, 6) if macd_val is not None else None,
@@ -325,7 +333,7 @@ class MomentumBreakoutFactor:
         if len(prices) < self.window:
             return None
 
-        recent = prices[-self.window:]
+        recent = prices[-self.window :]
         current = prices[-1]
         high = max(recent)
         low = min(recent)
@@ -335,13 +343,16 @@ class MomentumBreakoutFactor:
 
         # 归一化到 [-1, 1]：(current - mid) / (high - low) * 2
         mid = (high + low) / 2
-        strength = (current - mid) / (high - mid) if current >= mid else (current - mid) / (mid - low)
+        strength = (
+            (current - mid) / (high - mid) if current >= mid else (current - mid) / (mid - low)
+        )
         return _safe_float(strength)
 
 
 # ---------------------------------------------------------------------------
 # 资金流因子
 # ---------------------------------------------------------------------------
+
 
 class FlowCVDFactor:
     """累计成交量差 CVD（Cumulative Volume Delta）。
@@ -457,6 +468,7 @@ class FlowLargeOrderNetFactor:
 # 波动因子
 # ---------------------------------------------------------------------------
 
+
 class VolatilityATRFactor:
     """ATR 波动因子（Average True Range）。
 
@@ -536,7 +548,7 @@ class VolatilityRealizedFactor:
         if len(returns) < self.window:
             return None
 
-        recent = returns[-self.window:]
+        recent = returns[-self.window :]
         n = len(recent)
 
         # 计算均值
@@ -556,6 +568,7 @@ class VolatilityRealizedFactor:
 # 情绪因子
 # ---------------------------------------------------------------------------
 
+
 class SentimentScoreFactor:
     """新闻情绪因子。
 
@@ -566,12 +579,38 @@ class SentimentScoreFactor:
 
     # 简易情绪词典
     _POSITIVE_WORDS = {
-        "利好", "上涨", "突破", "新高", "暴涨", "牛市", "盈利", "增长",
-        "bullish", "surge", "rally", "breakout", "gain", "profit", "rise",
+        "利好",
+        "上涨",
+        "突破",
+        "新高",
+        "暴涨",
+        "牛市",
+        "盈利",
+        "增长",
+        "bullish",
+        "surge",
+        "rally",
+        "breakout",
+        "gain",
+        "profit",
+        "rise",
     }
     _NEGATIVE_WORDS = {
-        "利空", "下跌", "暴跌", "新低", "崩盘", "熊市", "亏损", "衰退",
-        "bearish", "crash", "dump", "loss", "decline", "fall", "panic",
+        "利空",
+        "下跌",
+        "暴跌",
+        "新低",
+        "崩盘",
+        "熊市",
+        "亏损",
+        "衰退",
+        "bearish",
+        "crash",
+        "dump",
+        "loss",
+        "decline",
+        "fall",
+        "panic",
     }
 
     def __init__(self) -> None:
@@ -611,6 +650,7 @@ class SentimentScoreFactor:
 # 事件因子
 # ---------------------------------------------------------------------------
 
+
 class EventCalendarProximityFactor:
     """事件日历临近度因子。
 
@@ -643,6 +683,7 @@ class EventCalendarProximityFactor:
 # ---------------------------------------------------------------------------
 # 原有因子（保持向后兼容）
 # ---------------------------------------------------------------------------
+
 
 class MomentumReturnFactor:
     """N 期收益率因子（向后兼容 MomentumFactor）。"""
@@ -725,7 +766,7 @@ class VolumeRatioFactor:
                 metadata={"samples": len(self._volumes), "required": self.window},
             )
 
-        recent = self._volumes[-self.window:]
+        recent = self._volumes[-self.window :]
         mean_vol = sum(recent) / len(recent)
 
         if mean_vol == 0:
@@ -753,6 +794,7 @@ VolumeFactor = VolumeRatioFactor
 # ---------------------------------------------------------------------------
 # 批量计算接口（面向 ML 管线）
 # ---------------------------------------------------------------------------
+
 
 class FactorCalculator:
     """因子计算器 — 统一入口，供 ML 管线调用。
@@ -810,9 +852,7 @@ class FactorCalculator:
         """ATR 波动因子。"""
         return VolatilityATRFactor(period).compute(highs, lows, closes)
 
-    def volatility_realized(
-        self, returns: list[Decimal], window: int = 20
-    ) -> Decimal | None:
+    def volatility_realized(self, returns: list[Decimal], window: int = 20) -> Decimal | None:
         """已实现波动率。"""
         return VolatilityRealizedFactor(window).compute(returns)
 
@@ -820,9 +860,7 @@ class FactorCalculator:
         """新闻情绪因子（-1 到 1）。"""
         return self._sentiment.compute(news_texts)
 
-    def event_calendar_proximity(
-        self, event_date: int, current_date: int
-    ) -> float | None:
+    def event_calendar_proximity(self, event_date: int, current_date: int) -> float | None:
         """事件日历临近度。"""
         return self._event_proximity.compute(event_date, current_date)
 
@@ -905,6 +943,7 @@ class FactorCalculator:
 # ---------------------------------------------------------------------------
 # 因子库管理器
 # ---------------------------------------------------------------------------
+
 
 class FactorLibrary:
     """因子库管理器 — 注册、查询、批量计算。

@@ -200,7 +200,9 @@ class DeribitAdapter(UnifiedBroker):
         if order.order_type == "limit" and order.price is not None:
             params["price"] = str(order.price)
 
-        result = await self._private_post("private/buy" if order.side == "buy" else "private/sell", params)
+        result = await self._private_post(
+            "private/buy" if order.side == "buy" else "private/sell", params
+        )
 
         order_id = str(result.get("order", {}).get("order_id", ""))
         logger.info(

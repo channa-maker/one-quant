@@ -68,8 +68,11 @@ class TWAPAlgo(ExecutionAlgo):
 
         logger.info(
             "TWAP 开始执行: %s %s %s, 分 %d 片, 间隔 %.1fs",
-            parent_order.side, parent_order.quantity, parent_order.symbol,
-            self._slices, self._interval,
+            parent_order.side,
+            parent_order.quantity,
+            parent_order.symbol,
+            self._slices,
+            self._interval,
         )
 
         for i in range(self._slices):
@@ -130,13 +133,16 @@ class VWAPAlgo(ExecutionAlgo):
     ) -> list[Order]:
         # 归一化 volume profile
         total_weight = sum(self._volume_profile)
-        weights = [w / total_weight for w in self._volume_profile[:self._slices]]
+        weights = [w / total_weight for w in self._volume_profile[: self._slices]]
 
         child_orders: list[Order] = []
 
         logger.info(
             "VWAP 开始执行: %s %s %s, 分 %d 片",
-            parent_order.side, parent_order.quantity, parent_order.symbol, self._slices,
+            parent_order.side,
+            parent_order.quantity,
+            parent_order.symbol,
+            self._slices,
         )
 
         for i, weight in enumerate(weights):
@@ -201,7 +207,10 @@ class IcebergAlgo(ExecutionAlgo):
 
         logger.info(
             "冰山单开始执行: %s %s %s, 每批 %s",
-            parent_order.side, parent_order.quantity, parent_order.symbol, visible_size,
+            parent_order.side,
+            parent_order.quantity,
+            parent_order.symbol,
+            visible_size,
         )
 
         while remaining > 0:

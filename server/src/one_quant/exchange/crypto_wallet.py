@@ -18,12 +18,12 @@ ONE量化 - 加密钱包冷热分离管理
 
 from __future__ import annotations
 
-import asyncio
 import time
-from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_DOWN
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from decimal import ROUND_DOWN, Decimal
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -35,31 +35,34 @@ logger = get_logger(__name__)
 
 class WalletType(str, Enum):
     """钱包类型"""
-    HOT = "hot"           # 热钱包：联网，用于交易
-    COLD = "cold"         # 冷钱包：离线，用于存储
+
+    HOT = "hot"  # 热钱包：联网，用于交易
+    COLD = "cold"  # 冷钱包：离线，用于存储
     EXCHANGE = "exchange"  # 交易所钱包（子账户）
 
 
 class DepositStatus(str, Enum):
     """充值确认状态"""
-    PENDING = "pending"         # 等待确认
-    CONFIRMING = "confirming"   # 确认中（部分确认）
-    COMPLETED = "completed"     # 确认完成，已入账
-    FAILED = "failed"           # 充值失败
+
+    PENDING = "pending"  # 等待确认
+    CONFIRMING = "confirming"  # 确认中（部分确认）
+    COMPLETED = "completed"  # 确认完成，已入账
+    FAILED = "failed"  # 充值失败
 
 
 class AlertLevel(str, Enum):
     """告警级别"""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
 
 
 # 默认配置
-DEFAULT_HOT_RATIO = Decimal("0.10")       # 热钱包目标比例 10%
+DEFAULT_HOT_RATIO = Decimal("0.10")  # 热钱包目标比例 10%
 DEFAULT_REBALANCE_THRESHOLD = Decimal("0.05")  # 再平衡触发阈值 5%
-DEFAULT_MIN_CONFIRMATIONS = 6              # BTC 默认确认数
-DEFAULT_ALERT_COOLDOWN_SEC = 300           # 同类告警冷却 5 分钟
+DEFAULT_MIN_CONFIRMATIONS = 6  # BTC 默认确认数
+DEFAULT_ALERT_COOLDOWN_SEC = 300  # 同类告警冷却 5 分钟
 
 # 各链默认确认数
 CHAIN_CONFIRMATIONS: dict[str, int] = {
@@ -101,6 +104,7 @@ class WalletBalance:
         total: 总余额 = available + frozen
         timestamp_ns: 快照时间戳（纳秒）
     """
+
     wallet_type: WalletType
     address: str
     asset: str
@@ -131,6 +135,7 @@ class AddressEntry:
         added_at: 添加时间戳（纳秒）
         added_by: 添加人
     """
+
     address: str
     asset: str
     chain: str
@@ -161,6 +166,7 @@ class DepositRecord:
         first_seen_ns: 首次发现时间戳
         confirmed_ns: 确认完成时间戳（未确认为 0）
     """
+
     tx_hash: str
     asset: str
     chain: str
@@ -196,6 +202,7 @@ class RebalanceSuggestion:
         hot_ratio_target: 目标热钱包比例
         timestamp_ns: 建议生成时间戳
     """
+
     asset: str
     direction: str
     amount: Decimal
@@ -223,6 +230,7 @@ class TransferAlert:
         message: 告警详情
         timestamp_ns: 告警时间戳
     """
+
     alert_level: AlertLevel
     alert_type: str
     asset: str
@@ -284,9 +292,7 @@ class CryptoWalletManager:
         self._rebalance_threshold = rebalance_threshold
 
         # 钱包余额：{wallet_type: {address: WalletBalance}}
-        self._balances: dict[str, dict[str, WalletBalance]] = {
-            wt.value: {} for wt in WalletType
-        }
+        self._balances: dict[str, dict[str, WalletBalance]] = {wt.value: {} for wt in WalletType}
 
         # 白名单：{(asset, address): AddressEntry}
         self._whitelist: dict[tuple[str, str], AddressEntry] = {}
@@ -558,9 +564,7 @@ class CryptoWalletManager:
             return None
 
         # 计算当前热钱包比例
-        current_ratio = (hot_total / combined).quantize(
-            Decimal("0.0001"), rounding=ROUND_DOWN
-        )
+        current_ratio = (hot_total / combined).quantize(Decimal("0.0001"), rounding=ROUND_DOWN)
 
         # 偏差是否超过阈值
         deviation = abs(current_ratio - self._hot_ratio)
@@ -731,7 +735,8 @@ class CryptoWalletManager:
             待确认充值记录列表
         """
         pending = [
-            r for r in self._deposits.values()
+            r
+            for r in self._deposits.values()
             if r.status in (DepositStatus.PENDING, DepositStatus.CONFIRMING)
         ]
         if asset:
@@ -899,16 +904,13 @@ class CryptoWalletManager:
         """
         # 检查余额
         balances = self.get_balance(wallet_type, asset)
-        source_balance = next(
-            (b for b in balances if b.address == from_address), None
-        )
+        source_balance = next((b for b in balances if b.address == from_address), None)
         if source_balance is None:
             return False, f"来源钱包未注册: {from_address[:16]}..."
 
         if source_balance.available < amount:
             return False, (
-                f"余额不足: 可用 {source_balance.available} {asset}，"
-                f"需要 {amount} {asset}"
+                f"余额不足: 可用 {source_balance.available} {asset}，需要 {amount} {asset}"
             )
 
         # 检查白名单
@@ -948,9 +950,9 @@ class CryptoWalletManager:
             "whitelist_count": len([e for e in self._whitelist.values() if e.is_active]),
             "pending_deposits": len(pending),
             "total_alerts": len(self._alerts),
-            "critical_alerts": len([
-                a for a in self._alerts if a.alert_level == AlertLevel.CRITICAL
-            ]),
+            "critical_alerts": len(
+                [a for a in self._alerts if a.alert_level == AlertLevel.CRITICAL]
+            ),
             "timestamp_ns": time.time_ns(),
         }
 

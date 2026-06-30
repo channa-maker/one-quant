@@ -14,7 +14,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-
 # ──────────────────────────── 枚举 ────────────────────────────
 
 

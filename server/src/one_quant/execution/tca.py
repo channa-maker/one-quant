@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from pydantic import BaseModel
@@ -259,10 +259,18 @@ class TCAnalyzer:
         tail_n = max(1, n // 5)
 
         head_qty = sum(f.quantity for f in sorted_fills[:head_n])
-        head_avg = sum(f.price * f.quantity for f in sorted_fills[:head_n]) / head_qty if head_qty > 0 else avg_price
+        head_avg = (
+            sum(f.price * f.quantity for f in sorted_fills[:head_n]) / head_qty
+            if head_qty > 0
+            else avg_price
+        )
 
         tail_qty = sum(f.quantity for f in sorted_fills[-tail_n:])
-        tail_avg = sum(f.price * f.quantity for f in sorted_fills[-tail_n:]) / tail_qty if tail_qty > 0 else avg_price
+        tail_avg = (
+            sum(f.price * f.quantity for f in sorted_fills[-tail_n:]) / tail_qty
+            if tail_qty > 0
+            else avg_price
+        )
 
         # 买入时后成交价高于前成交价 = 正冲击
         if head_avg > 0:
@@ -282,7 +290,7 @@ class TCAnalyzer:
         if len(prices) > 1:
             mean_p = sum(prices) / len(prices)
             variance = sum((p - mean_p) ** 2 for p in prices) / (len(prices) - 1)
-            std_dev = variance ** 0.5
+            std_dev = variance**0.5
             spread_cost_bps = (std_dev / mean_p * 10000) if mean_p > 0 else 0.0
         else:
             spread_cost_bps = 0.0
@@ -341,16 +349,25 @@ class TCAnalyzer:
         """
         if not fills:
             return TCReport(
-                strategy_id=strategy_id, symbol="", side="buy",
-                total_quantity=Decimal("0"), avg_fill_price=Decimal("0"),
-                decision_price=decision_price, arrival_price=arrival_price,
+                strategy_id=strategy_id,
+                symbol="",
+                side="buy",
+                total_quantity=Decimal("0"),
+                avg_fill_price=Decimal("0"),
+                decision_price=decision_price,
+                arrival_price=arrival_price,
                 market_vwap=market_vwap,
                 implementation_shortfall=Decimal("0"),
-                implementation_shortfall_bps=0, vwap_slippage_bps=0,
-                arrival_slippage_bps=0, market_impact_bps=0,
-                timing_cost_bps=0, spread_cost_bps=0,
-                fill_count=0, total_commission=Decimal("0"),
-                total_notional=Decimal("0"), period=period,
+                implementation_shortfall_bps=0,
+                vwap_slippage_bps=0,
+                arrival_slippage_bps=0,
+                market_impact_bps=0,
+                timing_cost_bps=0,
+                spread_cost_bps=0,
+                fill_count=0,
+                total_commission=Decimal("0"),
+                total_notional=Decimal("0"),
+                period=period,
                 timestamp_ns=time.time_ns(),
             )
 
@@ -439,8 +456,8 @@ class StrategyCapacityAnalyzer:
 
     # 衰减模型参数（可调）
     DECAY_MODEL_COEFFICIENTS = {
-        "linear": 0.05,       # 每翻倍资金，收益衰减 5%
-        "quadratic": 0.002,   # 二次衰减系数
+        "linear": 0.05,  # 每翻倍资金，收益衰减 5%
+        "quadratic": 0.002,  # 二次衰减系数
     }
 
     def estimate_capacity(
@@ -495,7 +512,7 @@ class StrategyCapacityAnalyzer:
 
             # 收益衰减模型
             if market_impact_model == "quadratic":
-                decay = self.DECAY_MODEL_COEFFICIENTS["quadratic"] * current_participation ** 2
+                decay = self.DECAY_MODEL_COEFFICIENTS["quadratic"] * current_participation**2
             else:
                 decay = self.DECAY_MODEL_COEFFICIENTS["linear"] * current_participation
 
@@ -552,7 +569,10 @@ class StrategyCapacityAnalyzer:
             ratio = float(current_capital / optimal_capital)
             logger.warning(
                 "策略 %s 超容量: 当前资金=%s, 最优容量=%s, 超出比例=%.2f%%",
-                strategy_name, current_capital, optimal_capital, (ratio - 1) * 100,
+                strategy_name,
+                current_capital,
+                optimal_capital,
+                (ratio - 1) * 100,
             )
         return is_over
 

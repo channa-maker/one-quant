@@ -2,9 +2,7 @@
 
 import asyncio
 import json
-import os
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +38,9 @@ class BronzeStorage:
         self._buffers: dict[str, list[dict[str, Any]]] = {}
         self._write_lock = asyncio.Lock()
 
-    async def append(self, table: str, records: list[dict[str, Any]], source: str = "default") -> None:
+    async def append(
+        self, table: str, records: list[dict[str, Any]], source: str = "default"
+    ) -> None:
         """追加写入原始数据。
 
         Args:
@@ -69,7 +69,7 @@ class BronzeStorage:
         self._buffers[buffer_key] = []
 
         # 按日期分区
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         partition_dir = self._base_path / buffer_key / now.strftime("%Y/%m/%d")
         partition_dir.mkdir(parents=True, exist_ok=True)
 

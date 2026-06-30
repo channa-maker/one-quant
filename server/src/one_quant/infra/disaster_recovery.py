@@ -9,11 +9,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 
 class BackupStatus(str, Enum):
     """备份状态"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     SUCCESS = "success"
@@ -30,16 +31,18 @@ class BackupStatus(str, Enum):
 
 class DRScenario(str, Enum):
     """灾备演练场景"""
-    NETWORK_DOWN = "network_down"       # 断网
-    DB_DOWN = "db_down"                 # 断库
-    EXCHANGE_DOWN = "exchange_down"     # 交易所故障
-    REDIS_DOWN = "redis_down"           # Redis 故障
-    FULL_RECOVERY = "full_recovery"     # 完整恢复演练
+
+    NETWORK_DOWN = "network_down"  # 断网
+    DB_DOWN = "db_down"  # 断库
+    EXCHANGE_DOWN = "exchange_down"  # 交易所故障
+    REDIS_DOWN = "redis_down"  # Redis 故障
+    FULL_RECOVERY = "full_recovery"  # 完整恢复演练
 
 
 @dataclass
 class BackupRecord:
     """备份记录"""
+
     backup_id: str
     backup_type: str  # db / redis
     status: BackupStatus = BackupStatus.PENDING
@@ -53,6 +56,7 @@ class BackupRecord:
 @dataclass
 class DRDrillResult:
     """灾备演练结果"""
+
     scenario: DRScenario
     started_at: int = 0
     finished_at: int = 0
@@ -259,7 +263,9 @@ class DisasterRecovery:
                 logger.info("备份恢复成功: %s (耗时 %.1fs)", backup_id, elapsed_sec)
                 # 检查是否满足 RTO
                 if elapsed_sec > self._rto_target_sec:
-                    logger.warning("恢复时间超过 RTO 目标: %.1fs > %ds", elapsed_sec, self._rto_target_sec)
+                    logger.warning(
+                        "恢复时间超过 RTO 目标: %.1fs > %ds", elapsed_sec, self._rto_target_sec
+                    )
             else:
                 logger.error("备份恢复失败: %s", backup_id)
 
@@ -322,7 +328,10 @@ class DisasterRecovery:
                 f"灾备演练完成: {status}",
                 f"演练耗时: {results['total_duration_sec']:.1f}s\n"
                 f"发现问题: {len(results['issues'])} 个\n"
-                + "\n".join(f"- {s}: {'✅' if r['success'] else '❌'}" for s, r in results["scenarios"].items()),
+                + "\n".join(
+                    f"- {s}: {'✅' if r['success'] else '❌'}"
+                    for s, r in results["scenarios"].items()
+                ),
                 level="warning" if results["overall_pass"] else "error",
             )
 
@@ -402,7 +411,9 @@ class DisasterRecovery:
             "successful_backups": successful,
             "total_drills": total_drills,
             "drill_pass_rate": round(drill_pass / total_drills * 100, 1) if total_drills > 0 else 0,
-            "last_backup_age_sec": round((time.time_ns() - last_backup_ts) / 1e9, 1) if last_backup_ts > 0 else -1,
+            "last_backup_age_sec": round((time.time_ns() - last_backup_ts) / 1e9, 1)
+            if last_backup_ts > 0
+            else -1,
         }
 
     @property
@@ -413,7 +424,9 @@ class DisasterRecovery:
                 "backup_id": r.backup_id,
                 "type": r.backup_type,
                 "status": r.status.value,
-                "duration_sec": round((r.finished_at - r.started_at) / 1e9, 1) if r.finished_at > 0 else 0,
+                "duration_sec": round((r.finished_at - r.started_at) / 1e9, 1)
+                if r.finished_at > 0
+                else 0,
                 "error": r.error,
             }
             for r in self._backup_history

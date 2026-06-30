@@ -27,8 +27,8 @@ logger = get_logger("healthcheck")
 class HealthStatus(str, Enum):
     """健康状态枚举。"""
 
-    HEALTHY = "healthy"      # 正常
-    DEGRADED = "degraded"    # 降级（部分组件异常但服务可用）
+    HEALTHY = "healthy"  # 正常
+    DEGRADED = "degraded"  # 降级（部分组件异常但服务可用）
     UNHEALTHY = "unhealthy"  # 不可用（关键组件异常）
 
 
@@ -315,13 +315,11 @@ class HealthChecker:
         import asyncio
 
         # 并行执行所有检查
-        db_health, redis_health, event_bus_health, exchange_results = (
-            await asyncio.gather(
-                self.check_database(),
-                self.check_redis(),
-                self.check_event_bus(),
-                self.check_exchanges(),
-            )
+        db_health, redis_health, event_bus_health, exchange_results = await asyncio.gather(
+            self.check_database(),
+            self.check_redis(),
+            self.check_event_bus(),
+            self.check_exchanges(),
         )
 
         # 合并所有组件结果
@@ -333,12 +331,8 @@ class HealthChecker:
         components.update(exchange_results)
 
         # 判定整体状态
-        has_unhealthy = any(
-            c.status == HealthStatus.UNHEALTHY for c in components.values()
-        )
-        has_degraded = any(
-            c.status == HealthStatus.DEGRADED for c in components.values()
-        )
+        has_unhealthy = any(c.status == HealthStatus.UNHEALTHY for c in components.values())
+        has_degraded = any(c.status == HealthStatus.DEGRADED for c in components.values())
 
         # 数据库是关键组件，不可用则整体不可用
         if db_health.status == HealthStatus.UNHEALTHY:
@@ -359,8 +353,7 @@ class HealthChecker:
 
         if overall != HealthStatus.HEALTHY:
             unhealthy_names = [
-                name for name, comp in components.items()
-                if comp.status != HealthStatus.HEALTHY
+                name for name, comp in components.items() if comp.status != HealthStatus.HEALTHY
             ]
             logger.warning("健康检查异常组件: %s, 整体状态: %s", unhealthy_names, overall.value)
 

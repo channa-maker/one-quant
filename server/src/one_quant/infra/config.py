@@ -8,7 +8,6 @@ ONE量化 - 配置体系
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -40,7 +39,7 @@ class RedisSettings(BaseSettings):
     )
 
     REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_PASSWORD: Optional[SecretStr] = None
+    REDIS_PASSWORD: SecretStr | None = None
 
 
 class ExchangeSettings(BaseSettings):
@@ -56,13 +55,13 @@ class ExchangeSettings(BaseSettings):
         extra="ignore",
     )
 
-    BINANCE_API_KEY: Optional[SecretStr] = None
-    BINANCE_SECRET: Optional[SecretStr] = None
-    OKX_API_KEY: Optional[SecretStr] = None
-    OKX_SECRET: Optional[SecretStr] = None
-    OKX_PASSPHRASE: Optional[SecretStr] = None
-    DERIBIT_API_KEY: Optional[SecretStr] = None
-    DERIBIT_SECRET: Optional[SecretStr] = None
+    BINANCE_API_KEY: SecretStr | None = None
+    BINANCE_SECRET: SecretStr | None = None
+    OKX_API_KEY: SecretStr | None = None
+    OKX_SECRET: SecretStr | None = None
+    OKX_PASSPHRASE: SecretStr | None = None
+    DERIBIT_API_KEY: SecretStr | None = None
+    DERIBIT_SECRET: SecretStr | None = None
 
 
 class AISettings(BaseSettings):
@@ -75,8 +74,8 @@ class AISettings(BaseSettings):
         extra="ignore",
     )
 
-    ANTHROPIC_API_KEY: Optional[SecretStr] = None
-    DEEPSEEK_API_KEY: Optional[SecretStr] = None
+    ANTHROPIC_API_KEY: SecretStr | None = None
+    DEEPSEEK_API_KEY: SecretStr | None = None
     LLM_DAILY_BUDGET_USD: float = 50.0
     AGENT_PROVIDER: str = "deepseek"
 

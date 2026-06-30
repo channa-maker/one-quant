@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 结果模型
 # ---------------------------------------------------------------------------
+
 
 class TrainResult(BaseModel, frozen=True):
     """训练结果。
@@ -71,7 +71,8 @@ class CVResult(BaseModel, frozen=True):
 # 辅助函数
 # ---------------------------------------------------------------------------
 
-def _validate_inputs(X: Any, y: Any = None) -> None:
+
+def _validate_inputs(X: Any, y: Any = None) -> None:  # noqa: N803
     """校验输入数据，确保无 NaN/Inf。"""
     try:
         import numpy as np
@@ -220,6 +221,7 @@ def _compute_auc(y_true: list[int], y_prob: list[float]) -> float:
 # ML 训练器
 # ---------------------------------------------------------------------------
 
+
 class MLTrainer:
     """ML 训练管线（XGBoost / LightGBM）。
 
@@ -274,30 +276,28 @@ class MLTrainer:
         if self._model_type == "xgboost":
             try:
                 import xgboost as xgb
+
                 return xgb.XGBClassifier(**default_params)
             except ImportError:
-                raise ImportError(
-                    "需要安装 xgboost: pip install xgboost"
-                ) from None
+                raise ImportError("需要安装 xgboost: pip install xgboost") from None
 
         elif self._model_type == "lightgbm":
             try:
                 import lightgbm as lgb
+
                 default_params.pop("colsample_bytree", None)
                 default_params["colsample_bytree"] = default_params.pop("colsample_bytree", 0.8)
                 return lgb.LGBMClassifier(**default_params)
             except ImportError:
-                raise ImportError(
-                    "需要安装 lightgbm: pip install lightgbm"
-                ) from None
+                raise ImportError("需要安装 lightgbm: pip install lightgbm") from None
 
         raise ValueError(f"不支持的模型类型: {self._model_type}")
 
     def train(
         self,
-        X_train: Any,
+        X_train: Any,  # noqa: N803
         y_train: Any,
-        X_val: Any,
+        X_val: Any,  # noqa: N803
         y_val: Any,
         feature_names: list[str] | None = None,
         params: dict[str, Any] | None = None,
@@ -321,9 +321,10 @@ class MLTrainer:
         _validate_inputs(X_train, y_train)
         _validate_inputs(X_val, y_val)
 
-        self._feature_names = feature_names or [f"feature_{i}" for i in range(
-            X_train.shape[1] if hasattr(X_train, "shape") else len(X_train[0])
-        )]
+        self._feature_names = feature_names or [
+            f"feature_{i}"
+            for i in range(X_train.shape[1] if hasattr(X_train, "shape") else len(X_train[0]))
+        ]
 
         # 创建并训练模型
         self._model = self._create_model(params)
@@ -331,9 +332,11 @@ class MLTrainer:
 
         # 预测
         y_pred = self._model.predict(X_val)
-        y_prob = self._model.predict_proba(X_val)[:, 1].tolist() if hasattr(
-            self._model, "predict_proba"
-        ) else None
+        y_prob = (
+            self._model.predict_proba(X_val)[:, 1].tolist()
+            if hasattr(self._model, "predict_proba")
+            else None
+        )
 
         # 转为列表
         y_val_list = y_val.tolist() if hasattr(y_val, "tolist") else list(y_val)
@@ -364,7 +367,7 @@ class MLTrainer:
             icir=round(icir, 4),
         )
 
-    def predict(self, X: Any) -> list[float]:
+    def predict(self, X: Any) -> list[float]:  # noqa: N803
         """预测。
 
         Args:
@@ -399,10 +402,9 @@ class MLTrainer:
 
         # 优先使用 SHAP
         try:
-            import shap
-            import numpy as np
+            import shap  # noqa: F401
 
-            explainer = shap.TreeExplainer(self._model)
+            _explainer = shap.TreeExplainer(self._model)  # noqa: F841
             # 使用一个空的 SHAP 值来获取全局重要性
             # 这里需要传入训练数据，但 train() 中没有保存
             # 所以先尝试模型内置重要性
@@ -413,7 +415,11 @@ class MLTrainer:
             if hasattr(self._model, "feature_importances_"):
                 importance = self._model.feature_importances_
             elif hasattr(self._model, "coef_"):
-                importance = abs(self._model.coef_[0]) if len(self._model.coef_.shape) > 1 else abs(self._model.coef_)
+                importance = (
+                    abs(self._model.coef_[0])
+                    if len(self._model.coef_.shape) > 1
+                    else abs(self._model.coef_)
+                )
 
             if importance is None:
                 return {}
@@ -428,7 +434,7 @@ class MLTrainer:
                 for name, imp in zip(self._feature_names, imp_list)
             }
 
-    def get_shap_values(self, X: Any) -> dict[str, list[float]] | None:
+    def get_shap_values(self, X: Any) -> dict[str, list[float]] | None:  # noqa: N803
         """获取 SHAP 值（需安装 shap）。
 
         Args:
@@ -441,8 +447,8 @@ class MLTrainer:
             return None
 
         try:
-            import shap
             import numpy as np
+            import shap
 
             explainer = shap.TreeExplainer(self._model)
             shap_values = explainer.shap_values(X if isinstance(X, np.ndarray) else np.array(X))
@@ -455,7 +461,7 @@ class MLTrainer:
 
             result: dict[str, list[float]] = {}
             for i, name in enumerate(self._feature_names):
-                col = sv[:, i] if hasattr(sv, '__getitem__') else sv[i]
+                col = sv[:, i] if hasattr(sv, "__getitem__") else sv[i]
                 result[name] = col.tolist() if hasattr(col, "tolist") else list(col)
 
             return result
@@ -465,7 +471,7 @@ class MLTrainer:
 
     def cross_validate(
         self,
-        X: Any,
+        X: Any,  # noqa: N803
         y: Any,
         feature_names: list[str] | None = None,
         n_splits: int = 5,
@@ -501,9 +507,9 @@ class MLTrainer:
             train_end = fold * fold_size
             val_end = min((fold + 1) * fold_size, n_samples)
 
-            X_train = X[:train_end]
+            X_train = X[:train_end]  # noqa: N806
             y_train = y[:train_end]
-            X_val = X[train_end:val_end]
+            X_val = X[train_end:val_end]  # noqa: N806
             y_val = y[train_end:val_end]
 
             # 每折重新创建模型

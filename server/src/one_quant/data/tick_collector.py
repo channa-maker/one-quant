@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any
@@ -70,9 +69,7 @@ class TickCollector(DataCollector):
         # 启动定期刷盘任务
         import asyncio
 
-        self._flush_task = asyncio.create_task(
-            self._periodic_flush(), name="tick-collector-flush"
-        )
+        self._flush_task = asyncio.create_task(self._periodic_flush(), name="tick-collector-flush")
 
         logger.info("Tick 采集器已启动，输出目录: %s", self._output_dir)
 

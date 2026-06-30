@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import asyncio
 import time
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -19,6 +20,7 @@ logger = get_logger(__name__)
 
 class HealResult(str, Enum):
     """自愈结果"""
+
     SUCCESS = "success"
     FAILED = "failed"
     SKIPPED = "skipped"
@@ -28,6 +30,7 @@ class HealResult(str, Enum):
 @dataclass
 class HealRecord:
     """自愈记录"""
+
     strategy: str
     result: HealResult
     started_at: int = 0
@@ -388,7 +391,9 @@ class SelfHealStrategy:
             "exchange_api_error": self.heal_exchange_api_error,
             "db_lock": self.heal_db_lock,
             "redis_disconnect": self.heal_redis_disconnect,
-            "strategy_crash": lambda: self.heal_strategy_crash(kwargs.get("strategy_name", "unknown")),
+            "strategy_crash": lambda: self.heal_strategy_crash(
+                kwargs.get("strategy_name", "unknown")
+            ),
             "risk_failure": self.heal_risk_failure,
         }
 
@@ -410,7 +415,9 @@ class SelfHealStrategy:
                 "result": r.result.value,
                 "attempts": r.attempts,
                 "detail": r.detail,
-                "duration_ms": round((r.finished_at - r.started_at) / 1e6, 1) if r.finished_at > 0 else 0,
+                "duration_ms": round((r.finished_at - r.started_at) / 1e6, 1)
+                if r.finished_at > 0
+                else 0,
             }
             for r in self._history
         ]

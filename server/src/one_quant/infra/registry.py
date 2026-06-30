@@ -15,8 +15,8 @@ ONE量化 - 插件注册表
 
 from __future__ import annotations
 
-from typing import Any, Callable, Generic, Optional, TypeVar
-
+from collections.abc import Callable
+from typing import Any, Generic, TypeVar
 
 # 泛型类型变量 —— 被注册对象的类型（通常是类）
 T = TypeVar("T")
@@ -67,15 +67,14 @@ class Registry(Generic[T]):
         def decorator(item: T) -> T:
             if key in self._registry:
                 raise ValueError(
-                    f"[{self.name}] '{key}' 已注册，"
-                    f"不允许重复注册。已有: {self._registry[key]!r}"
+                    f"[{self.name}] '{key}' 已注册，不允许重复注册。已有: {self._registry[key]!r}"
                 )
             self._registry[key] = item
             return item
 
         return decorator
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         """
         按名称查询已注册项。
 
@@ -103,9 +102,7 @@ class Registry(Generic[T]):
         item = self._registry.get(key)
         if item is None:
             available = ", ".join(sorted(self._registry.keys())) or "(空)"
-            raise KeyError(
-                f"[{self.name}] '{key}' 未注册。可用: {available}"
-            )
+            raise KeyError(f"[{self.name}] '{key}' 未注册。可用: {available}")
         return item
 
     def list_keys(self) -> list[str]:
@@ -145,6 +142,7 @@ AGENT_REGISTRY: Registry[Any] = Registry("agent")
 # ===========================================================================
 # 便捷装饰器
 # ===========================================================================
+
 
 def register_strategy(name: str) -> Callable[[T], T]:
     """

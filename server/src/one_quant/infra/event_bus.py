@@ -14,9 +14,10 @@ import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ Handler = Callable[[dict[str, Any]], Awaitable[None]]
 # ---------------------------------------------------------------------------
 # 消息信封（Envelope）
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True, slots=True)
 class MessageEnvelope:
@@ -68,7 +70,7 @@ class MessageEnvelope:
         )
 
     @classmethod
-    def from_json(cls, raw: str) -> "MessageEnvelope":
+    def from_json(cls, raw: str) -> MessageEnvelope:
         """从 JSON 字符串反序列化。
 
         Args:
@@ -101,6 +103,7 @@ class MessageEnvelope:
 # 背压策略
 # ---------------------------------------------------------------------------
 
+
 class BackpressurePolicy(Enum):
     """队列满时的背压处理策略。
 
@@ -122,6 +125,7 @@ class EventBusFullError(Exception):
 # ---------------------------------------------------------------------------
 # 抽象基类
 # ---------------------------------------------------------------------------
+
 
 class EventBus(ABC):
     """事件总线抽象基类。
@@ -160,6 +164,7 @@ class EventBus(ABC):
 # ---------------------------------------------------------------------------
 # 内存实现（用于测试）
 # ---------------------------------------------------------------------------
+
 
 class InMemoryEventBus(EventBus):
     """基于 asyncio.Queue 的内存事件总线。
@@ -224,9 +229,7 @@ class InMemoryEventBus(EventBus):
                 logger.warning("通道 %s 队列已满，丢弃最新消息", channel)
                 return
             elif self._backpressure is BackpressurePolicy.RAISE:
-                raise EventBusFullError(
-                    f"通道 {channel} 队列已满（容量 {self._max_queue_size}）"
-                )
+                raise EventBusFullError(f"通道 {channel} 队列已满（容量 {self._max_queue_size}）")
 
         await queue.put(envelope)
 
@@ -338,6 +341,7 @@ class InMemoryEventBus(EventBus):
 # Redis Pub/Sub 实现（生产环境）
 # ---------------------------------------------------------------------------
 
+
 class RedisEventBus(EventBus):
     """基于 Redis Pub/Sub 的事件总线。
 
@@ -366,8 +370,8 @@ class RedisEventBus(EventBus):
             reconnect_delay_max:  重连最大间隔（秒）。
         """
         self._redis_url = redis_url
-        self._redis: Any = None          # redis.asyncio.Redis 实例
-        self._pubsub: Any = None         # redis.asyncio.client.PubSub 实例
+        self._redis: Any = None  # redis.asyncio.Redis 实例
+        self._pubsub: Any = None  # redis.asyncio.client.PubSub 实例
         self._handlers: dict[str, list[Handler]] = {}
         self._listen_task: asyncio.Task[None] | None = None
         self._started: bool = False
@@ -396,9 +400,7 @@ class RedisEventBus(EventBus):
         try:
             import redis.asyncio as aioredis  # 延迟导入，避免测试时强依赖
         except ImportError as exc:
-            raise ImportError(
-                "请安装 redis 异步客户端: pip install redis>=4.2.0"
-            ) from exc
+            raise ImportError("请安装 redis 异步客户端: pip install redis>=4.2.0") from exc
 
         try:
             self._redis = aioredis.from_url(
@@ -473,9 +475,7 @@ class RedisEventBus(EventBus):
                 logger.warning("发送队列已满，丢弃最新消息 (channel=%s)", channel)
                 return
             elif self._backpressure is BackpressurePolicy.RAISE:
-                raise EventBusFullError(
-                    f"发送队列已满（容量 {self._max_queue_size}）"
-                )
+                raise EventBusFullError(f"发送队列已满（容量 {self._max_queue_size}）")
 
         await self._send_queue.put(envelope)
 

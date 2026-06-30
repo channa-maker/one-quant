@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +45,7 @@ class TieredStorageManager:
         Returns:
             迁移统计 {"hot_to_warm": N, "warm_to_cold": N}
         """
-        now = datetime.now(timezone.utc)
+        _now = datetime.now(UTC)  # noqa: F841
         stats = {"hot_to_warm": 0, "warm_to_cold": 0}
 
         hot_dir = self._base_path / "hot"
@@ -56,7 +55,6 @@ class TieredStorageManager:
             return stats
 
         # 热→温：压缩超过 hot_days 的文件
-        cutoff_hot = now - timedelta(days=self._hot_days)
         for parquet_file in hot_dir.rglob("*.parquet"):
             if self._file_age_days(parquet_file) > self._hot_days:
                 await self._compress_and_move(parquet_file, warm_dir)
@@ -89,8 +87,8 @@ class TieredStorageManager:
 
     def _file_age_days(self, filepath: Path) -> int:
         """文件年龄（天）"""
-        mtime = datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc)
-        return (datetime.now(timezone.utc) - mtime).days
+        mtime = datetime.fromtimestamp(filepath.stat().st_mtime, tz=UTC)
+        return (datetime.now(UTC) - mtime).days
 
     def get_storage_stats(self) -> dict[str, Any]:
         """获取存储统计"""

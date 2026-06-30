@@ -8,10 +8,7 @@ ONE量化 - 数据质检门
 from __future__ import annotations
 
 import logging
-import time
-from collections import deque
 from decimal import Decimal
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +99,7 @@ class DataQualityGate:
             if last_price is not None and last_price > 0:
                 jump_pct = abs(price - last_price) / last_price * 100
                 if jump_pct > self.max_price_jump_pct:
-                    warnings.append(
-                        f"价格跳变: {last_price} → {price} ({jump_pct:.2f}%)"
-                    )
+                    warnings.append(f"价格跳变: {last_price} → {price} ({jump_pct:.2f}%)")
                     self._total_warnings += 1
             self._last_price[symbol] = price
 
@@ -112,9 +107,7 @@ class DataQualityGate:
         if last_ts is not None:
             gap_seconds = (timestamp_ns - last_ts) / 1_000_000_000
             if gap_seconds > self.max_gap_seconds:
-                warnings.append(
-                    f"数据缺口: {gap_seconds:.1f}s (阈值 {self.max_gap_seconds}s)"
-                )
+                warnings.append(f"数据缺口: {gap_seconds:.1f}s (阈值 {self.max_gap_seconds}s)")
                 self._total_warnings += 1
 
         return passed, warnings

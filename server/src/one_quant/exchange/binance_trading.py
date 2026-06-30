@@ -95,10 +95,12 @@ class BinanceTradingAdapter(ExchangeAdapter):
 
     async def cancel_order(self, order_id: str, symbol: str) -> bool:
         await self._limiter.acquire()
-        params = self._sign({
-            "symbol": symbol.replace("/", "").upper(),
-            "orderId": order_id,
-        })
+        params = self._sign(
+            {
+                "symbol": symbol.replace("/", "").upper(),
+                "orderId": order_id,
+            }
+        )
         try:
             resp = await self._client.delete("/api/v3/order", params=params)  # type: ignore
             resp.raise_for_status()
@@ -120,21 +122,26 @@ class BinanceTradingAdapter(ExchangeAdapter):
             locked = Decimal(b.get("locked", "0"))
             total = free + locked
             if total > 0:
-                positions.append(PositionState(
-                    symbol=b["asset"],
-                    market=Market.SPOT,
-                    side="long",
-                    quantity=total,
-                    entry_price=Decimal("0"),
-                    unrealized_pnl=Decimal("0"),
-                    realized_pnl=Decimal("0"),
-                    timestamp_ns=time.time_ns(),
-                ))
+                positions.append(
+                    PositionState(
+                        symbol=b["asset"],
+                        market=Market.SPOT,
+                        side="long",
+                        quantity=total,
+                        entry_price=Decimal("0"),
+                        unrealized_pnl=Decimal("0"),
+                        realized_pnl=Decimal("0"),
+                        timestamp_ns=time.time_ns(),
+                    )
+                )
         return positions
 
     async def get_ticker(self, symbol: str) -> Ticker:
         await self._limiter.acquire()
-        resp = await self._client.get("/api/v3/ticker/24hr", params={"symbol": symbol.replace("/", "").upper()})
+        resp = await self._client.get(
+            "/api/v3/ticker/24hr",
+            params={"symbol": symbol.replace("/", "").upper()},
+        )
         resp.raise_for_status()
         data = resp.json()
         return Ticker(

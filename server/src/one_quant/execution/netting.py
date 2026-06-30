@@ -87,7 +87,10 @@ class MultiStrategyNetting:
                 if conflict_level > self._conflict_threshold:
                     logger.warning(
                         "信号冲突: %s 买强度=%f 卖强度=%f 冲突度=%f",
-                        symbol, buy_strength, sell_strength, conflict_level,
+                        symbol,
+                        buy_strength,
+                        sell_strength,
+                        conflict_level,
                     )
 
             # 生成净信号
@@ -99,24 +102,28 @@ class MultiStrategyNetting:
             if sells:
                 reason_parts.append(f"空头×{len(sells)}")
 
-            netted.append(Signal(
-                symbol=symbol,
-                market=group[0].market,
-                side=side,
-                strength=strength,
-                strategy_name="multi_strategy_netting",
-                reason=f"净额轧差: {' vs '.join(reason_parts)}, 净方向={side}",
-                timestamp_ns=time.time_ns(),
-            ))
+            netted.append(
+                Signal(
+                    symbol=symbol,
+                    market=group[0].market,
+                    side=side,
+                    strength=strength,
+                    strategy_name="multi_strategy_netting",
+                    reason=f"净额轧差: {' vs '.join(reason_parts)}, 净方向={side}",
+                    timestamp_ns=time.time_ns(),
+                )
+            )
 
-            self._netting_history.append({
-                "symbol": symbol,
-                "buy_count": len(buys),
-                "sell_count": len(sells),
-                "net_side": side,
-                "net_strength": strength,
-                "timestamp_ns": time.time_ns(),
-            })
+            self._netting_history.append(
+                {
+                    "symbol": symbol,
+                    "buy_count": len(buys),
+                    "sell_count": len(sells),
+                    "net_side": side,
+                    "net_strength": strength,
+                    "timestamp_ns": time.time_ns(),
+                }
+            )
 
         return netted
 
@@ -204,50 +211,61 @@ class NettingEngine:
 
             logger.info(
                 "内部对冲: %s@%s 对冲量=%s, 买净=%s, 卖净=%s, 节省手续费=%s",
-                symbol, exchange, hedge_qty, net_buy, net_sell, saved_fees,
+                symbol,
+                exchange,
+                hedge_qty,
+                net_buy,
+                net_sell,
+                saved_fees,
             )
 
-            self._netting_log.append({
-                "symbol": symbol,
-                "exchange": exchange,
-                "hedge_quantity": hedge_qty,
-                "saved_fees": saved_fees,
-                "timestamp_ns": time.time_ns(),
-            })
+            self._netting_log.append(
+                {
+                    "symbol": symbol,
+                    "exchange": exchange,
+                    "hedge_quantity": hedge_qty,
+                    "saved_fees": saved_fees,
+                    "timestamp_ns": time.time_ns(),
+                }
+            )
 
             # 生成净额订单
             if net_buy > 0:
                 # 取第一个 buy 订单作为模板
                 template = buys[0]
-                netted_orders.append(Order(
-                    client_order_id=template.client_order_id,
-                    symbol=template.symbol,
-                    market=template.market,
-                    side="buy",
-                    order_type=template.order_type,
-                    quantity=net_buy,
-                    price=template.price,
-                    stop_price=template.stop_price,
-                    status=template.status,
-                    exchange=template.exchange,
-                    timestamp_ns=time.time_ns(),
-                ))
+                netted_orders.append(
+                    Order(
+                        client_order_id=template.client_order_id,
+                        symbol=template.symbol,
+                        market=template.market,
+                        side="buy",
+                        order_type=template.order_type,
+                        quantity=net_buy,
+                        price=template.price,
+                        stop_price=template.stop_price,
+                        status=template.status,
+                        exchange=template.exchange,
+                        timestamp_ns=time.time_ns(),
+                    )
+                )
 
             if net_sell > 0:
                 template = sells[0]
-                netted_orders.append(Order(
-                    client_order_id=template.client_order_id,
-                    symbol=template.symbol,
-                    market=template.market,
-                    side="sell",
-                    order_type=template.order_type,
-                    quantity=net_sell,
-                    price=template.price,
-                    stop_price=template.stop_price,
-                    status=template.status,
-                    exchange=template.exchange,
-                    timestamp_ns=time.time_ns(),
-                ))
+                netted_orders.append(
+                    Order(
+                        client_order_id=template.client_order_id,
+                        symbol=template.symbol,
+                        market=template.market,
+                        side="sell",
+                        order_type=template.order_type,
+                        quantity=net_sell,
+                        price=template.price,
+                        stop_price=template.stop_price,
+                        status=template.status,
+                        exchange=template.exchange,
+                        timestamp_ns=time.time_ns(),
+                    )
+                )
 
         return netted_orders
 
@@ -301,22 +319,28 @@ class NettingEngine:
             conflict_value = conflict_qty * avg_price
 
             # 严重程度
-            if conflict_qty > total_buy * Decimal("0.5") or conflict_qty > total_sell * Decimal("0.5"):
+            if conflict_qty > total_buy * Decimal("0.5") or conflict_qty > total_sell * Decimal(
+                "0.5"
+            ):
                 severity = "high"
-            elif conflict_qty > total_buy * Decimal("0.2") or conflict_qty > total_sell * Decimal("0.2"):
+            elif conflict_qty > total_buy * Decimal("0.2") or conflict_qty > total_sell * Decimal(
+                "0.2"
+            ):
                 severity = "medium"
             else:
                 severity = "low"
 
-            conflicts.append({
-                "symbol": symbol,
-                "exchange": exchange,
-                "buy_orders": buys,
-                "sell_orders": sells,
-                "conflict_quantity": conflict_qty,
-                "conflict_value": conflict_value,
-                "severity": severity,
-            })
+            conflicts.append(
+                {
+                    "symbol": symbol,
+                    "exchange": exchange,
+                    "buy_orders": buys,
+                    "sell_orders": sells,
+                    "conflict_quantity": conflict_qty,
+                    "conflict_value": conflict_value,
+                    "severity": severity,
+                }
+            )
 
         if conflicts:
             logger.warning("检测到 %d 个策略间冲突", len(conflicts))
@@ -367,11 +391,23 @@ class NettingEngine:
                 # 买方胜出，合并买入订单
                 merged = self._merge_orders(buys, "buy", symbol, exchange)
                 arbitrated.append(merged)
-                logger.info("仲裁结果: %s@%s 保留买方 (得分 %.4f vs %.4f)", symbol, exchange, buy_score, sell_score)
+                logger.info(
+                    "仲裁结果: %s@%s 保留买方 (得分 %.4f vs %.4f)",
+                    symbol,
+                    exchange,
+                    buy_score,
+                    sell_score,
+                )
             elif sell_score > buy_score:
                 merged = self._merge_orders(sells, "sell", symbol, exchange)
                 arbitrated.append(merged)
-                logger.info("仲裁结果: %s@%s 保留卖方 (得分 %.4f vs %.4f)", symbol, exchange, sell_score, buy_score)
+                logger.info(
+                    "仲裁结果: %s@%s 保留卖方 (得分 %.4f vs %.4f)",
+                    symbol,
+                    exchange,
+                    sell_score,
+                    buy_score,
+                )
             else:
                 # 得分相等，全部取消（避免内部对敲）
                 logger.info("仲裁结果: %s@%s 得分相等，全部取消", symbol, exchange)
@@ -413,7 +449,9 @@ class NettingEngine:
         total_qty = sum(o.quantity for o in orders)
         # 加权平均价格
         total_notional = sum(o.quantity * (o.price or Decimal("0")) for o in orders)
-        avg_price = total_notional / total_qty if total_qty > 0 and any(o.price for o in orders) else None
+        avg_price = (
+            total_notional / total_qty if total_qty > 0 and any(o.price for o in orders) else None
+        )
 
         # 使用第一个订单的 client_order_id 作为主 ID
         primary = orders[0]

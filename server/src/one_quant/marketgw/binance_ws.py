@@ -67,17 +67,29 @@ def _from_binance_symbol(binance: str) -> str:
     upper = binance.upper()
     for quote in ("USDT", "BUSD", "USDC", "BTC", "ETH"):
         if upper.endswith(quote) and len(upper) > len(quote):
-            return f"{upper[:-len(quote)]}/{quote}"
+            return f"{upper[: -len(quote)]}/{quote}"
     return upper
 
 
 # ── K线周期映射 ──────────────────────────────────────────────────────
 
 _INTERVAL_MAP: dict[str, str] = {
-    "1s": "1s", "1m": "1m", "3m": "3m", "5m": "5m",
-    "15m": "15m", "30m": "30m", "1h": "1h", "2h": "2h",
-    "4h": "4h", "6h": "6h", "8h": "8h", "12h": "12h",
-    "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M",
+    "1s": "1s",
+    "1m": "1m",
+    "3m": "3m",
+    "5m": "5m",
+    "15m": "15m",
+    "30m": "30m",
+    "1h": "1h",
+    "2h": "2h",
+    "4h": "4h",
+    "6h": "6h",
+    "8h": "8h",
+    "12h": "12h",
+    "1d": "1d",
+    "3d": "3d",
+    "1w": "1w",
+    "1M": "1M",
 }
 
 
@@ -194,9 +206,7 @@ class BinanceMarketGateway(MarketGateway):
                 volume_24h=Decimal(data["v"]),
                 timestamp_ns=int(data.get("E", time.time() * 1000)) * 1_000_000,
             )
-            await self._event_bus.publish(
-                "market.ticker", ticker.model_dump(mode="json")
-            )
+            await self._event_bus.publish("market.ticker", ticker.model_dump(mode="json"))
 
         elif event_type == "kline":
             k = data["k"]
@@ -212,9 +222,7 @@ class BinanceMarketGateway(MarketGateway):
                 volume=Decimal(k["v"]),
                 timestamp_ns=int(k["t"]) * 1_000_000,
             )
-            await self._event_bus.publish(
-                "market.kline", kline.model_dump(mode="json")
-            )
+            await self._event_bus.publish("market.kline", kline.model_dump(mode="json"))
 
         elif event_type == "depthUpdate":
             symbol = _from_binance_symbol(data.get("s", ""))
@@ -234,9 +242,7 @@ class BinanceMarketGateway(MarketGateway):
                 asks=asks,
                 timestamp_ns=ts_ns,
             )
-            await self._event_bus.publish(
-                "market.orderbook", orderbook.model_dump(mode="json")
-            )
+            await self._event_bus.publish("market.orderbook", orderbook.model_dump(mode="json"))
 
         elif event_type == "trade":
             symbol = _from_binance_symbol(data["s"])
@@ -251,20 +257,20 @@ class BinanceMarketGateway(MarketGateway):
                 trade_id=str(data.get("t", "")),
                 timestamp_ns=int(data["T"]) * 1_000_000,
             )
-            await self._event_bus.publish(
-                "market.trade", trade.model_dump(mode="json")
-            )
+            await self._event_bus.publish("market.trade", trade.model_dump(mode="json"))
 
     async def _send_subscribe(self, streams: list[str]) -> None:
         """发送订阅请求"""
         if self._ws is None:
             raise RuntimeError("WebSocket 未连接")
         self._seq_counter += 1
-        msg = json.dumps({
-            "method": "SUBSCRIBE",
-            "params": streams,
-            "id": self._seq_counter,
-        })
+        msg = json.dumps(
+            {
+                "method": "SUBSCRIBE",
+                "params": streams,
+                "id": self._seq_counter,
+            }
+        )
         await self._ws.send(msg)
         logger.info("币安网关: 订阅 %d 个 stream", len(streams))
 

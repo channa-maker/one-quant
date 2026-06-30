@@ -7,9 +7,8 @@ import hashlib
 import hmac
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
 
 import httpx
 
@@ -53,7 +52,7 @@ class OKXTradingAdapter(ExchangeAdapter):
         return base64.b64encode(mac.digest()).decode()
 
     def _headers(self, method: str, path: str, body: str = "") -> dict[str, str]:
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         sign = self._sign(ts, method, path, body)
         return {
             "OK-ACCESS-KEY": self._api_key,
@@ -125,16 +124,18 @@ class OKXTradingAdapter(ExchangeAdapter):
             qty = Decimal(p.get("pos", "0"))
             if qty == 0:
                 continue
-            positions.append(PositionState(
-                symbol=p.get("instId", "").replace("-", "/"),
-                market=Market.FUTURES,
-                side="long" if qty > 0 else "short",
-                quantity=abs(qty),
-                entry_price=Decimal(p.get("avgPx", "0")),
-                unrealized_pnl=Decimal(p.get("upl", "0")),
-                realized_pnl=Decimal("0"),
-                timestamp_ns=time.time_ns(),
-            ))
+            positions.append(
+                PositionState(
+                    symbol=p.get("instId", "").replace("-", "/"),
+                    market=Market.FUTURES,
+                    side="long" if qty > 0 else "short",
+                    quantity=abs(qty),
+                    entry_price=Decimal(p.get("avgPx", "0")),
+                    unrealized_pnl=Decimal(p.get("upl", "0")),
+                    realized_pnl=Decimal("0"),
+                    timestamp_ns=time.time_ns(),
+                )
+            )
         return positions
 
     async def get_ticker(self, symbol: str) -> Ticker:

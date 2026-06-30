@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -21,6 +22,7 @@ logger = get_logger(__name__)
 
 class Severity(str, Enum):
     """事故严重级别"""
+
     P0 = "P0"  # 全面停机，资金风险
     P1 = "P1"  # 部分功能不可用
     P2 = "P2"  # 非关键功能异常
@@ -29,6 +31,7 @@ class Severity(str, Enum):
 
 class IncidentStatus(str, Enum):
     """事故状态"""
+
     OPEN = "open"
     INVESTIGATING = "investigating"
     IDENTIFIED = "identified"
@@ -40,6 +43,7 @@ class IncidentStatus(str, Enum):
 @dataclass
 class Incident:
     """事故记录"""
+
     incident_id: str
     title: str
     severity: Severity
@@ -60,6 +64,7 @@ class Incident:
 @dataclass
 class PostMortem:
     """事后复盘"""
+
     incident_id: str
     summary: str
     root_cause: str
@@ -161,11 +166,13 @@ class IncidentManager:
         old_status = incident.status.value
         incident.status = IncidentStatus(status)
         incident.updated_at = time.time_ns()
-        incident.timeline.append({
-            "time": time.time_ns(),
-            "event": f"状态变更: {old_status} → {status}",
-            "detail": detail,
-        })
+        incident.timeline.append(
+            {
+                "time": time.time_ns(),
+                "event": f"状态变更: {old_status} → {status}",
+                "detail": detail,
+            }
+        )
 
         logger.info("事故状态更新: %s %s → %s", incident_id, old_status, status)
         return True
@@ -176,11 +183,13 @@ class IncidentManager:
         if not incident:
             return False
 
-        incident.timeline.append({
-            "time": time.time_ns(),
-            "event": event,
-            "detail": detail,
-        })
+        incident.timeline.append(
+            {
+                "time": time.time_ns(),
+                "event": event,
+                "detail": detail,
+            }
+        )
         incident.updated_at = time.time_ns()
         return True
 
@@ -202,11 +211,13 @@ class IncidentManager:
         incident.resolution = resolution
         incident.resolved_at = time.time_ns()
         incident.updated_at = time.time_ns()
-        incident.timeline.append({
-            "time": time.time_ns(),
-            "event": "事故解决",
-            "detail": resolution,
-        })
+        incident.timeline.append(
+            {
+                "time": time.time_ns(),
+                "event": "事故解决",
+                "detail": resolution,
+            }
+        )
 
         # 计算解决时间
         duration_sec = (incident.resolved_at - incident.created_at) / 1e9
@@ -291,11 +302,13 @@ class IncidentManager:
         # 归档进机构记忆（喂回 LLM）
         if self._archive_fn:
             try:
-                await self._archive_fn({
-                    "type": "post_mortem",
-                    "incident_id": incident_id,
-                    "data": result,
-                })
+                await self._archive_fn(
+                    {
+                        "type": "post_mortem",
+                        "incident_id": incident_id,
+                        "data": result,
+                    }
+                )
                 logger.info("复盘已归档进机构记忆: %s", incident_id)
             except Exception:
                 logger.exception("复盘归档失败: %s", incident_id)
@@ -360,8 +373,16 @@ class IncidentManager:
     def stats(self) -> dict[str, Any]:
         """获取事故统计。"""
         total = len(self._incidents)
-        open_count = sum(1 for i in self._incidents.values() if i.status in (IncidentStatus.OPEN, IncidentStatus.INVESTIGATING))
-        resolved = sum(1 for i in self._incidents.values() if i.status in (IncidentStatus.RESOLVED, IncidentStatus.POST_MORTEM))
+        open_count = sum(
+            1
+            for i in self._incidents.values()
+            if i.status in (IncidentStatus.OPEN, IncidentStatus.INVESTIGATING)
+        )
+        resolved = sum(
+            1
+            for i in self._incidents.values()
+            if i.status in (IncidentStatus.RESOLVED, IncidentStatus.POST_MORTEM)
+        )
 
         # 计算平均恢复时间
         resolved_incidents = [i for i in self._incidents.values() if i.resolved_at > 0]

@@ -13,9 +13,8 @@ import hmac
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
 
 import httpx
 
@@ -77,7 +76,7 @@ class OKXAdapter(ExchangeAdapter):
 
     def _headers(self, method: str, path: str, body: str = "") -> dict[str, str]:
         """生成认证头。"""
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         sign = self._sign(timestamp, method, path, body)
         return {
             "OK-ACCESS-KEY": self._api_key,

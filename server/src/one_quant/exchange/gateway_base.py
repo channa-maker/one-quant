@@ -195,7 +195,6 @@ class MarketDataGateway(ABC):
 
         默认实现假设 self._ws 是一个 websockets.WebSocketClientProtocol。
         """
-        import websockets  # 延迟导入
 
         ws = self._ws
         if ws is None:

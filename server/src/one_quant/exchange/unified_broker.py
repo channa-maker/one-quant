@@ -18,7 +18,6 @@ from decimal import Decimal
 from typing import Any
 
 from one_quant.core.types import (
-    Fill,
     Instrument,
     Market,
     Order,
@@ -334,10 +333,7 @@ class BrokerPool:
         """
         # 确保工厂模式的券商也被考虑
         self._materialize_all()
-        return [
-            b for b in self._brokers.values()
-            if market in b.supported_markets
-        ]
+        return [b for b in self._brokers.values() if market in b.supported_markets]
 
     def _materialize_all(self) -> None:
         """将所有工厂模式的券商实例化"""

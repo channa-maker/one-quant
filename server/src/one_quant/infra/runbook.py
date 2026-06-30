@@ -15,9 +15,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -26,6 +27,7 @@ logger = get_logger(__name__)
 
 class Severity(str, Enum):
     """事故严重级别"""
+
     P0 = "P0"  # 全面停机，资金风险
     P1 = "P1"  # 部分功能不可用
     P2 = "P2"  # 非关键功能异常
@@ -34,6 +36,7 @@ class Severity(str, Enum):
 @dataclass
 class RunbookStep:
     """Runbook 步骤"""
+
     step_id: str
     description_zh: str
     command: str = ""
@@ -45,6 +48,7 @@ class RunbookStep:
 @dataclass
 class Runbook:
     """故障处置 Runbook"""
+
     incident_id: str
     severity: Severity
     title_zh: str
@@ -285,13 +289,15 @@ class RunbookManager:
 
         # 记录执行历史
         elapsed_ms = (time.time_ns() - started_at) / 1e6
-        self._execution_history.append({
-            "incident_type": incident_type,
-            "context": context,
-            "results": results,
-            "elapsed_ms": round(elapsed_ms, 1),
-            "executed_at": started_at,
-        })
+        self._execution_history.append(
+            {
+                "incident_type": incident_type,
+                "context": context,
+                "results": results,
+                "elapsed_ms": round(elapsed_ms, 1),
+                "executed_at": started_at,
+            }
+        )
 
         results.append(f"▶ Runbook 执行完成 (耗时 {elapsed_ms:.1f}ms)")
         return results
@@ -304,9 +310,11 @@ class RunbookManager:
 
 # ── 兼容旧接口 ──────────────────────────────────────────────────
 
+
 @dataclass
 class RunbookLegacy:
     """旧版 Runbook（兼容）"""
+
     incident_id: str
     severity: Severity
     title_zh: str

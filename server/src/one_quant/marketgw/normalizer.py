@@ -32,7 +32,6 @@ from one_quant.core.types import (
     Trade,
 )
 
-
 # ──────────────────────────── 辅助函数 ────────────────────────────
 
 
@@ -278,8 +277,14 @@ def normalize_okx_orderbook(raw: dict, symbol: str) -> OrderBook:
     return OrderBook(
         symbol=symbol,
         exchange="okx",
-        bids=[OrderBookLevel(price=Decimal(lv[0]), quantity=Decimal(lv[1])) for lv in raw.get("bids", [])],
-        asks=[OrderBookLevel(price=Decimal(lv[0]), quantity=Decimal(lv[1])) for lv in raw.get("asks", [])],
+        bids=[
+            OrderBookLevel(price=Decimal(lv[0]), quantity=Decimal(lv[1]))
+            for lv in raw.get("bids", [])
+        ],
+        asks=[
+            OrderBookLevel(price=Decimal(lv[0]), quantity=Decimal(lv[1]))
+            for lv in raw.get("asks", [])
+        ],
         timestamp_ns=_to_ns(int(raw.get("ts", time.time_ns() // 1_000_000))),
     )
 

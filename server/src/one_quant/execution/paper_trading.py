@@ -7,7 +7,7 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from one_quant.core.types import Fill, Market, Order
+from one_quant.core.types import Fill, Order
 from one_quant.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -51,7 +51,13 @@ class PaperExchangeSimulator:
             await self._match_market_order(order, exchange_order_id)
         else:
             self._open_orders[exchange_order_id] = order
-            logger.info("模拟限价单已挂单: %s %s %s @ %s", order.side, order.quantity, order.symbol, order.price)
+            logger.info(
+                "模拟限价单已挂单: %s %s %s @ %s",
+                order.side,
+                order.quantity,
+                order.symbol,
+                order.price,
+            )
 
         self._order_count += 1
         return exchange_order_id
@@ -61,7 +67,11 @@ class PaperExchangeSimulator:
         # 模拟滑点
         slippage_pct = Decimal(self._slippage_bps) / Decimal("10000")
         if order.price:
-            fill_price = order.price * (1 + slippage_pct) if order.side == "buy" else order.price * (1 - slippage_pct)
+            fill_price = (
+                order.price * (1 + slippage_pct)
+                if order.side == "buy"
+                else order.price * (1 - slippage_pct)
+            )
         else:
             fill_price = Decimal("0")
 
@@ -94,7 +104,11 @@ class PaperExchangeSimulator:
 
         logger.info(
             "模拟成交: %s %s %s @ %s (手续费: %s)",
-            order.side, order.quantity, order.symbol, fill_price, commission,
+            order.side,
+            order.quantity,
+            order.symbol,
+            fill_price,
+            commission,
         )
 
     def _update_position(self, symbol: str, side: str, quantity: Decimal, price: Decimal) -> None:
