@@ -54,6 +54,7 @@ class TrainingPipeline:
         factor_lib: FactorLibrary,
         trainer: MLTrainer,
         registry: ModelRegistry,
+        bronze_storage: "BronzeStorage | None" = None,
     ) -> None:
         """初始化训练管线。
 
@@ -61,10 +62,12 @@ class TrainingPipeline:
             factor_lib: 因子库。
             trainer: ML 训练器。
             registry: 模型注册表。
+            bronze_storage: Bronze 层存储（用于获取历史数据）。
         """
         self._factor_lib = factor_lib
         self._trainer = trainer
         self._registry = registry
+        self._bronze = bronze_storage
         self._last_train_result: TrainResult | None = None
         self._last_drift_check: float = 0.0
 
@@ -380,24 +383,96 @@ class TrainingPipeline:
         return False
 
     async def _fetch_market_data(self, symbol: str) -> dict[str, Any]:
-        """获取市场数据（占位实现）。
+        """获取市场数据。
 
-        生产环境应接入实际数据源（如交易所 API、数据库等）。
+        优先从 Bronze 层获取历史 K 线数据；
+        若 Bronze 层不可用或无数据，则从 EventBus 订阅通道获取缓存数据。
 
         Args:
             symbol: 交易对。
 
         Returns:
-            市场数据字典。
+            市场数据字典，包含 prices/closes/highs/lows/volumes 等。
+
+        Raises:
+            DataInsufficientError: 无法获取足够数据。
         """
-        # TODO: 接入实际数据源
-        logger.warning("使用占位数据，生产环境需接入实际数据源: %s", symbol)
+        prices: list[float] = []
+        highs: list[float] = []
+        lows: list[float] = []
+        volumes: list[float] = []
+
+        # ── 方式一：从 Bronze 层获取历史 K 线 ──
+        if self._bronze is not None:
+            try:
+                from datetime import datetime, timedelta, timezone
+
+                end_time = datetime.now(timezone.utc)
+                start_time = end_time - timedelta(days=90)  # 默认取近 90 天
+
+                records = await self._bronze.replay(
+                    table="kline",
+                    start_time=start_time,
+                    end_time=end_time,
+                    source=symbol.replace("/", "_"),
+                )
+
+                if records:
+                    # 按时间戳排序
+                    records.sort(key=lambda r: r.get("timestamp_ns", 0))
+                    for rec in records:
+                        close = rec.get("close") or rec.get("c")
+                        high = rec.get("high") or rec.get("h")
+                        low = rec.get("low") or rec.get("l")
+                        vol = rec.get("volume") or rec.get("v")
+                        if close is not None:
+                            prices.append(float(close))
+                        if high is not None:
+                            highs.append(float(high))
+                        if low is not None:
+                            lows.append(float(low))
+                        if vol is not None:
+                            volumes.append(float(vol))
+
+                    logger.info(
+                        "从 Bronze 层获取 %s 数据: %d 条 K 线",
+                        symbol,
+                        len(records),
+                    )
+            except Exception as exc:
+                logger.warning("从 Bronze 层获取数据失败 (%s): %s", symbol, exc)
+
+        # ── 方式二：通过 EventBus 获取实时缓存数据 ──
+        # EventBus 是发布/订阅系统，不存储历史数据。
+        # 若 Bronze 层无数据，记录警告并提示用户先运行数据采集。
+        if not prices:
+            logger.warning(
+                "Bronze 层无 %s 数据，请先运行数据采集器 (collector) 入库。",
+                symbol,
+            )
+
+        # ── 数据不足则抛异常 ──
+        if len(prices) < 50:
+            raise DataInsufficientError(
+                f"无法获取足够的市场数据 ({symbol}): 仅 {len(prices)} 条，"
+                f"需要至少 50 条。请确认 Bronze 层已入库或 EventBus 有缓存。"
+            )
+
+        # 计算收益率序列
+        returns: list[float] = []
+        for i in range(1, len(prices)):
+            if prices[i - 1] > 0:
+                returns.append((prices[i] - prices[i - 1]) / prices[i - 1])
+            else:
+                returns.append(0.0)
+
         return {
-            "prices": [],
-            "closes": [],
-            "highs": [],
-            "lows": [],
-            "returns": [],
+            "prices": prices,
+            "closes": prices,
+            "highs": highs,
+            "lows": lows,
+            "volumes": volumes,
+            "returns": returns,
             "trades": [],
             "funding_rate": None,
             "news_texts": [],

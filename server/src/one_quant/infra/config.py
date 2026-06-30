@@ -115,6 +115,9 @@ class Settings(BaseSettings):
     ENV: str = "dev"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    JWT_SECRET: str = "change-me-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24
 
     database: DatabaseSettings = DatabaseSettings()
     redis: RedisSettings = RedisSettings()

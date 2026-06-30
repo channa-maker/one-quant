@@ -62,7 +62,7 @@ class ExchangeAdapter(ABC):
         包括 WebSocket 订阅连接和 REST API 鉴权。
         连接失败应抛出异常。
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def disconnect(self) -> None:
@@ -70,7 +70,7 @@ class ExchangeAdapter(ABC):
 
         优雅关闭所有连接，释放资源。
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def submit_order(self, order: Order) -> str:
@@ -85,7 +85,7 @@ class ExchangeAdapter(ABC):
         Raises:
             ExchangeError: 下单失败（余额不足、参数错误等）
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def cancel_order(self, order_id: str, symbol: str) -> bool:
@@ -98,7 +98,7 @@ class ExchangeAdapter(ABC):
         Returns:
             是否成功撤销。订单已成交或不存在时返回 False。
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def get_positions(self) -> list[PositionState]:
@@ -107,7 +107,7 @@ class ExchangeAdapter(ABC):
         Returns:
             持仓状态列表。无持仓时返回空列表。
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def get_ticker(self, symbol: str) -> Ticker:
@@ -119,4 +119,4 @@ class ExchangeAdapter(ABC):
         Returns:
             最新行情快照
         """
-        ...
+        raise NotImplementedError

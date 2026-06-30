@@ -7,7 +7,7 @@ ONE量化 - FastAPI 应用工厂
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,29 +15,68 @@ from fastapi.responses import JSONResponse
 
 from one_quant.api.routes import api_router
 from one_quant.api.ws_hub import ws_router
+from one_quant.infra.config import get_settings
+from one_quant.infra.event_bus import InMemoryEventBus, RedisEventBus
 from one_quant.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
+# 全局资源引用，由 lifespan 管理
+event_bus_instance: InMemoryEventBus | RedisEventBus | None = None
+db_engine: Any | None = None
 
-# ──────────── 鉴权中间件骨架 ────────────
+
+# ──────────── 鉴权中间件 ────────────
 
 
 async def auth_middleware(request: Request, call_next):
-    """鉴权中间件（骨架）。
+    """JWT 鉴权中间件。
 
-    当前为透传模式，后续可接入 JWT / API Key 等验证逻辑。
-    白名单路径（如健康检查、文档）直接放行。
+    白名单路径（如健康检查、文档）直接放行；
+    其余路径必须携带合法 Bearer Token。
     """
     # 白名单路径，无需鉴权
     whitelist = {"/docs", "/openapi.json", "/redoc"}
     if request.url.path in whitelist or request.url.path.startswith("/api/v1/health"):
         return await call_next(request)
 
-    # TODO: 接入实际鉴权逻辑（JWT、API Key 等）
-    # token = request.headers.get("Authorization")
-    # if not token:
-    #     return JSONResponse(status_code=401, content={"detail": "未提供认证凭据"})
+    # 提取 Authorization 头
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return JSONResponse(
+            status_code=401,
+            content={"code": 401, "message": "未提供认证凭据"},
+        )
+
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        return JSONResponse(
+            status_code=401,
+            content={"code": 401, "message": "认证凭据为空"},
+        )
+
+    # JWT 验证
+    try:
+        import jwt
+
+        settings = get_settings()
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        # 将解析出的用户信息挂到 request.state 供下游使用
+        request.state.user = payload
+    except jwt.ExpiredSignatureError:
+        return JSONResponse(
+            status_code=401,
+            content={"code": 401, "message": "认证凭据已过期"},
+        )
+    except jwt.InvalidTokenError:
+        return JSONResponse(
+            status_code=401,
+            content={"code": 401, "message": "无效的认证凭据"},
+        )
 
     return await call_next(request)
 
@@ -49,13 +88,71 @@ async def auth_middleware(request: Request, call_next):
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """应用生命周期管理。
 
-    启动时初始化 EventBus、注册表等；关闭时优雅释放资源。
+    启动时初始化 EventBus、数据库连接池等；
+    关闭时优雅释放资源。
     """
-    logger.info("ONE量化 API 启动中...")
-    # TODO: 初始化 EventBus、数据库连接池等
+    global event_bus_instance, db_engine
+
+    settings = get_settings()
+
+    # ── 初始化 EventBus ──
+    logger.info("初始化 EventBus...")
+    if settings.ENV == "prod":
+        # 生产环境使用 Redis 事件总线
+        event_bus_instance = RedisEventBus(
+            redis_url=settings.redis.REDIS_URL,
+            max_queue_size=10_000,
+        )
+    else:
+        # 开发/测试环境使用内存事件总线
+        event_bus_instance = InMemoryEventBus(max_queue_size=10_000)
+    await event_bus_instance.start()
+    logger.info("EventBus 已启动 (%s)", type(event_bus_instance).__name__)
+
+    # ── 初始化数据库连接池 ──
+    logger.info("初始化数据库连接池...")
+    try:
+        from sqlalchemy.ext.asyncio import create_async_engine
+        import sqlalchemy as sa
+
+        db_engine = create_async_engine(
+            settings.database.DATABASE_URL,
+            pool_size=10,
+            max_overflow=20,
+            pool_recycle=3600,
+            echo=settings.DEBUG,
+        )
+        # 验证连接可用
+        async with db_engine.connect() as conn:
+            await conn.execute(sa.text("SELECT 1"))
+        logger.info("数据库连接池已初始化")
+    except Exception as exc:
+        logger.warning("数据库连接池初始化失败（降级为无数据库模式）: %s", exc)
+        db_engine = None
+
+    # 将资源挂到 app.state 供路由使用
+    app.state.event_bus = event_bus_instance
+    app.state.db_engine = db_engine
+
+    logger.info("ONE量化 API 启动完成")
     yield
+
+    # ── 释放资源 ──
     logger.info("ONE量化 API 关闭中...")
-    # TODO: 释放资源
+
+    # 关闭数据库连接池
+    if db_engine is not None:
+        logger.info("关闭数据库连接池...")
+        await db_engine.dispose()
+        db_engine = None
+
+    # 停止 EventBus
+    if event_bus_instance is not None:
+        logger.info("停止 EventBus...")
+        await event_bus_instance.stop()
+        event_bus_instance = None
+
+    logger.info("ONE量化 API 已关闭")
 
 
 # ──────────── 应用工厂 ────────────
@@ -85,7 +182,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # 鉴权中间件（骨架）
+    # 鉴权中间件
     app.middleware("http")(auth_middleware)
 
     # 全中文异常处理

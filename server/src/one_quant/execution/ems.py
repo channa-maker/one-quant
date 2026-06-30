@@ -459,6 +459,7 @@ class VWAPAlgo(ExecutionAlgo):
         """获取历史成交量分布。
 
         通过适配器获取 K 线数据，提取每个时间窗口的成交量。
+        如果适配器不支持 get_klines，则回退到 get_ticker 的 24h 成交量估算。
 
         Args:
             adapter: 交易所适配器。
@@ -467,9 +468,48 @@ class VWAPAlgo(ExecutionAlgo):
         Returns:
             每个时间窗口的成交量列表。
         """
-        # TODO: 通过适配器获取 K 线数据
-        # 目前返回模拟数据，实际应调用 adapter.get_klines()
-        logger.debug("VWAP: 使用模拟成交量分布 (symbol=%s)", symbol)
+        volume_profile: list[Decimal] = []
+
+        # 方式一：通过适配器的 get_klines 获取历史 K 线
+        get_klines = getattr(adapter, "get_klines", None)
+        if callable(get_klines):
+            try:
+                klines = await get_klines(
+                    symbol=symbol,
+                    interval="1m",
+                    limit=self._lookback,
+                )
+                for kline in klines:
+                    # Kline 对象有 volume 字段
+                    vol = getattr(kline, "volume", None)
+                    if vol is not None:
+                        volume_profile.append(Decimal(str(vol)))
+                if volume_profile:
+                    logger.debug(
+                        "VWAP: 通过适配器获取 %d 个窗口的成交量 (symbol=%s)",
+                        len(volume_profile),
+                        symbol,
+                    )
+                    return volume_profile
+            except Exception as exc:
+                logger.warning("VWAP: 通过适配器获取 K 线失败: %s", exc)
+
+        # 方式二：通过 get_ticker 的 24h 成交量做均匀估算
+        try:
+            ticker = await adapter.get_ticker(symbol)
+            vol_per_interval = ticker.volume_24h / Decimal(str(self._lookback))
+            volume_profile = [vol_per_interval] * self._lookback
+            logger.debug(
+                "VWAP: 使用 ticker 24h 成交量均匀估算 (symbol=%s, vol_per_window=%s)",
+                symbol,
+                vol_per_interval,
+            )
+            return volume_profile
+        except Exception as exc:
+            logger.warning("VWAP: 获取 ticker 成交量失败: %s", exc)
+
+        # 最终回退：返回均匀分布的默认值
+        logger.debug("VWAP: 使用默认均匀成交量分布 (symbol=%s)", symbol)
         return [Decimal("1000")] * self._lookback
 
 
@@ -637,6 +677,9 @@ class POVAlgo(ExecutionAlgo):
     ) -> Decimal:
         """获取当前市场成交量（增量）。
 
+        优先通过 WebSocket 订阅获取实时成交量；
+        若不可用则通过适配器 get_ticker 查询。
+
         Args:
             adapter: 交易所适配器。
             symbol: 标的符号。
@@ -644,8 +687,43 @@ class POVAlgo(ExecutionAlgo):
         Returns:
             最近一个时间窗口的市场成交量。
         """
-        # TODO: 通过 WebSocket 订阅获取实时成交量
-        # 目前返回模拟数据
+        # 方式一：通过 WebSocket 订阅获取实时成交量
+        ws_client = getattr(adapter, "ws", None) or getattr(adapter, "_ws", None)
+        if ws_client is not None:
+            get_volume = getattr(ws_client, "get_recent_volume", None) or getattr(
+                ws_client, "get_last_trade_volume", None
+            )
+            if callable(get_volume):
+                try:
+                    volume = await get_volume(symbol)
+                    if volume is not None and volume > 0:
+                        return Decimal(str(volume))
+                except Exception as exc:
+                    logger.debug("POV: WebSocket 获取成交量失败: %s", exc)
+
+        # 方式二：通过适配器 get_trades 获取最近成交
+        get_trades = getattr(adapter, "get_trades", None)
+        if callable(get_trades):
+            try:
+                trades = await get_trades(symbol, limit=100)
+                total_vol = sum(
+                    Decimal(str(getattr(t, "quantity", 0))) for t in trades
+                )
+                if total_vol > 0:
+                    return total_vol
+            except Exception as exc:
+                logger.debug("POV: 通过 get_trades 获取成交量失败: %s", exc)
+
+        # 方式三：通过 get_ticker 查询成交量并做时间窗口估算
+        try:
+            ticker = await adapter.get_ticker(symbol)
+            # 24h 成交量按 1 秒窗口等比估算
+            vol_per_second = ticker.volume_24h / Decimal("86400")
+            return vol_per_second
+        except Exception as exc:
+            logger.debug("POV: 通过 get_ticker 获取成交量失败: %s", exc)
+
+        # 最终回退：返回阈值的 1/5 作为估算
         return self._volume_threshold / Decimal("5")
 
 

@@ -276,10 +276,55 @@ class DualApproval:
 
         self._requests[request_id] = request
 
-        # TODO: 发送通知给可审批的管理员
-        # await notify_admins(request)
+        # 发送通知给可审批的管理员
+        await self._notify_admins(request)
 
         return request_id
+
+    async def _notify_admins(self, request: ApprovalRequest) -> None:
+        """通知所有可审批的管理员。
+
+        遍历已注册的通知器，向管理员推送待审批请求。
+        通知失败不阻塞主流程（仅记录日志）。
+
+        Args:
+            request: 待审批的复核请求
+        """
+        from one_quant.infra.notifier import ConsoleNotifier
+
+        # 构建通知内容
+        title = f"🔔 待审批请求: {request.action}"
+        content = (
+            f"请求ID: {request.request_id}\n"
+            f"操作: {request.action}\n"
+            f"发起人: {request.requester_id}\n"
+            f"过期时间: {request.expires_at:.0f} (Unix时间戳)\n"
+        )
+        if request.metadata:
+            content += f"附加信息: {request.metadata}\n"
+
+        alert = {
+            "title": title,
+            "message": content,
+            "severity": "medium",
+            "source": "dual_approval",
+            "timestamp": str(request.created_at),
+        }
+
+        # 通知器列表：从 metadata 中获取，或使用默认控制台通知器
+        notifiers = request.metadata.get("notifiers", [ConsoleNotifier()])
+
+        for notifier in notifiers:
+            try:
+                await notifier.send_alert(alert)
+            except Exception as exc:
+                # 通知失败不阻塞主流程
+                logger.warning(
+                    "管理员通知发送失败: notifier=%s request_id=%s error=%s",
+                    getattr(notifier, "name", "unknown"),
+                    request.request_id,
+                    exc,
+                )
 
     async def approve(self, request_id: str, approver_id: str) -> bool:
         """
