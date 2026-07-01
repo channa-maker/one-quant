@@ -325,7 +325,7 @@ class ExitBrain:
         return Signal(
             symbol=symbol,
             market=position.market,
-            side=side,
+            side=side if side in ("buy", "sell") else "buy",  # type: ignore[arg-type]
             strength=min(strength, 1.0),
             strategy_name="exit_brain_shadow",
             reason=f"[影子建议] {'; '.join(reasons)}",

@@ -31,9 +31,9 @@ class StrategyFusion:
         smc: dict[str, Any],
         ml_score: float,
         llm_signal: dict[str, Any],
-    ) -> dict:
+    ) -> dict[str, Any]:
         """四层信号融合。"""
-        layers: dict[str, dict] = {
+        layers: dict[str, dict[str, Any]] = {
             "order_flow": {
                 "side": order_flow.get("side", "neutral"),
                 "strength": order_flow.get("strength", 0.0),

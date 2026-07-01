@@ -72,7 +72,7 @@ class OKXWSGateway(MarketDataGateway):
             ping_timeout=10,
             close_timeout=5,
         )
-        logger.info("OKX WebSocket 已连接", url=OKX_WS_PUBLIC)
+        logger.info("OKX WebSocket 已连接 url=%s", OKX_WS_PUBLIC)
 
     async def _disconnect(self) -> None:
         """断开 WebSocket"""
@@ -108,9 +108,9 @@ class OKXWSGateway(MarketDataGateway):
             if self._ws is not None:
                 await self._ws.send(msg)
                 logger.info(
-                    "OKX 订阅请求已发送",
-                    batch_index=i // batch_size,
-                    channel_count=len(batch),
+                    "OKX 订阅请求已发送 batch_index=%s channel_count=%s",
+                    i // batch_size,
+                    len(batch),
                 )
 
     async def _request_snapshot(self, symbols: list[str]) -> None:
@@ -130,9 +130,9 @@ class OKXWSGateway(MarketDataGateway):
         if "event" in msg:
             event = msg["event"]
             if event == "subscribe":
-                logger.debug("OKX 订阅确认", channel=msg.get("arg", {}).get("channel"))
+                logger.debug("OKX 订阅确认 channel=%s", msg.get("arg", {}).get("channel"))
             elif event == "error":
-                logger.error("OKX 错误", code=msg.get("code"), msg=msg.get("msg"))
+                logger.error("OKX 错误 code=%s msg=%s", msg.get("code"), msg.get("msg"))
             return
 
         # 数据推送
@@ -245,6 +245,6 @@ class OKXWSGateway(MarketDataGateway):
                 await self._on_message(message)
             except Exception:
                 logger.exception(
-                    "OKX 消息处理异常",
-                    msg_preview=str(message)[:200],
+                    "OKX 消息处理异常 msg_preview=%s",
+                    str(message)[:200],
                 )

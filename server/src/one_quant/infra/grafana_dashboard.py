@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 
-def generate_dashboard_json() -> dict:
+def generate_dashboard_json() -> dict[str, Any]:
     """生成 Grafana 大盘 JSON 配置"""
     return {
         "annotations": {"list": []},

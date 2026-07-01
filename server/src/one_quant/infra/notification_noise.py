@@ -357,7 +357,7 @@ class NotificationDeduplicator:
             del self._dedup_cache[k]
 
         # 冷却缓存清理
-        expired_cool = [
+        expired_cool: list[tuple[str, str]] = [
             k for k, v in self._cooldown_cache.items() if now - v > self._cooldown_sec * 2
         ]
         for k in expired_cool:

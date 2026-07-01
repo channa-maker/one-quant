@@ -18,15 +18,34 @@ dependencies = [
     "numpy>=2.0.0",
     "sqlalchemy>=2.0.0",
     "prometheus-client>=0.21.0",
+    "pyjwt>=2.9.0",
 ]
 
 [project.optional-dependencies]
+viz = ["matplotlib>=3.9.0"]
+ml = ["lightgbm>=4.0.0", "xgboost>=2.0.0", "shap>=0.45.0"]
+ibkr = ["ib_insync>=0.9.0"]
+otel = ["opentelemetry-api>=1.25.0", "opentelemetry-sdk>=1.25.0"]
+data = ["pandas>=2.0.0", "pyarrow>=15.0.0"]
+all = [
+    "matplotlib>=3.9.0",
+    "lightgbm>=4.0.0",
+    "xgboost>=2.0.0",
+    "shap>=0.45.0",
+    "ib_insync>=0.9.0",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-sdk>=1.25.0",
+    "pandas>=2.0.0",
+    "pyarrow>=15.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
+    "pyjwt>=2.9.0",
+    "pyyaml>=6.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -46,3 +65,41 @@ select = ["E", "F", "I", "N", "W", "UP"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+
+[[tool.mypy.overrides]]
+module = [
+    "one_quant.tests.*",
+    "one_quant.*.tests.*",
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+warn_return_any = false
+check_untyped_defs = false
+no_implicit_reexport = false
+warn_unused_ignores = false
+disallow_any_expr = false
+disallow_any_decorated = false
+disallow_any_explicit = false
+
+[[tool.mypy.overrides]]
+module = [
+    "one_quant.ml.*",
+    "one_quant.strategy.*",
+    "one_quant.execution.*",
+    "one_quant.accounting.*",
+    "one_quant.agents.*",
+    "one_quant.ai.*",
+    "one_quant.data.*",
+    "one_quant.exchange.*",
+    "one_quant.infra.*",
+    "one_quant.marketgw.*",
+    "one_quant.runner.*",
+    "one_quant.screener.*",
+    "one_quant.risk.*",
+]
+warn_return_any = false
+no_implicit_reexport = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false

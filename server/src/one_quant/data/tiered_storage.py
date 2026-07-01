@@ -61,7 +61,11 @@ class TieredStorageManager:
                 stats["hot_to_warm"] += 1
 
         self._migrated_count += sum(stats.values())
-        logger.info("冷热分层迁移完成", **stats)
+        logger.info(
+            "冷热分层迁移完成 hot_to_warm=%s warm_to_cold=%s",
+            stats["hot_to_warm"],
+            stats["warm_to_cold"],
+        )
         return stats
 
     async def _compress_and_move(self, filepath: Path, target_dir: Path) -> None:
@@ -81,7 +85,7 @@ class TieredStorageManager:
             table = pq.read_table(str(filepath))
             pq.write_table(table, str(target), compression=self._compression)
             filepath.unlink()
-            logger.debug("文件已迁移", src=str(filepath), dst=str(target))
+            logger.debug("文件已迁移 src=%s dst=%s", filepath, target)
         except ImportError:
             logger.warning("pyarrow 不可用，跳过压缩迁移")
 

@@ -27,7 +27,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
 
 from one_quant.infra.logging import get_logger
 
@@ -126,6 +131,9 @@ def load_playbook_from_yaml(path: Path | str) -> LLMPlaybook:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Playbook 文件不存在: {path}")
+
+    if not HAS_YAML:
+        raise ImportError("pyyaml 未安装，无法加载 YAML Playbook。安装: pip install pyyaml")
 
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)

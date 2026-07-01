@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 
 class OnChainAnalyzer:
@@ -24,7 +25,7 @@ class OnChainAnalyzer:
         inflows: list[Decimal],
         outflows: list[Decimal],
         window: int = 24,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """交易所净流入流出分析。"""
         if not inflows or not outflows:
             return {
@@ -69,9 +70,9 @@ class OnChainAnalyzer:
 
     def whale_activity(
         self,
-        transfers: list[dict],
+        transfers: list[dict[str, Any]],
         threshold: Decimal | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """巨鲸活动分析。"""
         thresh = threshold or self.WHALE_THRESHOLD_BTC
 
@@ -130,7 +131,7 @@ class OnChainAnalyzer:
         usdt_inflow: list[Decimal],
         usdc_inflow: list[Decimal],
         window: int = 7,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """稳定币流向分析。"""
         recent_usdt = usdt_inflow[-window:]
         recent_usdc = usdc_inflow[-window:]

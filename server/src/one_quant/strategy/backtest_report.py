@@ -24,6 +24,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 from one_quant.strategy.backtest import BacktestResult
@@ -136,7 +137,7 @@ class BacktestReport:
 
         return "\n".join(lines)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """将报告转为字典格式（便于序列化和前端展示）。
 
         Returns:
@@ -320,7 +321,7 @@ class BacktestReport:
             return "  （无月度数据）"
 
         # 按年份分组
-        yearly: dict[str, dict[str, Decimal]] = defaultdict(dict)
+        yearly: dict[str, dict[str, Decimal]] = defaultdict(dict[str, Any])
         for month_key, ret in monthly.items():
             year = month_key[:4]
             month = month_key[5:7]

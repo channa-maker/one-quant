@@ -56,7 +56,7 @@ class CapacityManager:
         self._tick_rate_fn: Callable[[], Awaitable[float]] | None = None
         self._storage_fn: Callable[[], Awaitable[dict[str, Any]]] | None = None
         self._llm_cost_fn: Callable[[], Awaitable[dict[str, Any]]] | None = None
-        self._notify_fn: Callable[[str, str, str], Awaitable[None]] | None = None
+        self._notify_fn: Callable[[str, str, str, str], Awaitable[None]] | None = None
 
     # ── 依赖注入 ──────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ class CapacityManager:
         """注入LLM成本查询函数。"""
         self._llm_cost_fn = fn
 
-    def set_notifier(self, fn: Callable[[str, str, str], Awaitable[None]]) -> None:
+    def set_notifier(self, fn: Callable[[str, str, str, str], Awaitable[None]]) -> None:
         """注入通知函数。"""
         self._notify_fn = fn
 
@@ -142,7 +142,7 @@ class CapacityManager:
             await self._notify_fn(
                 f"行情吞吐告警: {result['status']}",
                 f"tick/s: {result['metrics'].get('tick_rate', {}).get('current', 'N/A')}",
-                level=result["status"],
+                result["status"],
             )
 
         return result
@@ -215,7 +215,7 @@ class CapacityManager:
                 f"存储告警: {result['status']}",
                 f"磁盘使用: {result['metrics'].get('disk_used_pct', 'N/A')}%\n"
                 f"预计满盘: {result['metrics'].get('days_until_full', 'N/A')} 天",
-                level=result["status"],
+                result["status"],
             )
 
         return result
@@ -295,7 +295,7 @@ class CapacityManager:
                 f"LLM成本告警: {result['status']}",
                 f"本月费用: ${result['metrics'].get('monthly_cost_usd', 'N/A')}\n"
                 f"预计月底: ${result['metrics'].get('projected_monthly_usd', 'N/A')}",
-                level=result["status"],
+                result["status"],
             )
 
         return result
@@ -315,12 +315,15 @@ class CapacityManager:
         }
 
         # 并行执行所有检查
-        throughput, storage, llm_cost = await asyncio.gather(
+        results = await asyncio.gather(
             self.check_data_throughput(),
             self.check_storage_growth(),
             self.check_llm_cost(),
             return_exceptions=True,
         )
+        throughput: dict[str, Any] | BaseException = results[0]
+        storage: dict[str, Any] | BaseException = results[1]
+        llm_cost: dict[str, Any] | BaseException = results[2]
 
         if isinstance(throughput, dict):
             report["sections"]["throughput"] = throughput

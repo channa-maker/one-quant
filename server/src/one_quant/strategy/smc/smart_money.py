@@ -5,6 +5,7 @@ SMC — 聪明钱指数
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from one_quant.core.types import Kline
 from one_quant.strategy.smc.analyzer import SMCAnalyzer
@@ -38,7 +39,7 @@ class SmartMoneyIndex:
 
         return smi_series
 
-    def smc_structure_line(self, klines: list[Kline]) -> list[dict]:
+    def smc_structure_line(self, klines: list[Kline]) -> list[dict[str, Any]]:
         """SMC 结构线：自动标注 BOS/CHoCH/OB/FVG。"""
         if len(klines) < 10:
             return []
@@ -47,7 +48,7 @@ class SmartMoneyIndex:
         highs = [k.high for k in klines]
         lows = [k.low for k in klines]
 
-        events: list[dict] = []
+        events: list[dict[str, Any]] = []
 
         trend = analyzer.update_trend("auto", highs, lows)
 

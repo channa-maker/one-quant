@@ -324,6 +324,7 @@ class DisasterRecovery:
         # 演练结果通知
         if self._notify_fn:
             status = "✅ 全部通过" if results["overall_pass"] else "❌ 存在问题"
+            level = "warning" if results["overall_pass"] else "error"
             await self._notify_fn(
                 f"灾备演练完成: {status}",
                 f"演练耗时: {results['total_duration_sec']:.1f}s\n"
@@ -332,7 +333,7 @@ class DisasterRecovery:
                     f"- {s}: {'✅' if r['success'] else '❌'}"
                     for s, r in results["scenarios"].items()
                 ),
-                level="warning" if results["overall_pass"] else "error",
+                level,
             )
 
         return results

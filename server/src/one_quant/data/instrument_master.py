@@ -62,7 +62,7 @@ class InstrumentMaster:
         """
         load_path = Path(path) if path else self._config_path
         if load_path is None or not load_path.exists():
-            logger.warning("标的主数据配置文件不存在", path=str(load_path))
+            logger.warning("标的主数据配置文件不存在 path=%s", load_path)
             return 0
 
         with open(load_path, encoding="utf-8") as f:
@@ -75,9 +75,9 @@ class InstrumentMaster:
                 self._register(instrument)
                 count += 1
             except Exception:
-                logger.exception("加载标的数据失败", record=rec)
+                logger.exception("加载标的数据失败 record=%s", rec)
 
-        logger.info("标的主数据已加载", count=count, path=str(load_path))
+        logger.info("标的主数据已加载 count=%s path=%s", count, load_path)
         return count
 
     def _from_dict(self, rec: dict[str, Any]) -> Instrument:
@@ -131,7 +131,7 @@ class InstrumentMaster:
         deactivated = inst.model_copy(update={"is_active": False})
         self._instruments[internal_id] = deactivated
         self._record_change("deactivate", internal_id, {"reason": reason})
-        logger.info("标的已下架", internal_id=internal_id, reason=reason)
+        logger.info("标的已下架 internal_id=%s reason=%s", internal_id, reason)
         return True
 
     # ── 查询 ──────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ class InstrumentMaster:
         )
         self._register(instrument)
         self._record_change("auto_register", internal_id, {"symbol": symbol, "exchange": exchange})
-        logger.info("自动注册标的", internal_id=internal_id)
+        logger.info("自动注册标的 internal_id=%s", internal_id)
         return internal_id
 
     def list_active(

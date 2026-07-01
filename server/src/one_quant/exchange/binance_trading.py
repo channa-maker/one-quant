@@ -55,7 +55,7 @@ class BinanceTradingAdapter(ExchangeAdapter):
         # 验证连接
         resp = await self._client.get("/api/v3/account")
         resp.raise_for_status()
-        logger.info("币安交易接口已连接", testnet=self._testnet)
+        logger.info("币安交易接口已连接 testnet=%s", self._testnet)
 
     async def disconnect(self) -> None:
         if self._client:
@@ -90,7 +90,9 @@ class BinanceTradingAdapter(ExchangeAdapter):
         resp.raise_for_status()
         data = resp.json()
         exchange_id = str(data.get("orderId", ""))
-        logger.info("币安下单成功", client_id=order.client_order_id[:8], exchange_id=exchange_id)
+        logger.info(
+            "币安下单成功 client_id=%s exchange_id=%s", order.client_order_id[:8], exchange_id
+        )
         return exchange_id
 
     async def cancel_order(self, order_id: str, symbol: str) -> bool:
@@ -106,7 +108,7 @@ class BinanceTradingAdapter(ExchangeAdapter):
             resp.raise_for_status()
             return True
         except Exception:
-            logger.warning("币安撤单失败", order_id=order_id)
+            logger.warning("币安撤单失败 order_id=%s", order_id)
             return False
 
     async def get_positions(self) -> list[PositionState]:

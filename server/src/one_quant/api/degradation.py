@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 
 class DegradationLevel(StrEnum):
@@ -26,7 +27,7 @@ class DegradationLevel(StrEnum):
 class CacheEntry:
     """缓存条目"""
 
-    data: dict
+    data: dict[str, Any]
     cached_at: float
     ttl: float
     source: str = "unknown"
@@ -109,7 +110,7 @@ class DegradationHandler:
 
     # ── 缓存操作 ──────────────────────────────────────────
 
-    async def get_cached_data(self, page: str) -> dict:
+    async def get_cached_data(self, page: str) -> dict[str, Any]:
         """
         后端不可用时返回只读缓存
 
@@ -117,7 +118,7 @@ class DegradationHandler:
             page: 页面标识（如 "dashboard", "positions"）
 
         Returns:
-            dict: 包含 data, cached, stale, age 等字段
+            dict[str, Any]: 包含 data, cached, stale, age 等字段
         """
         entry = self._cache.get(page)
 
@@ -143,7 +144,7 @@ class DegradationHandler:
     async def update_cache(
         self,
         page: str,
-        data: dict,
+        data: dict[str, Any],
         source: str = "api",
         ttl: float | None = None,
     ) -> None:
@@ -193,7 +194,7 @@ class DegradationHandler:
         }
         return warnings.get(self._level, "")
 
-    def get_degradation_response(self, page: str) -> dict:
+    def get_degradation_response(self, page: str) -> dict[str, Any]:
         """
         获取降级态的标准化响应
 
@@ -210,7 +211,7 @@ class DegradationHandler:
 
     # ── 写操作拦截 ────────────────────────────────────────
 
-    def check_write_allowed(self, action: str) -> dict:
+    def check_write_allowed(self, action: str) -> dict[str, Any]:
         """
         检查写操作是否允许
 
@@ -218,7 +219,7 @@ class DegradationHandler:
             action: 操作描述
 
         Returns:
-            dict: { "allowed": bool, "reason": str }
+            dict[str, Any]: { "allowed": bool, "reason": str }
         """
         if self._level == DegradationLevel.NORMAL:
             return {"allowed": True, "reason": ""}
@@ -292,12 +293,12 @@ degradation_handler = DegradationHandler()
 # ── 便捷函数 ──────────────────────────────────────────────
 
 
-async def get_cached_page(page: str) -> dict:
+async def get_cached_page(page: str) -> dict[str, Any]:
     """获取页面缓存数据"""
     return await degradation_handler.get_cached_data(page)
 
 
-async def update_page_cache(page: str, data: dict, source: str = "api") -> None:
+async def update_page_cache(page: str, data: dict[str, Any], source: str = "api") -> None:
     """更新页面缓存"""
     await degradation_handler.update_cache(page, data, source)
 

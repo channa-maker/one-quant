@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 
 class DerivativesStructure:
@@ -19,7 +20,7 @@ class DerivativesStructure:
     FUNDING_EXTREME_HIGH = Decimal("0.001")
     FUNDING_EXTREME_LOW = Decimal("-0.001")
 
-    def funding_rate_extreme(self, rate: Decimal) -> dict:
+    def funding_rate_extreme(self, rate: Decimal) -> dict[str, Any]:
         """资金费率极值分析。"""
         annualized = rate * Decimal("3") * Decimal("365")
 
@@ -51,7 +52,7 @@ class DerivativesStructure:
             "annualized": str(annualized.quantize(Decimal("0.0001"))),
         }
 
-    def oi_change(self, oi_data: list[dict]) -> dict:
+    def oi_change(self, oi_data: list[dict[str, Any]]) -> dict[str, Any]:
         """OI（Open Interest）变化分析。"""
         if len(oi_data) < 2:
             return {
@@ -109,9 +110,9 @@ class DerivativesStructure:
 
     def liquidation_heatmap(
         self,
-        positions: list[dict],
+        positions: list[dict[str, Any]],
         price_bins: int = 50,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """清算热力图。"""
         if not positions:
             return {"heatmap": {}, "high_density_zones": [], "signal": "neutral"}

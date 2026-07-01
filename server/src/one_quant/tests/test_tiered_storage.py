@@ -182,3 +182,54 @@ class TestCompressAndMove:
             await mgr._compress_and_move(src, warm_dir)
             # File should still exist (import fails, logged as warning)
             assert src.exists()
+
+    @pytest.mark.asyncio
+    async def test_compress_move_logger_no_kwargs(self, tmp_path):
+        """Verify _compress_and_move logger calls don't use illegal kwargs (P1-1 fix)."""
+        import logging
+
+        base = tmp_path / "data"
+        hot_dir = base / "hot" / "src" / "tbl"
+        hot_dir.mkdir(parents=True)
+        src = hot_dir / "test.parquet"
+        src.write_text("data")
+
+        warm_dir = base / "warm"
+        mgr = TieredStorageManager(base_path=str(base))
+
+        # Use a handler that raises on TypeError to catch illegal kwargs
+        class StrictHandler(logging.Handler):
+            def emit(self, record):
+                # Force formatting to trigger any %s mismatch
+                self.format(record)
+
+        test_logger = logging.getLogger("one_quant.data.tiered_storage")
+        handler = StrictHandler()
+        test_logger.addHandler(handler)
+        test_logger.setLevel(logging.DEBUG)
+        try:
+            with patch.dict("sys.modules", {"pyarrow": None, "pyarrow.parquet": None}):
+                # This should NOT raise TypeError
+                await mgr._compress_and_move(src, warm_dir)
+        finally:
+            test_logger.removeHandler(handler)
+
+    @pytest.mark.asyncio
+    async def test_run_migration_logger_no_kwargs(self, storage):
+        """Verify run_migration logger calls don't use illegal kwargs (P1-1 fix)."""
+        import logging
+
+        class StrictHandler(logging.Handler):
+            def emit(self, record):
+                self.format(record)
+
+        test_logger = logging.getLogger("one_quant.data.tiered_storage")
+        handler = StrictHandler()
+        test_logger.addHandler(handler)
+        test_logger.setLevel(logging.DEBUG)
+        try:
+            # No hot dir exists, but the logger.info at the end still fires
+            stats = await storage.run_migration()
+            assert stats == {"hot_to_warm": 0, "warm_to_cold": 0}
+        finally:
+            test_logger.removeHandler(handler)

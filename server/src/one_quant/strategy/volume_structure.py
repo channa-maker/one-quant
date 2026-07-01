@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from one_quant.core.types import Kline
 
@@ -40,7 +41,7 @@ class VPVR:
             raise ValueError("分箱数量必须 >= 5")
         self._bins = bins
 
-    def compute(self, klines: list[Kline], bins: int | None = None) -> dict:
+    def compute(self, klines: list[Kline], bins: int | None = None) -> dict[str, Any]:
         """计算成交量分布。
 
         Args:
@@ -214,7 +215,7 @@ class TPOChart:
         self._interval = interval
         self._interval_sec = self.INTERVAL_SECONDS[interval]
 
-    def compute(self, klines: list[Kline], bins: int = 20) -> dict:
+    def compute(self, klines: list[Kline], bins: int = 20) -> dict[str, Any]:
         """计算 TPO 市场轮廓。
 
         Args:
@@ -388,7 +389,7 @@ class VWAPFamily:
 
         return vwap_series
 
-    def vwap_bands(self, klines: list[Kline], num_std: float = 2.0) -> dict:
+    def vwap_bands(self, klines: list[Kline], num_std: float = 2.0) -> dict[str, Any]:
         """VWAP 标准差带。
 
         类似布林带，但标准差基于成交量加权：

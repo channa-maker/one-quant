@@ -102,7 +102,7 @@ class FeishuChannel:
         self._secret = secret
         self._timeout = timeout
 
-    def _build_card_payload(self, title: str, content: str, level: str) -> dict:
+    def _build_card_payload(self, title: str, content: str, level: str) -> dict[str, Any]:
         """构造飞书富文本卡片 payload。
 
         Args:
@@ -260,7 +260,7 @@ class WeComChannel:
         self._webhook_url = webhook_url
         self._timeout = timeout
 
-    def _build_markdown_payload(self, title: str, content: str, level: str) -> dict:
+    def _build_markdown_payload(self, title: str, content: str, level: str) -> dict[str, Any]:
         """构造企微 markdown 消息 payload。
 
         Args:
@@ -395,7 +395,7 @@ class TelegramChannel:
         self._timeout = timeout
         self._api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
-    def _build_message_payload(self, title: str, content: str, level: str) -> dict:
+    def _build_message_payload(self, title: str, content: str, level: str) -> dict[str, Any]:
         """构造 Telegram sendMessage payload。
 
         Args:
@@ -506,7 +506,7 @@ class NotificationRouter:
         channels: 已注册的通道字典 {name: channel}
     """
 
-    channels: dict[str, Any] = field(default_factory=dict)
+    channels: dict[str, Any] = field(default_factory=dict[str, Any])
 
     async def route(self, title: str, message: str, level: str = "info") -> dict[str, bool]:
         """按告警级别路由通知到对应通道。

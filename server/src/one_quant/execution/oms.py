@@ -164,7 +164,7 @@ class OrderManager:
             self._positions[symbol] = PositionState(
                 symbol=symbol,
                 market=market,
-                side=side,
+                side=side if side in ("long", "short", "flat") else "flat",  # type: ignore[arg-type]
                 quantity=fill.quantity,
                 entry_price=fill.price,
                 unrealized_pnl=Decimal("0"),

@@ -48,7 +48,7 @@ class StreamPersistence:
             )
             await self._redis.ping()
             self._enabled = True
-            logger.info("Redis Streams 持久化已连接", url=self._redis_url)
+            logger.info("Redis Streams 持久化已连接 url=%s", self._redis_url)
         except Exception:
             logger.warning("Redis Streams 持久化不可用，将跳过持久化")
             self._enabled = False

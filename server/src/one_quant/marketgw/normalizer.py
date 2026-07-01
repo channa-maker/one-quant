@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import time
 from decimal import Decimal
+from typing import Any
 
 from one_quant.core.types import (
     Kline,
@@ -77,7 +78,7 @@ def okx_symbol_to_internal(exchange_symbol: str) -> str:
 # ──────────────────────────── 币安归一化 ────────────────────────────
 
 
-def normalize_binance_ticker(raw: dict, market: Market = Market.SPOT) -> Ticker:
+def normalize_binance_ticker(raw: dict[str, Any], market: Market = Market.SPOT) -> Ticker:
     """
     将币安 24hrTicker 消息归一化为 Ticker。
 
@@ -104,7 +105,7 @@ def normalize_binance_ticker(raw: dict, market: Market = Market.SPOT) -> Ticker:
     )
 
 
-def normalize_binance_kline(raw: dict, market: Market = Market.SPOT) -> Kline:
+def normalize_binance_kline(raw: dict[str, Any], market: Market = Market.SPOT) -> Kline:
     """
     将币安 kline 消息归一化为 Kline。
 
@@ -135,7 +136,7 @@ def normalize_binance_kline(raw: dict, market: Market = Market.SPOT) -> Kline:
 
 
 def normalize_binance_orderbook(
-    raw: dict,
+    raw: dict[str, Any],
     symbol: str,
     market: Market = Market.SPOT,
 ) -> OrderBook:
@@ -167,7 +168,7 @@ def normalize_binance_orderbook(
     )
 
 
-def normalize_binance_trade(raw: dict, market: Market = Market.SPOT) -> Trade:
+def normalize_binance_trade(raw: dict[str, Any], market: Market = Market.SPOT) -> Trade:
     """
     将币安 trade 消息归一化为 Trade。
 
@@ -198,7 +199,7 @@ def normalize_binance_trade(raw: dict, market: Market = Market.SPOT) -> Trade:
 # ──────────────────────────── OKX 归一化 ────────────────────────────
 
 
-def normalize_okx_ticker(raw: dict) -> Ticker:
+def normalize_okx_ticker(raw: dict[str, Any]) -> Ticker:
     """
     将 OKX tickers 数据归一化为 Ticker。
 
@@ -228,7 +229,7 @@ def normalize_okx_ticker(raw: dict) -> Ticker:
     )
 
 
-def normalize_okx_kline(raw: list, inst_id: str, interval: str = "1m") -> Kline:
+def normalize_okx_kline(raw: list[Any], inst_id: str, interval: str = "1m") -> Kline:
     """
     将 OKX candles 数据归一化为 Kline。
 
@@ -259,7 +260,7 @@ def normalize_okx_kline(raw: list, inst_id: str, interval: str = "1m") -> Kline:
     )
 
 
-def normalize_okx_orderbook(raw: dict, symbol: str) -> OrderBook:
+def normalize_okx_orderbook(raw: dict[str, Any], symbol: str) -> OrderBook:
     """
     将 OKX books/books5 数据归一化为 OrderBook。
 
@@ -289,7 +290,7 @@ def normalize_okx_orderbook(raw: dict, symbol: str) -> OrderBook:
     )
 
 
-def normalize_okx_trade(raw: dict) -> Trade:
+def normalize_okx_trade(raw: dict[str, Any]) -> Trade:
     """
     将 OKX trades 数据归一化为 Trade。
 

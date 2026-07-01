@@ -96,7 +96,9 @@ class OKXTradingAdapter(ExchangeAdapter):
         resp.raise_for_status()
         data = resp.json().get("data", [{}])[0]
         exchange_id = data.get("ordId", "")
-        logger.info("OKX 下单成功", client_id=order.client_order_id[:8], exchange_id=exchange_id)
+        logger.info(
+            "OKX 下单成功 client_id=%s exchange_id=%s", order.client_order_id[:8], exchange_id
+        )
         return exchange_id
 
     async def cancel_order(self, order_id: str, symbol: str) -> bool:
@@ -109,7 +111,7 @@ class OKXTradingAdapter(ExchangeAdapter):
             resp.raise_for_status()
             return True
         except Exception:
-            logger.warning("OKX 撤单失败", order_id=order_id)
+            logger.warning("OKX 撤单失败 order_id=%s", order_id)
             return False
 
     async def get_positions(self) -> list[PositionState]:

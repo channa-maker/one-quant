@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -59,8 +60,8 @@ class BacktestResult(BaseModel, frozen=True):
     turnover_rate: float
     total_trades: int
     equity_curve: list[tuple[int, Decimal]]
-    sample_in_metrics: dict = {}
-    sample_out_metrics: dict = {}
+    sample_in_metrics: dict[str, Any] = {}
+    sample_out_metrics: dict[str, Any] = {}
 
 
 # ──────────────────────────── 回测引擎 ────────────────────────────
@@ -109,14 +110,14 @@ class BacktestEngine:
 
     # ──────────────────── 公开接口 ────────────────────
 
-    async def run(self, data: list[dict]) -> BacktestResult:
+    async def run(self, data: list[dict[str, Any]]) -> BacktestResult:
         """运行回测。
 
         按事件时间顺序处理每条行情数据，驱动策略回调并模拟撮合。
 
         Args:
             data: 按时间排序的行情数据列表。
-                  每条数据为 dict，必须包含 ``_type`` 字段标识类型：
+                  每条数据为 dict[str, Any]，必须包含 ``_type`` 字段标识类型：
                     - ``_type == "ticker"`` → 构造 Ticker 并调用 on_ticker
                     - ``_type == "kline"``  → 构造 Kline 并调用 on_kline
                     - ``_type == "orderbook"`` → 构造 OrderBook 并调用 on_orderbook
@@ -216,8 +217,8 @@ class BacktestEngine:
     # ──── 数据构造 ────
 
     @staticmethod
-    def _build_ticker(item: dict) -> Ticker:
-        """从 dict 构造 Ticker 对象。"""
+    def _build_ticker(item: dict[str, Any]) -> Ticker:
+        """从 dict[str, Any] 构造 Ticker 对象。"""
         return Ticker(
             symbol=item["symbol"],
             market=Market(item.get("market", "SPOT")),
@@ -230,8 +231,8 @@ class BacktestEngine:
         )
 
     @staticmethod
-    def _build_kline(item: dict) -> Kline:
-        """从 dict 构造 Kline 对象。"""
+    def _build_kline(item: dict[str, Any]) -> Kline:
+        """从 dict[str, Any] 构造 Kline 对象。"""
         return Kline(
             symbol=item["symbol"],
             market=Market(item.get("market", "SPOT")),
@@ -246,8 +247,8 @@ class BacktestEngine:
         )
 
     @staticmethod
-    def _build_orderbook(item: dict) -> OrderBook:
-        """从 dict 构造 OrderBook 对象。"""
+    def _build_orderbook(item: dict[str, Any]) -> OrderBook:
+        """从 dict[str, Any] 构造 OrderBook 对象。"""
         bids = [
             {"price": Decimal(str(lvl["price"])), "quantity": Decimal(str(lvl["quantity"]))}
             for lvl in item.get("bids", [])
@@ -270,7 +271,7 @@ class BacktestEngine:
     # ──── 价格提取 ────
 
     @staticmethod
-    def _extract_price(item: dict, symbol: str) -> Decimal | None:
+    def _extract_price(item: dict[str, Any], symbol: str) -> Decimal | None:
         """从行情数据中提取撮合基准价格。
 
         优先级：last_price > close > open > bid/ask 中间价
@@ -506,7 +507,7 @@ class BacktestEngine:
 
     # ──── 权益计算 ────
 
-    def _calculate_equity(self, timestamp_ns: int, item: dict) -> Decimal:
+    def _calculate_equity(self, timestamp_ns: int, item: dict[str, Any]) -> Decimal:
         """计算当前总权益 = 可用资金 + 持仓市值。
 
         Args:
@@ -539,7 +540,7 @@ class BacktestEngine:
 
     # ──── 指标计算 ────
 
-    def _calculate_metrics(self) -> dict:
+    def _calculate_metrics(self) -> dict[str, Any]:
         """计算回测指标。
 
         包含：
@@ -725,7 +726,7 @@ class BacktestEngine:
 
         return win_rate, profit_factor
 
-    def _empty_metrics(self) -> dict:
+    def _empty_metrics(self) -> dict[str, Any]:
         """返回空指标字典。"""
         return {
             "total_return": Decimal("0"),

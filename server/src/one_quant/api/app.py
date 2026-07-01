@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+import jwt
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -58,8 +59,6 @@ async def auth_middleware(request: Request, call_next):
 
     # JWT 验证
     try:
-        import jwt
-
         settings = get_settings()
         payload = jwt.decode(
             token,
@@ -77,6 +76,12 @@ async def auth_middleware(request: Request, call_next):
         return JSONResponse(
             status_code=401,
             content={"code": 401, "message": "无效的认证凭据"},
+        )
+    except Exception:
+        # 兜底：任何非 JWT 异常也返回 401，不泄露内部信息
+        return JSONResponse(
+            status_code=401,
+            content={"code": 401, "message": "认证服务异常，请稍后重试"},
         )
 
     return await call_next(request)

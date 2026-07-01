@@ -5,6 +5,7 @@ SMC — 结构分析器
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from one_quant.core.types import Kline
 
@@ -29,14 +30,16 @@ class SMCAnalyzer:
 
     def __init__(self) -> None:
         self._trend: dict[str, str] = {}
-        self._last_bos: dict[str, dict | None] = {}
-        self._last_choch: dict[str, dict | None] = {}
+        self._last_bos: dict[str, dict[str, Any] | None] = {}
+        self._last_choch: dict[str, dict[str, Any] | None] = {}
 
     # ──────────────── Swing 高低点识别 ────────────────
 
-    def _find_swing_highs(self, highs: list[Decimal], lookback: int = SWING_LOOKBACK) -> list[dict]:
+    def _find_swing_highs(
+        self, highs: list[Decimal], lookback: int = SWING_LOOKBACK
+    ) -> list[dict[str, Any]]:
         """识别 Swing 高点（局部极值）。"""
-        swings: list[dict] = []
+        swings: list[dict[str, Any]] = []
         for i in range(lookback, len(highs) - lookback):
             is_highest = all(
                 highs[i] >= highs[j] for j in range(i - lookback, i + lookback + 1) if j != i
@@ -45,9 +48,11 @@ class SMCAnalyzer:
                 swings.append({"index": i, "price": highs[i]})
         return swings
 
-    def _find_swing_lows(self, lows: list[Decimal], lookback: int = SWING_LOOKBACK) -> list[dict]:
+    def _find_swing_lows(
+        self, lows: list[Decimal], lookback: int = SWING_LOOKBACK
+    ) -> list[dict[str, Any]]:
         """识别 Swing 低点（局部极值）。"""
-        swings: list[dict] = []
+        swings: list[dict[str, Any]] = []
         for i in range(lookback, len(lows) - lookback):
             is_lowest = all(
                 lows[i] <= lows[j] for j in range(i - lookback, i + lookback + 1) if j != i
@@ -58,7 +63,7 @@ class SMCAnalyzer:
 
     # ──────────────── BOS 市场结构破坏 ────────────────
 
-    def detect_bos(self, highs: list[Decimal], lows: list[Decimal]) -> dict | None:
+    def detect_bos(self, highs: list[Decimal], lows: list[Decimal]) -> dict[str, Any] | None:
         """BOS（Break of Structure）— 市场结构破坏。"""
         if len(highs) < 15 or len(lows) < 15:
             return None
@@ -96,7 +101,9 @@ class SMCAnalyzer:
 
     # ──────────────── CHoCH 趋势转换 ────────────────
 
-    def detect_choch(self, highs: list[Decimal], lows: list[Decimal], trend: str) -> dict | None:
+    def detect_choch(
+        self, highs: list[Decimal], lows: list[Decimal], trend: str
+    ) -> dict[str, Any] | None:
         """CHoCH（Change of Character）— 趋势转换信号。"""
         if len(highs) < 15 or len(lows) < 15:
             return None
@@ -135,12 +142,12 @@ class SMCAnalyzer:
 
     # ──────────────── Order Block 订单块 ────────────────
 
-    def find_order_blocks(self, klines: list[Kline]) -> list[dict]:
+    def find_order_blocks(self, klines: list[Kline]) -> list[dict[str, Any]]:
         """Order Block 订单块识别。"""
         if len(klines) < 5:
             return []
 
-        order_blocks: list[dict] = []
+        order_blocks: list[dict[str, Any]] = []
 
         for i in range(2, len(klines) - 1):
             k = klines[i]
@@ -186,12 +193,12 @@ class SMCAnalyzer:
 
     # ──────────────── Fair Value Gap (FVG) ────────────────
 
-    def find_fvg(self, klines: list[Kline]) -> list[dict]:
+    def find_fvg(self, klines: list[Kline]) -> list[dict[str, Any]]:
         """Fair Value Gap 公允价值缺口识别。"""
         if len(klines) < 3:
             return []
 
-        fvgs: list[dict] = []
+        fvgs: list[dict[str, Any]] = []
 
         for i in range(2, len(klines)):
             k1 = klines[i - 2]
@@ -231,12 +238,14 @@ class SMCAnalyzer:
 
     # ──────────────── 流动性池 ────────────────
 
-    def find_liquidity_pools(self, highs: list[Decimal], lows: list[Decimal]) -> list[dict]:
+    def find_liquidity_pools(
+        self, highs: list[Decimal], lows: list[Decimal]
+    ) -> list[dict[str, Any]]:
         """流动性池识别：等高/等低点止损聚集区。"""
         swing_highs = self._find_swing_highs(highs)
         swing_lows = self._find_swing_lows(lows)
 
-        pools: list[dict] = []
+        pools: list[dict[str, Any]] = []
 
         used_highs: set[int] = set()
         for i, sh in enumerate(swing_highs):
@@ -296,7 +305,9 @@ class SMCAnalyzer:
 
     # ──────────────── 流动性猎杀 ────────────────
 
-    def detect_liquidity_grab(self, klines: list[Kline], pools: list[dict]) -> dict | None:
+    def detect_liquidity_grab(
+        self, klines: list[Kline], pools: list[dict[str, Any]]
+    ) -> dict[str, Any] | None:
         """流动性猎杀检测：假突破扫止损后反转。"""
         if len(klines) < 3 or not pools:
             return None

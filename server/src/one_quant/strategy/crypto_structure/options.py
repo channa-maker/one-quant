@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 
 class OptionStructure:
@@ -17,7 +18,7 @@ class OptionStructure:
     - IV Skew: 隐含波动率偏斜
     """
 
-    def max_pain(self, chain: list[dict]) -> Decimal:
+    def max_pain(self, chain: list[dict[str, Any]]) -> Decimal:
         """Max Pain（最大痛苦价）计算。"""
         if not chain:
             return Decimal("0")
@@ -51,7 +52,7 @@ class OptionStructure:
 
         return max_pain_price
 
-    def gex_exposure(self, chain: list[dict], spot_price: Decimal) -> dict:
+    def gex_exposure(self, chain: list[dict[str, Any]], spot_price: Decimal) -> dict[str, Any]:
         """GEX（Gamma Exposure）计算。"""
         if not chain:
             return {
@@ -116,7 +117,7 @@ class OptionStructure:
             "put_wall": str(put_wall),
         }
 
-    def put_call_ratio(self, chain: list[dict]) -> dict:
+    def put_call_ratio(self, chain: list[dict[str, Any]]) -> dict[str, Any]:
         """Put/Call Ratio（PCR）。"""
         call_oi = sum(
             Decimal(str(c.get("open_interest", 0))) for c in chain if c.get("type") == "call"
@@ -153,7 +154,7 @@ class OptionStructure:
             "extreme": extreme,
         }
 
-    def iv_skew(self, chain: list[dict]) -> dict:
+    def iv_skew(self, chain: list[dict[str, Any]]) -> dict[str, Any]:
         """IV 偏斜（隐含波动率偏斜）。"""
         if not chain:
             return {
@@ -188,7 +189,7 @@ class OptionStructure:
             )
         ]
 
-        def avg_iv(options: list[dict]) -> Decimal:
+        def avg_iv(options: list[dict[str, Any]]) -> Decimal:
             if not options:
                 return Decimal("0")
             ivs = [Decimal(str(c.get("iv", 0))) for c in options]

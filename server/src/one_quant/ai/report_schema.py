@@ -274,7 +274,9 @@ def generate_report_from_signal(signal_data: dict[str, Any]) -> DecisionReport:
         ),
         trends=[
             TrendAnalysis(
-                direction=direction,
+                direction=direction
+                if direction in ("bullish", "bearish", "neutral")
+                else "neutral",
                 timeframe="1h",
                 confidence=strength,
                 description=reason or f"{direction} 趋势",

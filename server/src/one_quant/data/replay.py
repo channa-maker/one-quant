@@ -71,27 +71,27 @@ class TickReplayer:
         self._replay_count = 0
 
         logger.info(
-            "开始回放",
-            table=table,
-            start=start_time.isoformat(),
-            end=end_time.isoformat(),
-            speed=speed,
+            "开始回放 table=%s start=%s end=%s speed=%s",
+            table,
+            start_time.isoformat(),
+            end_time.isoformat(),
+            speed,
         )
 
         # 从 Bronze 读取原始数据
         raw_records = await self._bronze.replay(table, start_time, end_time, source)
 
         if not raw_records:
-            logger.info("无数据可回放", table=table)
+            logger.info("无数据可回放 table=%s", table)
             return 0
 
         # Silver 清洗
         cleaned = self._silver.process_batch(raw_records)
 
         logger.info(
-            "数据已加载",
-            raw_count=len(raw_records),
-            cleaned_count=len(cleaned),
+            "数据已加载 raw_count=%s cleaned_count=%s",
+            len(raw_records),
+            len(cleaned),
         )
 
         # 按时间戳排序
@@ -120,7 +120,7 @@ class TickReplayer:
 
             self._replay_count += 1
 
-        logger.info("回放完成", count=self._replay_count, table=table)
+        logger.info("回放完成 count=%s table=%s", self._replay_count, table)
         return self._replay_count
 
     async def replay_stream(

@@ -81,9 +81,9 @@ class MarketDataGateway(ABC):
             name=f"gateway-{self.exchange}-heartbeat",
         )
         logger.info(
-            "行情网关启动",
-            exchange=self.exchange,
-            symbols_count=len(symbols),
+            "行情网关启动 exchange=%s symbols_count=%s",
+            self.exchange,
+            len(symbols),
         )
 
     async def stop(self) -> None:
@@ -106,7 +106,7 @@ class MarketDataGateway(ABC):
                 pass
 
         await self._disconnect()
-        logger.info("行情网关已停止", exchange=self.exchange)
+        logger.info("行情网关已停止 exchange=%s", self.exchange)
 
     async def add_symbols(self, symbols: list[str]) -> None:
         """运行时追加订阅标的"""
@@ -114,10 +114,10 @@ class MarketDataGateway(ABC):
         if self._connected:
             await self._subscribe(symbols)
         logger.info(
-            "追加订阅",
-            exchange=self.exchange,
-            added=len(symbols),
-            total=len(self._subscribed_symbols),
+            "追加订阅 exchange=%s added=%s total=%s",
+            self.exchange,
+            len(symbols),
+            len(self._subscribed_symbols),
         )
 
     # ── 子类必须实现 ──────────────────────────────────────────────────
@@ -162,9 +162,9 @@ class MarketDataGateway(ABC):
                     await self._request_snapshot(symbols)
 
                 logger.info(
-                    "WebSocket 已连接",
-                    exchange=self.exchange,
-                    reconnect_count=self._reconnect_count,
+                    "WebSocket 已连接 exchange=%s reconnect_count=%s",
+                    self.exchange,
+                    self._reconnect_count,
                 )
 
                 # 消息接收循环
@@ -176,10 +176,10 @@ class MarketDataGateway(ABC):
                 if self._stopping:
                     break
                 logger.error(
-                    "WebSocket 异常",
-                    exchange=self.exchange,
-                    error=str(exc),
-                    reconnect_in_sec=delay,
+                    "WebSocket 异常 exchange=%s error=%s reconnect_in_sec=%s",
+                    self.exchange,
+                    str(exc),
+                    delay,
                 )
                 self._connected = False
                 await self._disconnect()
@@ -208,9 +208,9 @@ class MarketDataGateway(ABC):
                 await self._on_message(message)
             except Exception:
                 logger.exception(
-                    "消息处理异常",
-                    exchange=self.exchange,
-                    msg_preview=str(message)[:200],
+                    "消息处理异常 exchange=%s msg_preview=%s",
+                    self.exchange,
+                    str(message)[:200],
                 )
 
     async def _heartbeat_loop(self) -> None:
@@ -220,7 +220,7 @@ class MarketDataGateway(ABC):
             age = self.last_message_age_sec
             if age > 60:
                 logger.warning(
-                    "行情数据超时",
-                    exchange=self.exchange,
-                    last_msg_age_sec=round(age, 1),
+                    "行情数据超时 exchange=%s last_msg_age_sec=%s",
+                    self.exchange,
+                    round(age, 1),
                 )

@@ -88,7 +88,7 @@ class UserContext:
     role: Role
     permissions: set[Permission] = field(default_factory=set)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.permissions:
             self.permissions = ROLE_PERMISSIONS.get(self.role, set())
 
@@ -125,7 +125,7 @@ class PermissionChecker:
         """获取用户的全部权限"""
         return user.permissions.copy()
 
-    def require_permission(self, permission: Permission) -> Callable:
+    def require_permission(self, permission: Permission) -> Callable[..., Any]:
         """
         装饰器：要求特定权限
 
@@ -135,7 +135,7 @@ class PermissionChecker:
                 ...
         """
 
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             @wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 # 从参数中提取 UserContext
@@ -154,7 +154,7 @@ class PermissionChecker:
 
         return decorator
 
-    def require_any_permission(self, *permissions: Permission) -> Callable:
+    def require_any_permission(self, *permissions: Permission) -> Callable[..., Any]:
         """
         装饰器：要求拥有任一指定权限
 
@@ -165,7 +165,7 @@ class PermissionChecker:
         """
         perm_set = set(permissions)
 
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             @wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 user = _extract_user_context(args, kwargs)
@@ -186,7 +186,7 @@ class PermissionChecker:
         return decorator
 
 
-def _extract_user_context(args: tuple, kwargs: dict) -> UserContext | None:
+def _extract_user_context(args: tuple[Any, ...], kwargs: dict[str, Any]) -> UserContext | None:
     """从函数参数中提取 UserContext"""
     # 检查 kwargs
     for v in kwargs.values():
@@ -216,7 +216,7 @@ class ApprovalRequest:
     status: str = "pending"  # pending / approved / rejected / expired
     approver_id: str | None = None
     approved_at: float | None = None
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict[str, Any])
 
 
 class DualApproval:
@@ -240,7 +240,7 @@ class DualApproval:
         self,
         action: str,
         requester_id: str,
-        metadata: dict | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         发起复核请求
@@ -433,7 +433,7 @@ def check_permission(user: UserContext, permission: Permission) -> bool:
     return permission_checker.check_user(user, permission)
 
 
-def require_permission(permission: Permission) -> Callable:
+def require_permission(permission: Permission) -> Callable[..., Any]:
     """装饰器：要求特定权限"""
     return permission_checker.require_permission(permission)
 

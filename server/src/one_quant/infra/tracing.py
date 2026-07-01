@@ -29,7 +29,7 @@ def setup_tracing(service_name: str = "one-quant", enabled: bool = True) -> None
         processor = BatchSpanProcessor(ConsoleSpanExporter())
         provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
-        logger.info("OpenTelemetry 追踪已初始化", service=service_name)
+        logger.info("OpenTelemetry 追踪已初始化 service=%s", service_name)
     except ImportError:
         logger.warning("opentelemetry-sdk 未安装，链路追踪不可用")
 

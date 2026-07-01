@@ -265,7 +265,7 @@ class DeribitAdapter(UnifiedBroker):
                 PositionState(
                     symbol=pos.get("instrument_name", ""),
                     market=Market.OPTION,
-                    side=side,
+                    side=side if side in ("long", "short", "flat") else "flat",  # type: ignore[arg-type]
                     quantity=abs(qty),
                     entry_price=Decimal(str(pos.get("average_price", 0))),
                     unrealized_pnl=Decimal(str(pos.get("floating_profit_loss", 0))),

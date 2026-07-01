@@ -12,8 +12,10 @@ ONE量化 - 回测一致性校验器
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from copy import deepcopy
 from decimal import Decimal
+from typing import Any
 
 from one_quant.core.types import Fill
 from one_quant.strategy.backtest import BacktestEngine
@@ -27,8 +29,8 @@ class BacktestConsistencyChecker:
 
     async def check_no_future_function(
         self,
-        strategy_factory: callable,
-        data: list[dict],
+        strategy_factory: Callable[..., Any],
+        data: list[dict[str, Any]],
         initial_capital: Decimal = Decimal("100000"),
     ) -> bool:
         """检查无未来函数。
@@ -98,7 +100,7 @@ class BacktestConsistencyChecker:
 
     async def check_empty_data(
         self,
-        strategy_factory: callable,
+        strategy_factory: Callable[..., Any],
     ) -> bool:
         """空数据测试：策略不崩溃。
 
@@ -119,8 +121,8 @@ class BacktestConsistencyChecker:
 
     async def check_cost_impact(
         self,
-        strategy_factory: callable,
-        data: list[dict],
+        strategy_factory: Callable[..., Any],
+        data: list[dict[str, Any]],
         initial_capital: Decimal = Decimal("100000"),
     ) -> Decimal:
         """成本扣除测试：有成本收益应低于无成本。
@@ -159,9 +161,9 @@ class BacktestConsistencyChecker:
 
     async def check_anchor_trades(
         self,
-        strategy_factory: callable,
-        data: list[dict],
-        expected_trades: list[dict],
+        strategy_factory: Callable[..., Any],
+        data: list[dict[str, Any]],
+        expected_trades: list[dict[str, Any]],
         initial_capital: Decimal = Decimal("100000"),
     ) -> bool:
         """锚定交易测试：固定输入产生固定输出。

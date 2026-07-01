@@ -34,7 +34,7 @@ async def main() -> None:
     shutdown_event = asyncio.Event()
 
     def _shutdown_handler(sig: int, frame: object) -> None:
-        logger.info("收到关闭信号，正在优雅退出...", signal=sig)
+        logger.info("收到关闭信号，正在优雅退出... signal=%s", sig)
         shutdown_event.set()
 
     signal.signal(signal.SIGINT, _shutdown_handler)
@@ -52,7 +52,7 @@ async def main() -> None:
     await collector.stop()
     await storage.flush_all()
     await event_bus.stop()
-    logger.info("one-collector 已关闭", stats=collector.stats)
+    logger.info("one-collector 已关闭 stats=%s", collector.stats)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from one_quant.core.types import Kline, Market, OrderBook, Signal, Ticker, Trade
 from one_quant.strategy.contracts import Strategy
@@ -129,7 +130,7 @@ class OrderFlowAnalyzer:
 
     # ──────────────── 失衡检测 ────────────────
 
-    def detect_imbalance(self, ob: OrderBook, threshold: float = 3.0) -> list[dict]:
+    def detect_imbalance(self, ob: OrderBook, threshold: float = 3.0) -> list[dict[str, Any]]:
         """失衡检测：同价位 Bid/Ask 挂单量悬殊。
 
         当某一价位的 Bid 量 / Ask 量（或反过来）超过 threshold 倍时，
@@ -142,7 +143,7 @@ class OrderFlowAnalyzer:
         Returns:
             失衡列表，每项包含 price, bid_qty, ask_qty, ratio, direction
         """
-        imbalances: list[dict] = []
+        imbalances: list[dict[str, Any]] = []
 
         # 将 asks 按价格建立索引
         ask_map: dict[Decimal, Decimal] = {}
@@ -257,7 +258,7 @@ class OrderFlowAnalyzer:
 
     # ──────────────── 扫单检测 ────────────────
 
-    def detect_sweep(self, trades: list[Trade], ob: OrderBook) -> dict | None:
+    def detect_sweep(self, trades: list[Trade], ob: OrderBook) -> dict[str, Any] | None:
         """扫单检测：瞬间扫多档流动性。
 
         扫单特征：
@@ -270,7 +271,7 @@ class OrderFlowAnalyzer:
             ob: 当前盘口快照
 
         Returns:
-            扫单信息 dict（side, levels_swept, volume, time_span_ns）或 None
+            扫单信息 dict[str, Any]（side, levels_swept, volume, time_span_ns）或 None
         """
         if len(trades) < SWEEP_MIN_COUNT:
             return None
@@ -333,7 +334,7 @@ class OrderFlowAnalyzer:
 
     # ──────────────── 冰山单检测 ────────────────
 
-    def detect_iceberg(self, trades: list[Trade], ob: OrderBook) -> dict | None:
+    def detect_iceberg(self, trades: list[Trade], ob: OrderBook) -> dict[str, Any] | None:
         """冰山单检测：隐藏大额挂单（不断补单）。
 
         冰山单特征：
@@ -346,7 +347,7 @@ class OrderFlowAnalyzer:
             ob: 当前盘口快照
 
         Returns:
-            冰山单信息 dict（price, side, refill_count, estimated_size）或 None
+            冰山单信息 dict[str, Any]（price, side, refill_count, estimated_size）或 None
         """
         if len(trades) < 10:
             return None
@@ -438,7 +439,7 @@ class OrderFlowAnalyzer:
 
     def detect_liquidity_wall(
         self, ob: OrderBook, ratio: float = LIQUIDITY_WALL_RATIO
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """流动性墙检测：盘口中某价位挂单量异常大。
 
         流动性墙可能是：
@@ -450,7 +451,7 @@ class OrderFlowAnalyzer:
             ratio: 异常倍数阈值（默认 5.0）
 
         Returns:
-            流动性墙信息 dict 或 None
+            流动性墙信息 dict[str, Any] 或 None
         """
         if not ob.bids and not ob.asks:
             return None
@@ -464,7 +465,7 @@ class OrderFlowAnalyzer:
         if avg_qty == 0:
             return None
 
-        walls: list[dict] = []
+        walls: list[dict[str, Any]] = []
 
         for b in ob.bids:
             r = float(b.quantity / avg_qty)

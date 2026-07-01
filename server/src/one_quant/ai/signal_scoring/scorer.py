@@ -173,11 +173,11 @@ class SignalScorer:
         # ⑥ 方向判定
         net_direction = sum(d * s for s, d in raw_scores.values())
         if net_direction > 0.1:
-            direction = "long"
+            signal_direction = "long"
         elif net_direction < -0.1:
-            direction = "short"
+            signal_direction = "short"
         else:
-            direction = "neutral"
+            signal_direction = "neutral"
 
         # ⑦ 信号分级
         level = classify_signal(calibrated_score)
@@ -203,7 +203,7 @@ class SignalScorer:
         card = SignalCard(
             signal_id=signal_id,
             symbol=symbol,
-            direction=direction,
+            direction=signal_direction,
             score=round(calibrated_score, 2),
             confidence_interval=(
                 round(confidence_interval[0], 2),
@@ -214,7 +214,9 @@ class SignalScorer:
             risk_note=self._generate_risk_note(level, calibrated_score, consistency),
             suggested_stop=Decimal("0"),  # 需要具体价格数据才能计算
             risk_reward_ratio=rr_ratio,
-            reason=self._generate_reason(symbol, direction, calibrated_score, level, contributions),
+            reason=self._generate_reason(
+                symbol, signal_direction, calibrated_score, level, contributions
+            ),
             evidence_details=contributions,
             historical_win_rate=calibrated_score / 100.0,  # 校准后分数 ≈ 胜率
             timestamp_ns=time.time_ns(),
@@ -234,7 +236,7 @@ class SignalScorer:
             symbol,
             calibrated_score,
             level,
-            direction,
+            signal_direction,
             max(len(bullish_sources), len(bearish_sources)),
         )
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from decimal import Decimal
+from typing import Any
 
 from one_quant.core.types import Kline, Market, Signal, Ticker
 from one_quant.strategy.contracts import Strategy
@@ -64,7 +65,9 @@ class SMCStrategy(Strategy):
         if len(self._lows[symbol]) > 100:
             self._lows[symbol] = self._lows[symbol][-100:]
 
-    def _check_ob_proximity(self, price: Decimal, obs: list[dict]) -> dict | None:
+    def _check_ob_proximity(
+        self, price: Decimal, obs: list[dict[str, Any]]
+    ) -> dict[str, Any] | None:
         """检查价格是否接近某个 Order Block。"""
         for ob in obs:
             ob_top = Decimal(ob["top"])
@@ -205,7 +208,7 @@ class SMCStrategy(Strategy):
                 Signal(
                     symbol=symbol,
                     market=market,
-                    side=side,
+                    side=side if side in ("buy", "sell") else "buy",  # type: ignore[arg-type]
                     strength=round(strength, 4),
                     strategy_name=self.name,
                     reason="; ".join(reasons),

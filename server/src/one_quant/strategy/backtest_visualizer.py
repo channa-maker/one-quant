@@ -38,12 +38,20 @@ from one_quant.strategy.backtest import BacktestResult
 
 logger = get_logger(__name__)
 
+try:
+    import matplotlib
+
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
 # ──────────────────── matplotlib 全局配置 ────────────────────
 
 
 def _setup_matplotlib():
     """配置 matplotlib 中文支持和全局样式。"""
-    import matplotlib
+    if not HAS_MATPLOTLIB:
+        raise ImportError("matplotlib 未安装，可视化功能不可用。安装: pip install matplotlib")
 
     matplotlib.use("Agg")  # 无头模式，适合服务器环境
     import matplotlib.pyplot as plt

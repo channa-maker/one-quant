@@ -108,7 +108,7 @@ class BinanceWSGateway(MarketDataGateway):
             ping_timeout=10,
             close_timeout=5,
         )
-        logger.info("币安 WebSocket 已连接", url=url)
+        logger.info("币安 WebSocket 已连接 url=%s", url)
 
     async def _disconnect(self) -> None:
         """断开 WebSocket"""
@@ -145,9 +145,9 @@ class BinanceWSGateway(MarketDataGateway):
             if self._ws is not None:
                 await self._ws.send(msg)
                 logger.info(
-                    "币安订阅请求已发送",
-                    batch_index=i // batch_size,
-                    stream_count=len(batch),
+                    "币安订阅请求已发送 batch_index=%s stream_count=%s",
+                    i // batch_size,
+                    len(batch),
                 )
 
     async def _request_snapshot(self, symbols: list[str]) -> None:
@@ -167,9 +167,9 @@ class BinanceWSGateway(MarketDataGateway):
                         "asks": {Decimal(p): Decimal(q) for p, q in data.get("asks", [])},
                         "lastUpdateId": data.get("lastUpdateId", 0),
                     }
-                    logger.debug("L2 快照已更新", symbol=sym)
+                    logger.debug("L2 快照已更新 symbol=%s", sym)
                 except Exception:
-                    logger.exception("请求 L2 快照失败", symbol=sym)
+                    logger.exception("请求 L2 快照失败 symbol=%s", sym)
 
     # ── 消息处理 ──────────────────────────────────────────────────────
 
@@ -200,9 +200,9 @@ class BinanceWSGateway(MarketDataGateway):
             await self._handle_kline(data)
         elif "result" in data or "id" in data:
             # 订阅确认消息，忽略
-            logger.debug("币安订阅确认", data=data)
+            logger.debug("币安订阅确认 data=%s", data)
         else:
-            logger.debug("未知消息类型", event_type=event_type, stream=stream)
+            logger.debug("未知消息类型 event_type=%s stream=%s", event_type, stream)
 
     async def _handle_ticker(self, data: dict[str, Any]) -> None:
         """处理 24hr miniTicker → Ticker"""
@@ -302,6 +302,6 @@ class BinanceWSGateway(MarketDataGateway):
                 await self._on_message(message)
             except Exception:
                 logger.exception(
-                    "币安消息处理异常",
-                    msg_preview=str(message)[:200],
+                    "币安消息处理异常 msg_preview=%s",
+                    str(message)[:200],
                 )

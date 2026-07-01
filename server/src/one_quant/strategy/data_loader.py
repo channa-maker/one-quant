@@ -30,6 +30,7 @@ import time
 from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from one_quant.infra.logging import get_logger
 
@@ -77,7 +78,7 @@ class DataLoader:
         # 解析时间范围（统一转为纳秒时间戳或 None）
         self._start_ns = self._parse_time(start)
         self._end_ns = self._parse_time(end)
-        self._sorted_cache: list[dict] | None = None
+        self._sorted_cache: list[dict[str, Any]] | None = None
 
         logger.info(
             "数据加载器初始化: file=%s, start=%s, end=%s",
@@ -88,7 +89,7 @@ class DataLoader:
 
     # ──────────────────── 公开接口 ────────────────────
 
-    def load_all(self) -> list[dict]:
+    def load_all(self) -> list[dict[str, Any]]:
         """加载全部数据（已排序、已过滤时间范围）。
 
         首次调用后会缓存结果，后续调用直接返回缓存。
@@ -127,7 +128,7 @@ class DataLoader:
         self,
         batch_size: int = 1000,
         speed: float = 0.0,
-    ) -> Generator[list[dict], None, None]:
+    ) -> Generator[list[dict[str, Any]], None, None]:
         """流式加载数据（逐批产出）。
 
         支持倍速回放：
@@ -205,7 +206,7 @@ class DataLoader:
 
     # ──────────────────── 格式加载 ────────────────────
 
-    def _load_parquet(self) -> list[dict]:
+    def _load_parquet(self) -> list[dict[str, Any]]:
         """加载 Parquet 文件。
 
         使用 pyarrow 或 pandas 读取，转换为 dict 列表。
@@ -217,7 +218,7 @@ class DataLoader:
             import pyarrow.parquet as pq
 
             table = pq.read_table(str(self._file_path))
-            rows = table.to_pylist()
+            rows: list[dict[str, Any]] = table.to_pylist()
             logger.info("Parquet 加载完成: %d 条, 列: %s", len(rows), table.column_names)
             return rows
         except ImportError:
@@ -228,7 +229,7 @@ class DataLoader:
             import pandas as pd
 
             df = pd.read_parquet(str(self._file_path))
-            rows = df.to_dict(orient="records")
+            rows: list[dict[str, Any]] = df.to_dict(orient="records")
             logger.info("Parquet(pandas) 加载完成: %d 条, 列: %s", len(rows), list(df.columns))
             return rows
         except ImportError:
@@ -237,7 +238,7 @@ class DataLoader:
                 "pip install pyarrow  或  pip install pandas"
             )
 
-    def _load_csv(self) -> list[dict]:
+    def _load_csv(self) -> list[dict[str, Any]]:
         """加载 CSV 文件。
 
         自动检测编码和分隔符，支持大文件。
@@ -245,7 +246,7 @@ class DataLoader:
         Returns:
             行情数据列表
         """
-        rows: list[dict] = []
+        rows: list[dict[str, Any]] = []
         file_path = str(self._file_path)
 
         # 尝试常见编码
@@ -275,7 +276,7 @@ class DataLoader:
 
         raise ValueError(f"CSV 文件编码检测失败: {file_path}")
 
-    def _load_jsonl(self) -> list[dict]:
+    def _load_jsonl(self) -> list[dict[str, Any]]:
         """加载 JSONL（JSON Lines）文件。
 
         每行一个 JSON 对象。也支持单个 JSON 数组格式。
@@ -283,7 +284,7 @@ class DataLoader:
         Returns:
             行情数据列表
         """
-        rows: list[dict] = []
+        rows: list[dict[str, Any]] = []
         content = self._file_path.read_text(encoding="utf-8")
 
         # 先尝试整体解析为 JSON 数组
@@ -386,7 +387,7 @@ class DataLoader:
         dt = datetime.fromtimestamp(ns / 1_000_000_000, tz=UTC)
         return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
-    def _extract_timestamp(self, row: dict) -> int | None:
+    def _extract_timestamp(self, row: dict[str, Any]) -> int | None:
         """从数据行中提取纳秒时间戳。
 
         按 _TIME_FIELDS 优先级查找。
@@ -405,7 +406,7 @@ class DataLoader:
                     continue
         return None
 
-    def _filter_by_time(self, rows: list[dict]) -> list[dict]:
+    def _filter_by_time(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """按时间范围过滤数据。
 
         Args:
@@ -417,7 +418,7 @@ class DataLoader:
         if self._start_ns is None and self._end_ns is None:
             return rows
 
-        filtered: list[dict] = []
+        filtered: list[dict[str, Any]] = []
         skipped = 0
 
         for row in rows:
@@ -441,7 +442,7 @@ class DataLoader:
 
         return filtered
 
-    def _sort_by_time(self, rows: list[dict]) -> list[dict]:
+    def _sort_by_time(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """按事件时间升序排序。
 
         没有时间字段的数据排在最前面。
@@ -453,7 +454,7 @@ class DataLoader:
             排序后的数据列表（新列表，不修改原列表）
         """
 
-        def sort_key(row: dict) -> int:
+        def sort_key(row: dict[str, Any]) -> int:
             ts = self._extract_timestamp(row)
             return ts if ts is not None else 0
 
@@ -462,7 +463,7 @@ class DataLoader:
     # ──────────────────── 工具方法 ────────────────────
 
     @staticmethod
-    def _convert_row_types(row: dict) -> dict:
+    def _convert_row_types(row: dict[str, Any]) -> dict[str, Any]:
         """尝试将 CSV 行中的数值字段转换为数字类型。
 
         Args:
@@ -471,7 +472,7 @@ class DataLoader:
         Returns:
             类型转换后的字典
         """
-        converted: dict = {}
+        converted: dict[str, Any] = {}
         for key, value in row.items():
             if value is None or value == "":
                 converted[key] = value
@@ -501,7 +502,7 @@ def load_and_merge(
     file_paths: list[str | Path],
     start: str | None = None,
     end: str | None = None,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """加载多个数据文件并按时间合并排序。
 
     适用于多品种、多时段数据的合并回测场景。
@@ -514,7 +515,7 @@ def load_and_merge(
     Returns:
         合并后按事件时间升序排列的数据列表
     """
-    all_data: list[dict] = []
+    all_data: list[dict[str, Any]] = []
 
     for fp in file_paths:
         loader = DataLoader(fp, start=start, end=end)
@@ -522,11 +523,11 @@ def load_and_merge(
         logger.info("已加载: %s", Path(fp).name)
 
     # 按时间排序
-    def sort_key(row: dict) -> int:
+    def sort_key(row: dict[str, Any]) -> int:
         for field in DataLoader._TIME_FIELDS:
             if field in row:
                 try:
-                    return DataLoader._parse_time(row[field])
+                    return DataLoader._parse_time(row[field]) or 0
                 except ValueError:
                     continue
         return 0

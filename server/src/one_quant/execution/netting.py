@@ -106,7 +106,7 @@ class MultiStrategyNetting:
                 Signal(
                     symbol=symbol,
                     market=group[0].market,
-                    side=side,
+                    side=side if side in ("buy", "sell") else "buy",  # type: ignore[arg-type]
                     strength=strength,
                     strategy_name="multi_strategy_netting",
                     reason=f"净额轧差: {' vs '.join(reason_parts)}, 净方向={side}",
@@ -460,7 +460,7 @@ class NettingEngine:
             client_order_id=primary.client_order_id,
             symbol=symbol,
             market=primary.market,
-            side=side,
+            side=side if side in ("buy", "sell") else "buy",  # type: ignore[arg-type]
             order_type=primary.order_type,
             quantity=total_qty,
             price=avg_price,

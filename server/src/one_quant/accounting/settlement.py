@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import time
 from decimal import Decimal
+from typing import Any
 
 from one_quant.accounting.account import AccountLedger, LedgerEntry
 from one_quant.core.types import Fill
@@ -239,7 +240,7 @@ class SettlementMonitor:
         """
         self._max_history = max_history
         self._settlement_times: list[int] = []
-        self._errors: list[dict] = []
+        self._errors: list[dict[str, Any]] = []
 
     def record_settlement(self, duration_ns: int) -> None:
         """记录结算耗时。
@@ -291,7 +292,7 @@ class SettlementMonitor:
         return len(self._errors)
 
     @property
-    def recent_errors(self) -> list[dict]:
+    def recent_errors(self) -> list[dict[str, Any]]:
         """最近的错误列表。"""
         return self._errors[-10:]
 

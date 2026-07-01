@@ -75,7 +75,7 @@ class VolumeRatioFactor:
         )
 
 
-VolumeFactor = VolumeRatioFactor
+VolumeFactor: type = VolumeRatioFactor
 
 __all__ = [
     "EventCalendarProximityFactor",
