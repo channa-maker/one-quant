@@ -201,7 +201,8 @@ class SettlementEngine:
             if fee_entry:
                 event_data["fee_entry_id"] = fee_entry.entry_id
 
-            await self._event_bus.publish("settlement", event_data)
+            if self._event_bus:
+                await self._event_bus.publish("settlement", event_data)
 
         except Exception as e:
             # 事件发布失败不应影响结算

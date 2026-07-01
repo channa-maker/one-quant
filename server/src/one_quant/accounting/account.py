@@ -589,7 +589,7 @@ class AccountLedger:
         """
         result: dict[str, Decimal] = {}
         for symbol, lots in self._positions.items():
-            total_qty = sum(lot.quantity for lot in lots)
+            total_qty = sum((lot.quantity for lot in lots), Decimal("0"))
             if total_qty > 0:
                 result[symbol] = total_qty
         return result
@@ -604,7 +604,7 @@ class AccountLedger:
             账户权益。
         """
         # 余额部分
-        equity: Decimal = sum(b.total for b in self._balances.values())
+        equity: Decimal = sum((b.total for b in self._balances.values()), Decimal("0"))
 
         # 未实现盈亏部分
         if prices:

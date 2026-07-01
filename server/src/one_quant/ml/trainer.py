@@ -204,7 +204,7 @@ def _compute_auc(y_true: list[int], y_prob: list[float]) -> float:
     if not pos_probs or not neg_probs:
         return 0.0
 
-    concordant = 0
+    concordant = 0.0
     total = 0
     for pp in pos_probs:
         for np_ in neg_probs:

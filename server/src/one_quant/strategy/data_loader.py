@@ -103,7 +103,7 @@ class DataLoader:
         # 根据文件格式加载
         suffix = self._file_path.suffix.lower()
         if suffix == ".parquet":
-            rows = self._load_parquet()
+            self._load_parquet()
         elif suffix == ".csv":
             rows = self._load_csv()
         elif suffix in (".jsonl", ".json"):
@@ -229,7 +229,7 @@ class DataLoader:
             import pandas as pd
 
             df = pd.read_parquet(str(self._file_path))
-            rows: list[dict[str, Any]] = df.to_dict(orient="records")
+            df.to_dict(orient="records")
             logger.info("Parquet(pandas) 加载完成: %d 条, 列: %s", len(rows), list(df.columns))
             return rows
         except ImportError:

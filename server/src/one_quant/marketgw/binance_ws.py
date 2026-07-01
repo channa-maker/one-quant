@@ -24,7 +24,7 @@ import json
 import logging
 import time
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 import websockets
 from websockets.exceptions import ConnectionClosed
@@ -132,7 +132,7 @@ class BinanceMarketGateway(MarketGateway):
         super().__init__(event_bus)
         self._is_futures = is_futures
         self._ws_url = BINANCE_WS_FUTURES if is_futures else BINANCE_WS_SPOT
-        self._ws: websockets.WebSocketClientProtocol | None = None
+        self._ws: websockets.ClientConnection | None = None
         self._reconnect = ReconnectManager(initial_delay=1.0, max_delay=60.0)
         self._streams: list[str] = []  # 已订阅的 stream（用于重连后重新订阅）
         self._recv_task: asyncio.Task[None] | None = None
@@ -247,7 +247,7 @@ class BinanceMarketGateway(MarketGateway):
         elif event_type == "trade":
             symbol = _from_binance_symbol(data["s"])
             # m=True → 买方是 maker → 卖方主动 → side="sell"
-            side = "sell" if data.get("m", False) else "buy"
+            side: Literal["buy", "sell"] = "sell" if data.get("m", False) else "buy"
             trade = Trade(
                 symbol=symbol,
                 exchange="binance",

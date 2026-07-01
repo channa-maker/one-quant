@@ -15,6 +15,7 @@ import asyncio
 import time
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -29,7 +30,7 @@ from one_quant.risk.stress_test import (
 # ──────────────────────────── 辅助工具 ────────────────────────────
 
 
-def _make_portfolio() -> list[dict]:
+def _make_portfolio() -> list[dict[str, Any]]:
     """构造测试组合。"""
     return [
         {"symbol": "BTC", "weight": 0.5, "value": Decimal("50000")},
@@ -62,9 +63,9 @@ def _make_tickers(n: int, start_price: float = 50000.0, crash: bool = False) -> 
     return tickers
 
 
-def _make_custom_scenario(**kwargs) -> CrisisScenario:
+def _make_custom_scenario(**kwargs: Any) -> CrisisScenario:
     """构造自定义危机场景。"""
-    defaults = {
+    defaults: dict[str, Any] = {
         "name": "test_scenario",
         "start_time": 1583971200000000000,
         "end_time": 1584144000000000000,

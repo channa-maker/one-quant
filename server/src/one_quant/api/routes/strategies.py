@@ -43,7 +43,7 @@ async def list_strategies() -> dict[str, Any]:
     strategies = []
     enabled_count = 0
 
-    for name in STRATEGY_REGISTRY.list_keys():
+    for name in STRATEGY_REGISTRY.keys():
         cls = STRATEGY_REGISTRY.get(name)
         if cls is not None:
             info = _strategy_to_dict(name, cls)
@@ -113,7 +113,7 @@ async def toggle_strategy(strategy_name: str, req: StrategyToggleRequest) -> dic
 
     # 修改策略类的 enabled 属性
     old_enabled = getattr(cls, "enabled", False)
-    cls.enabled = req.enabled  # type: ignore[attr-defined]
+    cls.enabled = req.enabled
 
     return {
         "success": True,

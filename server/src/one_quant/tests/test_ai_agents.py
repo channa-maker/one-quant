@@ -60,7 +60,7 @@ class TestBaseAgent:
         assert resp is not None
         assert resp.content == "市场看涨"
         provider.complete.assert_called_once()
-        meter.record.assert_called_once()
+        meter.record_response.assert_called_once()
 
     async def test_run_budget_exceeded(self):
         provider = _make_provider()

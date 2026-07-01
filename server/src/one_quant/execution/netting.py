@@ -446,9 +446,9 @@ class NettingEngine:
         Returns:
             合并后的订单
         """
-        total_qty = sum(o.quantity for o in orders)
+        total_qty = sum((o.quantity for o in orders), Decimal("0"))
         # 加权平均价格
-        total_notional = sum(o.quantity * (o.price or Decimal("0")) for o in orders)
+        total_notional = sum((o.quantity * (o.price or Decimal("0")) for o in orders), Decimal("0"))
         avg_price = (
             total_notional / total_qty if total_qty > 0 and any(o.price for o in orders) else None
         )

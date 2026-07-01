@@ -156,7 +156,9 @@ class POVAlgo(ExecutionAlgo):
         if callable(get_trades):
             try:
                 trades = await get_trades(symbol, limit=100)
-                total_vol = sum(Decimal(str(getattr(t, "quantity", 0))) for t in trades)
+                total_vol = sum(
+                    (Decimal(str(getattr(t, "quantity", 0))) for t in trades), Decimal("0")
+                )
                 if total_vol > 0:
                     return total_vol
             except Exception as exc:

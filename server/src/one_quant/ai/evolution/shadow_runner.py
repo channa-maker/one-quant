@@ -25,7 +25,7 @@ class ShadowRunnerMixin:
     _recent_market_data: dict[str, Any]
     _auditor: Any
 
-    async def shadow_run(
+    async def shadow_run(  # type: ignore[misc]
         self: EvolutionPlatform,
         strategy: Any,
         days: int = 30,
@@ -95,7 +95,7 @@ class ShadowRunnerMixin:
 
         return result
 
-    async def _fetch_shadow_data(
+    async def _fetch_shadow_data(  # type: ignore[misc]
         self: EvolutionPlatform,
         strategy: Any,
         days: int,

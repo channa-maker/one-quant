@@ -87,7 +87,7 @@ class OnChainAnalyzer:
                 "largest_tx": None,
             }
 
-        total_vol = sum(Decimal(str(t["amount"])) for t in whale_txs)
+        total_vol = sum((Decimal(str(t["amount"])) for t in whale_txs), Decimal("0"))
 
         to_exchange = sum(
             Decimal(str(t["amount"]))

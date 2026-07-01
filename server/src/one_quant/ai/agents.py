@@ -25,8 +25,8 @@ class BaseAgent:
         if not self._meter.check_budget():
             logger.warning("智能体 %s 被限流: 日预算已耗尽", self.name)
             return None
-        resp = await self._provider.complete(user_prompt, system=self.system_prompt, **kwargs)
-        self._meter.record(resp)
+        resp = await self._provider.complete([{"role": "user", "content": user_prompt}], **kwargs)
+        self._meter.record_response(resp)
         return resp
 
 

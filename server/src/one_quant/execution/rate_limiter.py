@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -102,11 +103,11 @@ class RateLimiter:
         return self._tokens
 
     @property
-    def stats(self) -> dict[str, int | float]:
+    def stats(self) -> dict[str, Any]:
         """统计信息。"""
         return {
             "name": self.name,
-            "available_tokens": round(self.available_tokens, 2),
-            "max_tokens": self.max_tokens,
+            "available_tokens": float(round(self.available_tokens, 2)),
+            "max_tokens": float(self.max_tokens),
             "wait_count": self._wait_count,
         }

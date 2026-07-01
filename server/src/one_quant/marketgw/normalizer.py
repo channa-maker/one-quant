@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import time
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from one_quant.core.types import (
     Kline,
@@ -184,7 +184,7 @@ def normalize_binance_trade(raw: dict[str, Any], market: Market = Market.SPOT) -
         Trade: 归一化后的逐笔成交
     """
     # m=True → 买方是 maker → 卖方主动 → side="sell"
-    side = "sell" if raw.get("m", False) else "buy"
+    side: Literal["buy", "sell"] = "sell" if raw.get("m", False) else "buy"
     return Trade(
         symbol=binance_symbol_to_internal(raw["s"]),
         exchange="binance",

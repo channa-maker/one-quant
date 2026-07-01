@@ -380,7 +380,7 @@ class IBKRAdapter(UnifiedBroker):
         positions = await self.get_positions()
         _balance = await self.get_balance()  # noqa: F841
 
-        result = []
+        result: list[Any] = []
         for pos in positions:
             entry = pos.entry_price * pos.quantity
             result.append(

@@ -181,7 +181,7 @@ async def run_collector(config: dict[str, Any]) -> None:
     orderbook_depth = config.get("orderbook_depth", 20)
 
     # 创建网关
-    gateways = []
+    gateways: list[Any] = []
     exch_config = config.get("exchanges", {})
 
     if exch_config.get("binance", {}).get("enabled", True):
@@ -192,8 +192,8 @@ async def run_collector(config: dict[str, Any]) -> None:
         gateways.append(("binance", gw))
 
     if exch_config.get("okx", {}).get("enabled", True):
-        gw = OKXMarketGateway(event_bus=event_bus)
-        gateways.append(("okx", gw))
+        gw_okx: Any = OKXMarketGateway(event_bus=event_bus)
+        gateways.append(("okx", gw_okx))
 
     if not gateways:
         logger.error("没有启用任何交易所网关")

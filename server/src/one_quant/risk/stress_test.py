@@ -26,7 +26,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from one_quant.core.types import Ticker
+from one_quant.core.types import Market, Ticker
 from one_quant.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -398,7 +398,7 @@ class StressTestEngine:
                 tickers.append(
                     Ticker(
                         symbol=str(row.get("symbol", "BTC/USDT")),
-                        market="FUTURES",
+                        market=Market.FUTURES,
                         exchange=str(row.get("exchange", "binance")),
                         last_price=Decimal(str(row.get("last_price", row.get("close", 0)))),
                         bid=Decimal(str(row.get("bid", row.get("close", 0) * 0.999))),

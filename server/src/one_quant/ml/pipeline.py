@@ -415,8 +415,8 @@ class TrainingPipeline:
 
                 records = await self._bronze.replay(
                     table="kline",
-                    start_time=start_time,
-                    end_time=end_time,
+                    start=start_time,
+                    end=end_time,
                     source=symbol.replace("/", "_"),
                 )
 

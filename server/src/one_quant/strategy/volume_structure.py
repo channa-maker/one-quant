@@ -123,7 +123,7 @@ class VPVR:
         poc = max(volume_profile.keys(), key=lambda p: volume_profile[p])
 
         # 计算 Value Area（70% 成交量区域）
-        total_volume = sum(volume_profile.values())
+        total_volume = sum(volume_profile.values(), Decimal("0"))
         va_target = total_volume * Decimal("0.70")
 
         # 从 POC 向两侧扩展，直到覆盖 70% 成交量

@@ -67,6 +67,8 @@ class OKXTradingAdapter(ExchangeAdapter):
         # 验证
         path = "/api/v5/account/balance"
         headers = self._headers("GET", path)
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
         resp = await self._client.get(path, headers=headers)
         resp.raise_for_status()
         logger.info("OKX 交易接口已连接")
@@ -92,7 +94,10 @@ class OKXTradingAdapter(ExchangeAdapter):
 
         body = json.dumps(body_dict)
         headers = self._headers("POST", path, body)
-        resp = await self._client.post(path, content=body, headers=headers)  # type: ignore
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
+        assert self._client is not None
+        resp = await self._client.post(path, content=body, headers=headers)
         resp.raise_for_status()
         data = resp.json().get("data", [{}])[0]
         exchange_id = data.get("ordId", "")
@@ -107,7 +112,8 @@ class OKXTradingAdapter(ExchangeAdapter):
         body = json.dumps({"instId": symbol.replace("/", "-"), "ordId": order_id})
         headers = self._headers("POST", path, body)
         try:
-            resp = await self._client.post(path, content=body, headers=headers)  # type: ignore
+            assert self._client is not None
+            resp = await self._client.post(path, content=body, headers=headers)
             resp.raise_for_status()
             return True
         except Exception:
@@ -118,7 +124,9 @@ class OKXTradingAdapter(ExchangeAdapter):
         await self._limiter.acquire()
         path = "/api/v5/account/positions"
         headers = self._headers("GET", path)
-        resp = await self._client.get(path, headers=headers)  # type: ignore
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
+        resp = await self._client.get(path, headers=headers)
         resp.raise_for_status()
 
         positions = []
@@ -143,6 +151,8 @@ class OKXTradingAdapter(ExchangeAdapter):
     async def get_ticker(self, symbol: str) -> Ticker:
         await self._limiter.acquire()
         inst_id = symbol.replace("/", "-")
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
         resp = await self._client.get("/api/v5/market/ticker", params={"instId": inst_id})
         resp.raise_for_status()
         data = resp.json().get("data", [{}])[0]

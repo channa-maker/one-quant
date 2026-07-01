@@ -31,7 +31,7 @@ db_engine: Any | None = None
 # ──────────── 鉴权中间件 ────────────
 
 
-async def auth_middleware(request: Request, call_next):
+async def auth_middleware(request: Request, call_next: Any) -> Any:
     """JWT 鉴权中间件。
 
     白名单路径（如健康检查、文档）直接放行；
@@ -202,7 +202,7 @@ def create_app() -> FastAPI:
 
     # 全中文异常处理
     @app.exception_handler(Exception)
-    async def global_exception_handler(request: Request, exc: Exception):
+    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """全局异常处理器，返回中文错误信息。"""
         logger.exception("未捕获异常: %s", exc)
         return JSONResponse(
@@ -215,7 +215,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(404)
-    async def not_found_handler(request: Request, exc):
+    async def not_found_handler(request: Request, exc: Exception) -> JSONResponse:
         """404 异常处理器。"""
         return JSONResponse(
             status_code=404,
@@ -226,7 +226,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(422)
-    async def validation_handler(request: Request, exc):
+    async def validation_handler(request: Request, exc: Exception) -> JSONResponse:
         """参数校验异常处理器。"""
         return JSONResponse(
             status_code=422,

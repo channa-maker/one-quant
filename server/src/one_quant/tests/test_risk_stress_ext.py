@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import time
 from decimal import Decimal
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from one_quant.core.types import Market, Ticker
@@ -48,8 +49,8 @@ def _make_tickers(n: int, start_price: float = 50000.0, crash: bool = False) -> 
     return tickers
 
 
-def _make_custom_scenario(**kwargs) -> CrisisScenario:
-    defaults = {
+def _make_custom_scenario(**kwargs: Any) -> CrisisScenario:
+    defaults: dict[str, Any] = {
         "name": "test",
         "start_time": 1583971200000000000,
         "end_time": 1584144000000000000,

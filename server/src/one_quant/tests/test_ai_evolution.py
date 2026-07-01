@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 from one_quant.ai.evolution import (
@@ -44,8 +45,8 @@ def _make_strategy(
     )
 
 
-def _make_backtest(strategy_id: str = "s1", **overrides) -> BacktestResult:
-    defaults = {
+def _make_backtest(strategy_id: str = "s1", **overrides: Any) -> BacktestResult:
+    defaults: dict[str, Any] = {
         "strategy_id": strategy_id,
         "total_return": 0.5,
         "annual_return": 0.3,

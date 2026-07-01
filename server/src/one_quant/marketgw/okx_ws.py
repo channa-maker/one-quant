@@ -107,7 +107,7 @@ class OKXMarketGateway(MarketGateway):
         """
         super().__init__(event_bus)
         self._ws_url = OKX_WS_PUBLIC
-        self._ws: websockets.WebSocketClientProtocol | None = None
+        self._ws: websockets.ClientConnection | None = None
         self._reconnect = ReconnectManager(initial_delay=1.0, max_delay=60.0)
         self._subscribed_args: list[dict[str, str]] = []  # 已订阅参数（重连用）
         self._recv_task: asyncio.Task[None] | None = None

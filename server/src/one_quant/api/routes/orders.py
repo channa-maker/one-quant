@@ -64,14 +64,16 @@ def _get_oms(request: Request) -> OrderManager:
         if event_bus is None:
             raise HTTPException(status_code=503, detail="EventBus 未初始化")
         request.app.state.oms = OrderManager(event_bus=event_bus)
-    return request.app.state.oms
+    result_oms: OrderManager = request.app.state.oms
+    return result_oms
 
 
 def _get_risk_engine(request: Request) -> RiskEngine:
     """从应用状态获取或创建风控引擎实例。"""
     if not hasattr(request.app.state, "risk_engine"):
         request.app.state.risk_engine = RiskEngine()
-    return request.app.state.risk_engine
+    result_risk: RiskEngine = request.app.state.risk_engine
+    return result_risk
 
 
 # ──────────────────── 路由 ────────────────────

@@ -123,7 +123,7 @@ class BacktestVisualizer:
             result: BacktestEngine.run() 返回的回测结果
         """
         self._result = result
-        self._plt = _setup_matplotlib()
+        self._plt = _setup_matplotlib()  # type: ignore[no-untyped-call]
 
     # ──────────────────── 权益曲线 ────────────────────
 

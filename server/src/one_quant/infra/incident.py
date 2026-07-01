@@ -252,7 +252,7 @@ class IncidentManager:
         # 计算关键指标
         duration_sec = 0
         if incident.resolved_at > 0 and incident.created_at > 0:
-            duration_sec = (incident.resolved_at - incident.created_at) / 1e9
+            duration_sec = int((incident.resolved_at - incident.created_at) / 1e9)
 
         mttr = duration_sec  # 平均恢复时间
 
@@ -389,7 +389,7 @@ class IncidentManager:
         avg_mttr = 0
         if resolved_incidents:
             total_time = sum((i.resolved_at - i.created_at) / 1e9 for i in resolved_incidents)
-            avg_mttr = total_time / len(resolved_incidents)
+            avg_mttr = int(total_time / len(resolved_incidents))
 
         return {
             "total": total,

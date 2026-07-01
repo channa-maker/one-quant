@@ -23,7 +23,8 @@ def _get_oms(request: Request) -> OrderManager:
         if event_bus is None:
             raise HTTPException(status_code=503, detail="EventBus 未初始化")
         request.app.state.oms = OrderManager(event_bus=event_bus)
-    return request.app.state.oms
+    result: OrderManager = request.app.state.oms
+    return result
 
 
 @router.get("/")
@@ -37,8 +38,8 @@ async def list_positions(request: Request) -> dict[str, Any]:
     positions = oms.get_all_positions()
 
     position_list = []
-    total_unrealized = 0
-    total_realized = 0
+    total_unrealized = 0.0
+    total_realized = 0.0
 
     for pos in positions:
         position_list.append(

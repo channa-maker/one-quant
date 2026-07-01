@@ -148,8 +148,8 @@ class RSIReversalStrategy(Strategy):
                 gains.append(Decimal("0"))
                 losses.append(-delta)
 
-        avg_gain = sum(gains) / self._period if gains else Decimal("0")
-        avg_loss = sum(losses) / self._period if losses else Decimal("0")
+        avg_gain = sum(gains, Decimal("0")) / self._period if gains else Decimal("0")
+        avg_loss = sum(losses, Decimal("0")) / self._period if losses else Decimal("0")
 
         if avg_loss == 0:
             return Decimal("100")

@@ -53,6 +53,8 @@ class BinanceTradingAdapter(ExchangeAdapter):
             headers={"X-MBX-APIKEY": self._api_key},
         )
         # 验证连接
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
         resp = await self._client.get("/api/v3/account")
         resp.raise_for_status()
         logger.info("币安交易接口已连接 testnet=%s", self._testnet)
@@ -86,7 +88,10 @@ class BinanceTradingAdapter(ExchangeAdapter):
         params["newClientOrderId"] = order.client_order_id
 
         params = self._sign(params)
-        resp = await self._client.post("/api/v3/order", params=params)  # type: ignore
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
+        assert self._client is not None
+        resp = await self._client.post("/api/v3/order", params=params)
         resp.raise_for_status()
         data = resp.json()
         exchange_id = str(data.get("orderId", ""))
@@ -104,7 +109,8 @@ class BinanceTradingAdapter(ExchangeAdapter):
             }
         )
         try:
-            resp = await self._client.delete("/api/v3/order", params=params)  # type: ignore
+            assert self._client is not None
+            resp = await self._client.delete("/api/v3/order", params=params)
             resp.raise_for_status()
             return True
         except Exception:
@@ -114,7 +120,9 @@ class BinanceTradingAdapter(ExchangeAdapter):
     async def get_positions(self) -> list[PositionState]:
         await self._limiter.acquire()
         params = self._sign({})
-        resp = await self._client.get("/api/v3/account", params=params)  # type: ignore
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
+        resp = await self._client.get("/api/v3/account", params=params)
         resp.raise_for_status()
         balances = resp.json().get("balances", [])
 
@@ -140,6 +148,8 @@ class BinanceTradingAdapter(ExchangeAdapter):
 
     async def get_ticker(self, symbol: str) -> Ticker:
         await self._limiter.acquire()
+        if self._client is None:
+            raise RuntimeError("客户端未初始化")
         resp = await self._client.get(
             "/api/v3/ticker/24hr",
             params={"symbol": symbol.replace("/", "").upper()},

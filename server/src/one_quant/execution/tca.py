@@ -168,11 +168,11 @@ class TCAnalyzer:
         if not fills or market_vwap <= 0:
             return 0.0
 
-        total_qty = sum(f.quantity for f in fills)
+        total_qty = sum((f.quantity for f in fills), Decimal("0"))
         if total_qty <= 0:
             return 0.0
 
-        avg_price = sum(f.price * f.quantity for f in fills) / total_qty
+        avg_price = sum((f.price * f.quantity for f in fills), Decimal("0")) / total_qty
         # 买入：低于 VWAP 为好（负值）；卖出：高于 VWAP 为好（负值）
         side_sign = Decimal("1") if fills[0].side == "buy" else Decimal("-1")
         return float((avg_price - market_vwap) / market_vwap * Decimal("10000") * side_sign)
@@ -193,11 +193,11 @@ class TCAnalyzer:
         if not fills or arrival_price <= 0:
             return 0.0
 
-        total_qty = sum(f.quantity for f in fills)
+        total_qty = sum((f.quantity for f in fills), Decimal("0"))
         if total_qty <= 0:
             return 0.0
 
-        avg_price = sum(f.price * f.quantity for f in fills) / total_qty
+        avg_price = sum((f.price * f.quantity for f in fills), Decimal("0")) / total_qty
         side_sign = Decimal("1") if fills[0].side == "buy" else Decimal("-1")
         return float((avg_price - arrival_price) / arrival_price * Decimal("10000") * side_sign)
 
@@ -242,13 +242,15 @@ class TCAnalyzer:
                 "spread_cost_bps": 0.0,
                 "attribution_pct": {"impact": 0, "timing": 0, "spread": 0},
                 "fill_count": len(fills),
-                "total_quantity": sum(f.quantity for f in fills) if fills else Decimal("0"),
+                "total_quantity": sum((f.quantity for f in fills), Decimal("0"))
+                if fills
+                else Decimal("0"),
             }
 
         # 按时间排序
         sorted_fills = sorted(fills, key=lambda f: f.timestamp_ns)
-        total_qty = sum(f.quantity for f in sorted_fills)
-        avg_price = sum(f.price * f.quantity for f in sorted_fills) / total_qty
+        total_qty = sum((f.quantity for f in sorted_fills), Decimal("0"))
+        avg_price = sum((f.price * f.quantity for f in sorted_fills), Decimal("0")) / total_qty
 
         side_sign = Decimal("1") if sorted_fills[0].side == "buy" else Decimal("-1")
         ref_price: Decimal = sorted_fills[0].price  # 到达价近似
@@ -258,16 +260,16 @@ class TCAnalyzer:
         head_n = max(1, n // 5)
         tail_n = max(1, n // 5)
 
-        head_qty = sum(f.quantity for f in sorted_fills[:head_n])
+        head_qty = sum((f.quantity for f in sorted_fills[:head_n]), Decimal("0"))
         head_avg = (
-            sum(f.price * f.quantity for f in sorted_fills[:head_n]) / head_qty
+            sum((f.price * f.quantity for f in sorted_fills[:head_n]), Decimal("0")) / head_qty
             if head_qty > 0
             else avg_price
         )
 
-        tail_qty = sum(f.quantity for f in sorted_fills[-tail_n:])
+        tail_qty = sum((f.quantity for f in sorted_fills[-tail_n:]), Decimal("0"))
         tail_avg = (
-            sum(f.price * f.quantity for f in sorted_fills[-tail_n:]) / tail_qty
+            sum((f.price * f.quantity for f in sorted_fills[-tail_n:]), Decimal("0")) / tail_qty
             if tail_qty > 0
             else avg_price
         )
@@ -377,10 +379,10 @@ class TCAnalyzer:
                 timestamp_ns=time.time_ns(),
             )
 
-        total_qty = sum(f.quantity for f in fills)
-        total_notional = sum(f.price * f.quantity for f in fills)
+        total_qty = sum((f.quantity for f in fills), Decimal("0"))
+        total_notional = sum((f.price * f.quantity for f in fills), Decimal("0"))
         avg_price = total_notional / total_qty if total_qty > 0 else Decimal("0")
-        total_commission = sum(f.fee for f in fills)
+        total_commission = sum((f.fee for f in fills), Decimal("0"))
         side = fills[0].side
 
         # 各维度指标
@@ -440,8 +442,8 @@ class TCAnalyzer:
                 "avg_vwap_bps": sum(r.vwap_slippage_bps for r in group) / n,
                 "avg_arrival_bps": sum(r.arrival_slippage_bps for r in group) / n,
                 "avg_impact_bps": sum(r.market_impact_bps for r in group) / n,
-                "total_commission": sum(r.total_commission for r in group),
-                "total_notional": sum(r.total_notional for r in group),
+                "total_commission": sum((r.total_commission for r in group), Decimal("0")),
+                "total_notional": sum((r.total_notional for r in group), Decimal("0")),
                 "total_fills": sum(r.fill_count for r in group),
             }
 

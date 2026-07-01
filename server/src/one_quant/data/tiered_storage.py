@@ -74,7 +74,7 @@ class TieredStorageManager:
         try:
             relative = filepath.relative_to(self._base_path / "hot")
         except ValueError:
-            relative = filepath.name
+            relative = Path(filepath.name)
 
         target = target_dir / relative
         target.parent.mkdir(parents=True, exist_ok=True)

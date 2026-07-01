@@ -14,6 +14,7 @@ ONE量化 - 币安交易适配器测试 (binance_trading.py)
 
 import time
 from decimal import Decimal
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,9 +23,9 @@ from one_quant.core.types import Market, Order
 from one_quant.exchange.binance_trading import BinanceTradingAdapter
 
 
-def _make_order(**overrides) -> Order:
+def _make_order(**overrides: Any) -> Order:
     """构造测试订单。"""
-    defaults = {
+    defaults: dict[str, Any] = {
         "client_order_id": "test-order-001",
         "symbol": "BTCUSDT",
         "market": Market.SPOT,

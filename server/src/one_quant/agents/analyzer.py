@@ -259,7 +259,7 @@ class AnalyzerAgent(BaseAgent):
         scores = [rating_scores.get(v, 2) for v in evaluation.values() if v in rating_scores]
 
         if not scores:
-            avg = 2
+            avg = 2.0
         else:
             avg = sum(scores) / len(scores)
 

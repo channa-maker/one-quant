@@ -330,7 +330,7 @@ class ChangeManager:
             duration_sec: 冻结时长(秒)
             reason: 冻结原因
         """
-        self._freeze_until = time.time() + duration_sec
+        self._freeze_until = int(time.time()) + duration_sec
         self._freeze_reason = reason
         logger.warning("变更冻结: %d 秒 (原因: %s)", duration_sec, reason)
 

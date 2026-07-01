@@ -26,7 +26,7 @@ class FactorMiningMixin:
     _strategies: dict[str, Any]
     _auditor: Any
 
-    async def discover_factors(
+    async def discover_factors(  # type: ignore[misc]
         self: EvolutionPlatform,
         market_data: dict[str, Any] | None = None,
     ) -> list[Factor]:
@@ -55,7 +55,7 @@ class FactorMiningMixin:
         logger.info("因子发现: %d/%d 个因子通过初筛", len(valid_factors), len(candidates))
         return valid_factors
 
-    async def _llm_generate_factors(
+    async def _llm_generate_factors(  # type: ignore[misc]
         self: EvolutionPlatform,
         market_data: dict[str, Any] | None,
     ) -> list[Factor]:
@@ -155,7 +155,7 @@ class FactorMiningMixin:
 
         return factors
 
-    def _genetic_mutate_factors(
+    def _genetic_mutate_factors(  # type: ignore[misc]
         self: EvolutionPlatform,
         strategies: list[Any],
     ) -> list[Factor]:
@@ -200,8 +200,8 @@ class FactorMiningMixin:
         ]
 
         for _ in range(min(10, len(existing_factor_names) * 2)):
-            template = random.choice(mutation_templates)
-            params = random.choice(template["param_range"])
+            template: dict[str, Any] = random.choice(mutation_templates)  # type: ignore[arg-type]
+            params: Any = random.choice(template["param_range"])
 
             if isinstance(params, tuple):
                 expr = template["expr_fmt"].format(p0=params[0], p1=params[1])

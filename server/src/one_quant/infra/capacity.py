@@ -143,6 +143,7 @@ class CapacityManager:
                 f"行情吞吐告警: {result['status']}",
                 f"tick/s: {result['metrics'].get('tick_rate', {}).get('current', 'N/A')}",
                 result["status"],
+                "capacity",
             )
 
         return result
@@ -216,6 +217,7 @@ class CapacityManager:
                 f"磁盘使用: {result['metrics'].get('disk_used_pct', 'N/A')}%\n"
                 f"预计满盘: {result['metrics'].get('days_until_full', 'N/A')} 天",
                 result["status"],
+                "capacity",
             )
 
         return result
@@ -296,6 +298,7 @@ class CapacityManager:
                 f"本月费用: ${result['metrics'].get('monthly_cost_usd', 'N/A')}\n"
                 f"预计月底: ${result['metrics'].get('projected_monthly_usd', 'N/A')}",
                 result["status"],
+                "capacity",
             )
 
         return result
