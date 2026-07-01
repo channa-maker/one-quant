@@ -169,8 +169,6 @@ class SMCSource:
         # ③ Order Block 检测（订单块）
         try:
             if klines:
-                from decimal import Decimal
-
                 from one_quant.core.types import Kline, Market
 
                 kline_objs = []
@@ -209,8 +207,6 @@ class SMCSource:
         # ④ FVG 检测（公允价值缺口）
         try:
             if klines:
-                from decimal import Decimal
-
                 from one_quant.core.types import Kline, Market
 
                 kline_objs = []
