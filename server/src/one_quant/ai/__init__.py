@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from one_quant.ai.llm_provider import (
+    AGENT_PROVIDER,
     ClaudeProvider,
     DeepSeekProvider,
     LLMProvider,
     LLMResponse,
     LLMRouter,
     LocalProvider,
+    OllamaProvider,
     TaskComplexity,
     TokenMeter,
+    create_provider_from_config,
     sanitize_user_text,
     wrap_user_content,
 )
@@ -31,11 +34,14 @@ __all__ = [
     "LLMProvider",
     "LLMResponse",
     "LLMRouter",
+    "AGENT_PROVIDER",
     "ClaudeProvider",
     "DeepSeekProvider",
     "LocalProvider",
+    "OllamaProvider",
     "TaskComplexity",
     "TokenMeter",
+    "create_provider_from_config",
     "sanitize_user_text",
     "wrap_user_content",
     # 机构记忆

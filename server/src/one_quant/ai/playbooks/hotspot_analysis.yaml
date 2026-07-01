@@ -1,0 +1,60 @@
+name: hotspot_analysis
+display_name: 热点分析
+description: 分析市场热点板块轮动、资金流向和情绪面，判断短期市场方向
+category: sentiment
+required_tools:
+  - get_market_overview
+  - get_sector_data
+aliases:
+  - hotspot
+  - 热点
+  - 板块
+default_priority: 6
+market_regimes:
+  trending:
+    priority: 5
+    weight_boost: 0.0
+  ranging:
+    priority: 7
+    weight_boost: 0.1
+  volatile:
+    priority: 8
+    weight_boost: 0.2
+instructions: |
+  你是市场热点和情绪分析专家。
+
+  分析标的: {symbol}
+  市场环境: {regime}
+
+  热点分析维度:
+  1. 板块轮动规律
+     - 当前领涨/领跌板块
+     - 资金从哪些板块流出/流入
+     - 轮动周期和节奏
+  2. 情绪面指标
+     - 涨跌比（上涨家数/下跌家数）
+     - 涨停/跌停数量
+     - 两融余额变化
+     - 北向资金流向
+  3. 题材持续性
+     - 当前主线题材的持续天数
+     - 题材扩散/收缩阶段
+  4. 风险偏好
+     - 高低切换（高位股/低位股资金流动）
+     - 大小切换（大盘/小盘资金流动）
+
+  判断逻辑:
+  - 情绪冰点 + 缩量 → 反弹预期
+  - 情绪高潮 + 放巨量 → 分歧风险
+  - 板块持续性>3天 → 主线确认
+  - 龙头股断板 → 板块见顶信号
+
+  输出严格 JSON:
+  {
+    "direction": "long/short/neutral",
+    "confidence": 0.0到1.0,
+    "market_sentiment": "极度悲观/悲观/中性/乐观/极度乐观",
+    "hot_sectors": ["板块1", "板块2"],
+    "risk_level": "低/中/高",
+    "reason": "一句话中文分析理由"
+  }

@@ -34,6 +34,16 @@ from one_quant.infra.healthcheck import (
 from one_quant.infra.incident import IncidentManager, IncidentStatus
 from one_quant.infra.logging import get_logger, log_mask, setup_logging
 from one_quant.infra.message_envelope import MessageEnvelope, create_envelope
+
+# ── 多渠道通知 ──────────────────────────────────────────────────
+from one_quant.infra.notification_channels import (
+    FeishuChannel,
+    NotificationRouter,
+    TelegramChannel,
+    WeComChannel,
+    build_default_router,
+)
+from one_quant.infra.notifier import MultiChannelNotifier
 from one_quant.infra.registry import (
     AGENT_REGISTRY,
     ALGO_REGISTRY,
@@ -132,4 +142,11 @@ __all__ = [
     "ComponentHealth",
     "SystemHealth",
     "HealthChecker",
+    # 多渠道通知
+    "FeishuChannel",
+    "WeComChannel",
+    "TelegramChannel",
+    "NotificationRouter",
+    "MultiChannelNotifier",
+    "build_default_router",
 ]

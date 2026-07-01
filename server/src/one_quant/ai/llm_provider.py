@@ -1,8 +1,8 @@
 """
 ONE量化 - LLM 多 Provider 接入层
 
-支持 Claude / DeepSeek / 本地模型等多 Provider，
-按任务复杂度自动路由，Token 计量 + 日预算硬上限。
+支持 Claude / DeepSeek / Ollama / 本地模型等多 Provider，
+按任务复杂度自动路由，Provider 级 failover，Token 计量 + 日预算硬上限。
 
 设计原则：
 - 全中文注释和输出
@@ -489,30 +489,212 @@ class LocalProvider(LLMProvider):
         return Decimal("0")
 
 
-# ──────────────────── LLM 路由器 ────────────────────
+# ──────────────────── Ollama 本地 Provider ────────────────────
+
+
+class OllamaProvider(LLMProvider):
+    """Ollama 本地模型 Provider。
+
+    优先落地的本地推理方案，通过 Ollama 服务运行开源模型。
+    支持 OpenAI 兼容格式的 /v1/chat/completions 接口。
+    本地运行无费用。
+
+    常用模型：
+    - qwen2.5:7b / qwen2.5:14b
+    - llama3.1:8b
+    - deepseek-coder-v2:16b
+    """
+
+    name = "ollama"
+    supported_models = [
+        "qwen2.5:7b",
+        "qwen2.5:14b",
+        "llama3.1:8b",
+        "deepseek-coder-v2:16b",
+    ]
+
+    def __init__(
+        self,
+        base_url: str = "http://localhost:11434",
+        model: str = "qwen2.5:7b",
+    ) -> None:
+        """初始化 Ollama Provider。
+
+        Args:
+            base_url: Ollama 服务地址。
+            model: 默认模型名称。
+        """
+        self._base_url = base_url.rstrip("/")
+        self._default_model = model
+        if model not in self.supported_models:
+            self.supported_models = list(self.supported_models) + [model]
+
+    async def complete(
+        self,
+        messages: list[dict[str, str]],
+        model: str = "",
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+        **kwargs: Any,
+    ) -> LLMResponse:
+        """调用 Ollama API（OpenAI 兼容格式）。
+
+        Args:
+            messages: 消息列表。
+            model: 模型名称，空字符串使用默认模型。
+            max_tokens: 最大输出 token 数。
+            temperature: 温度参数。
+            **kwargs: 其他参数。
+
+        Returns:
+            LLMResponse 响应对象。
+        """
+        import httpx
+
+        model = model or self._default_model
+        start = time.time()
+
+        async with httpx.AsyncClient(timeout=300) as client:
+            resp = await client.post(
+                f"{self._base_url}/v1/chat/completions",
+                headers={"Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    **kwargs,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        usage = data.get("usage", {})
+        content = data["choices"][0]["message"]["content"]
+        tokens_in = usage.get("prompt_tokens", 0)
+        tokens_out = usage.get("completion_tokens", 0)
+        latency = (time.time() - start) * 1000
+
+        logger.info(
+            "Ollama 调用完成: model=%s tokens_in=%d tokens_out=%d latency=%.0fms",
+            model,
+            tokens_in,
+            tokens_out,
+            latency,
+        )
+
+        return LLMResponse(
+            content=content,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cost_usd=Decimal("0"),  # 本地模型无费用
+            model=model,
+            provider=self.name,
+            latency_ms=latency,
+        )
+
+    def count_tokens(self, text: str) -> int:
+        """粗略估算 token 数。"""
+        cn_chars = len(re.findall(r"[\u4e00-\u9fff]", text))
+        en_chars = len(text) - cn_chars
+        return int(cn_chars / 1.5 + en_chars / 4)
+
+    def estimate_cost(self, input_tokens: int, output_tokens: int) -> Decimal:
+        """本地模型无费用。"""
+        return Decimal("0")
+
+
+# ──────────────────── Provider 注册表 ────────────────────
+
+
+# AGENT_PROVIDER 注册表：按名称映射 Provider 类
+# 支持动态扩展，新增 Provider 只需在此注册
+AGENT_PROVIDER: dict[str, type[LLMProvider]] = {
+    "claude": ClaudeProvider,
+    "deepseek": DeepSeekProvider,
+    "local": LocalProvider,
+    "ollama": OllamaProvider,
+}
+
+
+def create_provider_from_config(config: dict[str, Any]) -> LLMProvider:
+    """从配置字典创建 Provider 实例。
+
+    配置格式：
+    {
+        "type": "ollama",          # Provider 类型，对应 AGENT_PROVIDER 的 key
+        "base_url": "http://...",   # 可选，服务地址
+        "model": "qwen2.5:7b",     # 可选，默认模型
+        "api_key": "sk-...",       # 可选，API 密钥
+    }
+
+    Args:
+        config: Provider 配置字典。
+
+    Returns:
+        LLMProvider 实例。
+
+    Raises:
+        ValueError: 未知的 Provider 类型。
+    """
+    provider_type = config.get("type", "")
+    if provider_type not in AGENT_PROVIDER:
+        raise ValueError(
+            f"未知的 Provider 类型: {provider_type}，支持的类型: {list(AGENT_PROVIDER.keys())}"
+        )
+
+    provider_cls = AGENT_PROVIDER[provider_type]
+
+    # 根据不同类型传递不同参数
+    if provider_type in ("ollama", "local"):
+        kwargs: dict[str, Any] = {}
+        if "base_url" in config:
+            kwargs["base_url"] = config["base_url"]
+        if "model" in config:
+            kwargs["model"] = config["model"]
+        return provider_cls(**kwargs)
+    elif provider_type in ("claude", "deepseek"):
+        kwargs = {}
+        if "api_key" in config:
+            kwargs["api_key"] = config["api_key"]
+        if "base_url" in config:
+            kwargs["base_url"] = config["base_url"]
+        if "default_model" in config:
+            kwargs["default_model"] = config["default_model"]
+        return provider_cls(**kwargs)
+    else:
+        return provider_cls()  # type: ignore[call-arg]
+
+
+# ──────────────────── LLM 路由器（含 Provider 级 Failover）────────────────────
 
 
 class LLMRouter:
     """LLM 路由器：按任务复杂度/成本自动选择最优 Provider。
 
-    路由策略：
-    - 高复杂度 (推理/规划) → Claude Opus 或 DeepSeek Reasoner
-    - 中复杂度 (分析/解读) → Claude Sonnet 或 DeepSeek Chat
-    - 低复杂度 (分类/提取) → DeepSeek Chat 或 Claude Haiku
+    路由策略（含 local 优先）：
+    - 高复杂度 (推理/规划) → Ollama/Local → Claude Opus → DeepSeek Reasoner
+    - 中复杂度 (分析/解读) → Ollama/Local → Claude Sonnet → DeepSeek Chat
+    - 低复杂度 (分类/提取) → Ollama/Local → DeepSeek Chat → Claude Haiku
+
+    Provider 级 failover：首选失败自动尝试下一个。
     """
 
     # 路由表：复杂度 → [(provider_name, model), ...] 按优先级排列
     ROUTE_TABLE: dict[TaskComplexity, list[tuple[str, str]]] = {
         TaskComplexity.HIGH: [
+            ("ollama", "qwen2.5:14b"),
             ("claude", "claude-opus-4-20250514"),
             ("deepseek", "deepseek-reasoner"),
             ("claude", "claude-sonnet-4-20250514"),
         ],
         TaskComplexity.MEDIUM: [
+            ("ollama", "qwen2.5:7b"),
             ("claude", "claude-sonnet-4-20250514"),
             ("deepseek", "deepseek-chat"),
         ],
         TaskComplexity.LOW: [
+            ("ollama", "qwen2.5:7b"),
             ("deepseek", "deepseek-chat"),
             ("claude", "claude-3-5-haiku-20241022"),
         ],
@@ -554,7 +736,13 @@ class LLMRouter:
         if isinstance(task_complexity, str):
             task_complexity = TaskComplexity(task_complexity)
 
-        routes = self.ROUTE_TABLE.get(task_complexity, self.ROUTE_TABLE[TaskComplexity.MEDIUM])
+        routes = self.ROUTE_TABLE.get(task_complexity)
+        if routes is None:
+            # 降级到 MEDIUM，如果 MEDIUM 也不存在则用第一个可用路由
+            routes = self.ROUTE_TABLE.get(
+                TaskComplexity.MEDIUM,
+                next(iter(self.ROUTE_TABLE.values()), []),
+            )
 
         errors: list[str] = []
         for provider_name, model in routes:

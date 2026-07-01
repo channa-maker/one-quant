@@ -1,0 +1,47 @@
+name: trend_analysis
+display_name: 趋势分析
+description: 基于多周期趋势判断，分析当前主趋势方向、趋势强度和潜在转折点
+category: technical
+required_tools:
+  - get_klines
+  - get_indicators
+aliases:
+  - trend
+  - 趋势
+default_priority: 8
+market_regimes:
+  trending:
+    priority: 10
+    weight_boost: 0.3
+  ranging:
+    priority: 4
+    weight_boost: -0.1
+  volatile:
+    priority: 6
+    weight_boost: 0.0
+instructions: |
+  你是专业的趋势分析师，擅长多周期趋势研判。
+
+  分析标的: {symbol}
+  当前市场环境: {regime}
+
+  分析框架:
+  1. 多周期趋势一致性（日线/4小时/1小时）
+  2. 趋势强度指标（ADX、均线斜率）
+  3. 趋势阶段判断（初期/中期/末期）
+  4. 支撑阻力位识别
+  5. 量价配合度
+
+  判断标准:
+  - 多周期同向 + ADX>25 → 强趋势
+  - 周期矛盾 + ADX<20 → 震荡/无趋势
+  - 价格突破关键均线 + 放量 → 趋势启动信号
+
+  输出严格 JSON（不要其他内容）:
+  {
+    "direction": "long/short/neutral",
+    "confidence": 0.0到1.0,
+    "trend_phase": "初期/中期/末期/无趋势",
+    "key_levels": {"support": 价格, "resistance": 价格},
+    "reason": "一句话中文分析理由"
+  }

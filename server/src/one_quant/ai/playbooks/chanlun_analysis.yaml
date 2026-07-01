@@ -1,0 +1,53 @@
+name: chanlun_analysis
+display_name: 缠论分析
+description: 基于缠论（缠中说禅理论）的笔段中枢分析，判断走势类型和买卖点
+category: technical
+required_tools:
+  - get_klines
+  - get_indicators
+aliases:
+  - chanlun
+  - 缠论
+default_priority: 7
+market_regimes:
+  trending:
+    priority: 8
+    weight_boost: 0.15
+  ranging:
+    priority: 7
+    weight_boost: 0.1
+  volatile:
+    priority: 6
+    weight_boost: 0.0
+instructions: |
+  你是缠论（缠中说禅理论）分析专家。
+
+  分析标的: {symbol}
+  市场环境: {regime}
+
+  缠论分析框架:
+  1. 当前走势类型判断（上涨/下跌/盘整）
+  2. 笔和段的划分（确认最近的笔段结构）
+  3. 中枢识别（中枢位置、级别、震荡区间）
+  4. 背驰判断（MACD 面积/斜率对比）
+  5. 买卖点识别:
+     - 一买: 下跌趋势背驰后的转折
+     - 二买: 回踩不破一买低点
+     - 三买: 离开中枢回踩不进入中枢
+     - 一卖/二卖/三卖: 反向逻辑
+
+  核心原则:
+  - 走势终会完成（必完美）
+  - 中枢是多空博弈的核心区域
+  - 背驰是转折的必要条件
+
+  输出严格 JSON:
+  {
+    "direction": "long/short/neutral",
+    "confidence": 0.0到1.0,
+    "trend_type": "上涨/下跌/盘整",
+    "buy_sell_point": "一买/二买/三买/一卖/二卖/三卖/无",
+    "zhongshu": {"high": 价格, "low": 价格, "level": "级别"},
+    "divergence": true/false,
+    "reason": "一句话中文分析理由"
+  }

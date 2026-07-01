@@ -10,6 +10,7 @@ from typing import Any, Protocol
 import httpx
 
 from one_quant.infra.logging import get_logger
+from one_quant.infra.notification_channels import NotificationRouter
 
 logger = get_logger(__name__)
 
@@ -387,6 +388,97 @@ class ConsoleNotifier:
         timestamp = alert.get("timestamp", "")
 
         content = f"来源: {source} | 时间: {timestamp}\n{message}"
+
+        level_map = {"low": "info", "medium": "warning", "high": "error", "critical": "critical"}
+        level = level_map.get(severity, "info")
+
+        return await self.send(title=title, content=content, level=level)
+
+
+# ── 多渠道通知器 ──────────────────────────────────────────
+
+
+class MultiChannelNotifier:
+    """多渠道通知器 — 基于 NotificationRouter 按级别分发通知。
+
+    包装 NotificationRouter，实现 Notifier 协议，
+    可与现有告警系统无缝集成。
+
+    路由规则（接 B-2 降噪层）:
+      critical → 全渠道（飞书 + 企微 + Telegram）
+      error    → 飞书 + 企微
+      warning  → 飞书
+      info     → 仅日志
+
+    Attributes:
+        name: 通知器名称
+        enabled: 是否启用
+    """
+
+    name = "multi_channel"
+
+    def __init__(
+        self,
+        router: NotificationRouter | None = None,
+        enabled: bool = True,
+    ) -> None:
+        """初始化多渠道通知器。
+
+        Args:
+            router: 通知路由器实例，为 None 时使用空路由器
+            enabled: 是否启用
+        """
+        from one_quant.infra.notification_channels import NotificationRouter
+
+        self.enabled = enabled
+        self._router = router or NotificationRouter()
+
+    @property
+    def router(self) -> NotificationRouter:
+        """获取内部路由器。"""
+        return self._router
+
+    async def send(self, title: str, content: str, level: str = "info", **kwargs: Any) -> bool:
+        """通过路由器按级别分发通知。
+
+        Args:
+            title: 通知标题
+            content: 通知内容（支持 Markdown）
+            level: 级别（info / warning / error / critical）
+            **kwargs: 未使用
+
+        Returns:
+            是否至少一个渠道发送成功（info 级别返回 True）
+        """
+        if not self.enabled:
+            logger.debug("多渠道通知器已禁用，跳过发送")
+            return False
+
+        results = await self._router.route(title=title, message=content, level=level)
+
+        # info 级别无渠道发送，视为成功
+        if not results:
+            return True
+
+        # 至少一个渠道成功即返回 True
+        return any(results.values())
+
+    async def send_alert(self, alert: dict[str, Any]) -> bool:
+        """发送结构化告警。
+
+        Args:
+            alert: 告警数据（含 title, message, severity, source, timestamp）
+
+        Returns:
+            是否发送成功
+        """
+        title = alert.get("title", "系统告警")
+        message = alert.get("message", "")
+        severity = alert.get("severity", "info")
+        source = alert.get("source", "unknown")
+        timestamp = alert.get("timestamp", "")
+
+        content = f"来源: {source}\n时间: {timestamp}\n\n{message}"
 
         level_map = {"low": "info", "medium": "warning", "high": "error", "critical": "critical"}
         level = level_map.get(severity, "info")

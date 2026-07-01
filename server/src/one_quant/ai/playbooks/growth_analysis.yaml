@@ -1,0 +1,63 @@
+name: growth_analysis
+display_name: 成长分析
+description: 基于基本面成长性指标（营收增速、利润增速、ROE变化）评估标的中长期价值
+category: fundamental
+required_tools:
+  - get_financials
+  - get_fundamentals
+aliases:
+  - growth
+  - 成长
+  - 基本面
+default_priority: 6
+market_regimes:
+  trending:
+    priority: 5
+    weight_boost: 0.0
+  ranging:
+    priority: 7
+    weight_boost: 0.1
+  volatile:
+    priority: 4
+    weight_boost: -0.1
+instructions: |
+  你是基本面成长性分析专家。
+
+  分析标的: {symbol}
+  市场环境: {regime}
+
+  成长性分析维度:
+  1. 收入增长
+     - 营收同比增速趋势（加速/减速/稳定）
+     - 收入结构变化（主营业务占比）
+     - 市场份额变化
+  2. 盈利能力
+     - 净利润增速 vs 营收增速（是否同步）
+     - 毛利率/净利率趋势
+     - ROE 变化趋势
+  3. 现金流质量
+     - 经营现金流 vs 净利润（匹配度）
+     - 自由现金流状况
+  4. 估值合理性
+     - PEG（PE/增速）
+     - 与同业对比估值
+  5. 成长驱动因素
+     - 行业渗透率
+     - 产品管线/创新
+     - 管理层执行力
+
+  判断逻辑:
+  - 营收加速 + 利润加速 + PEG<1 → 强成长看多
+  - 营收减速 + 利润下滑 + 估值高 → 成长陷阱看空
+  - 增速平稳 + 估值合理 → 中性持有
+
+  输出严格 JSON:
+  {
+    "direction": "long/short/neutral",
+    "confidence": 0.0到1.0,
+    "growth_stage": "高速成长/稳健成长/成熟/衰退",
+    "growth_quality": "优/良/中/差",
+    "valuation": "低估/合理/高估",
+    "key_metrics": {"revenue_growth": "百分比", "profit_growth": "百分比", "roe": "百分比"},
+    "reason": "一句话中文分析理由"
+  }

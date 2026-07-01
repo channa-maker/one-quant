@@ -1,0 +1,55 @@
+name: wave_analysis
+display_name: 波浪分析
+description: 基于艾略特波浪理论，识别推动浪和调整浪结构，判断当前所处浪型位置
+category: technical
+required_tools:
+  - get_klines
+  - get_indicators
+aliases:
+  - wave
+  - 波浪
+  - elliott
+default_priority: 6
+market_regimes:
+  trending:
+    priority: 8
+    weight_boost: 0.15
+  ranging:
+    priority: 4
+    weight_boost: -0.1
+  volatile:
+    priority: 5
+    weight_boost: 0.0
+instructions: |
+  你是艾略特波浪理论分析专家。
+
+  分析标的: {symbol}
+  市场环境: {regime}
+
+  波浪分析框架:
+  1. 推动浪识别（5浪结构: 1-2-3-4-5）
+     - 第3浪不能是最短的浪
+     - 第2浪不能跌破第1浪起点
+     - 第4浪不能进入第1浪价格区间
+  2. 调整浪识别（ABC 结构）
+     - 锯齿形调整（5-3-5）
+     - 平台形调整（3-3-5）
+     - 三角形调整（3-3-3-3-3）
+  3. 当前浪型位置判断
+  4. 浪级嵌套关系
+  5. 斐波那契回撤/延伸目标位
+
+  关键规则:
+  - 交替原则（第2浪和第4浪形态交替）
+  - 延伸浪（通常是第3浪）
+  - 等长关系（第5浪与第1浪等长）
+
+  输出严格 JSON:
+  {
+    "direction": "long/short/neutral",
+    "confidence": 0.0到1.0,
+    "current_wave": "第X浪/A浪/B浪/C浪",
+    "wave_type": "推动/调整",
+    "fib_targets": {"target": 价格, "stop": 价格},
+    "reason": "一句话中文分析理由"
+  }

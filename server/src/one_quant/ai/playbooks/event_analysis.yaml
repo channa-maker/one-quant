@@ -1,0 +1,59 @@
+name: event_analysis
+display_name: 事件分析
+description: 分析重大事件（政策/财报/宏观数据/黑天鹅）对标的影响和市场反应
+category: event
+required_tools:
+  - get_news
+  - get_events
+aliases:
+  - event
+  - 事件
+  - 新闻
+default_priority: 7
+market_regimes:
+  trending:
+    priority: 6
+    weight_boost: 0.0
+  ranging:
+    priority: 6
+    weight_boost: 0.0
+  volatile:
+    priority: 9
+    weight_boost: 0.3
+instructions: |
+  你是金融事件分析专家，擅长评估事件对标的价格的影响。
+
+  分析标的: {symbol}
+  市场环境: {regime}
+
+  事件分析框架:
+  1. 事件分类
+     - 政策事件（央行政策、监管动向、财政刺激）
+     - 财报事件（业绩超/低预期、指引变化）
+     - 宏观数据（CPI、PMI、就业、GDP）
+     - 行业事件（并购重组、产品发布、技术突破）
+     - 黑天鹅（地缘冲突、自然灾害、突发危机）
+  2. 影响评估
+     - 影响范围（个股/板块/全市场）
+     - 影响时长（短期脉冲/中期趋势/长期结构变化）
+     - 市场定价程度（已充分反映/部分反映/未反映）
+  3. 历史类比
+     - 类似事件的历史市场反应
+     - 当前环境与历史的差异
+
+  判断逻辑:
+  - 超预期利好 + 未充分定价 → 看多
+  - 利空出尽 + 恐慌情绪见顶 → 反转看多
+  - 利好出尽 + 情绪过热 → 看空
+  - 事件中性/已充分定价 → 中性
+
+  输出严格 JSON:
+  {
+    "direction": "long/short/neutral",
+    "confidence": 0.0到1.0,
+    "event_type": "政策/财报/宏观/行业/黑天鹅",
+    "impact_scope": "个股/板块/全市场",
+    "impact_duration": "短期/中期/长期",
+    "pricing_degree": "充分/部分/未反映",
+    "reason": "一句话中文分析理由"
+  }

@@ -1,14 +1,14 @@
 """
-模型治理 — 模型风险管理 MRM + AI 防护 + 血缘追踪 + 运行监控
+模型治理 — 模型风险管理器 (MRM)
 
 完整功能：
   1. 模型清单管理（注册/查询/版本管理）
-  2. 模型卡（ModelCard）元信息与治理记录
+  2. 模型卡元信息与治理记录
   3. 审批链（多级审批、拒绝、回退）
-  4. 模型验证流程（独立验证 + 验证报告）
-  5. 模型血缘追踪（训练数据、特征、上游依赖）
-  6. 运行时监控（漂移检测、性能退化、告警）
-  7. 数据投毒防护（多源交叉验证、可信度加权）
+  4. 模型验证流程
+  5. 模型血缘追踪
+  6. 运行时监控（漂移检测、性能退化）
+  7. 模型退役机制
 """
 
 from __future__ import annotations
@@ -16,197 +16,24 @@ from __future__ import annotations
 import statistics
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any
 
+from one_quant.ai.model_governance.enums import (
+    AlertSeverity,
+    ApprovalAction,
+    DriftType,
+    ModelStatus,
+)
+from one_quant.ai.model_governance.models import (
+    DriftAlert,
+    LineageRecord,
+    ModelCard,
+    MonitoringSnapshot,
+    ValidationReport,
+)
 from one_quant.infra.logging import get_logger
 
 logger = get_logger(__name__)
-
-
-# ──────────────────────────── 枚举 ────────────────────────────
-
-
-class ModelStatus(StrEnum):
-    """模型生命周期状态"""
-
-    DRAFT = "draft"  # 草稿：刚创建，未提交验证
-    VALIDATION = "validation"  # 验证中：已提交独立验证
-    APPROVED = "approved"  # 已审批：通过验证和审批
-    LIVE = "live"  # 上线：正在生产环境运行
-    RETIRED = "retired"  # 退役：已下线
-
-
-class ApprovalAction(StrEnum):
-    """审批动作"""
-
-    APPROVE = "approve"  # 通过
-    REJECT = "reject"  # 拒回
-    REQUEST_CHANGES = "request_changes"  # 要求修改
-
-
-class DriftType(StrEnum):
-    """漂移类型"""
-
-    DATA_DRIFT = "data_drift"  # 输入数据分布漂移
-    CONCEPT_DRIFT = "concept_drift"  # 概念漂移（输入输出关系变化）
-    PERFORMANCE_DRIFT = "performance_drift"  # 性能漂移（准确率下降等）
-
-
-class AlertSeverity(StrEnum):
-    """告警严重度"""
-
-    INFO = "info"
-    WARNING = "warning"
-    CRITICAL = "critical"
-
-
-# ──────────────────────────── 数据类 ────────────────────────────
-
-
-@dataclass
-class ModelCard:
-    """模型卡 — 模型元信息与治理记录。
-
-    每个模型版本对应一张模型卡，包含：
-    - 基本信息（ID、名称、版本、描述、负责人）
-    - 生命周期状态
-    - 验证结果
-    - 审批链
-    - 血缘信息
-    - 监控配置
-    """
-
-    model_id: str
-    name: str
-    version: str
-    description: str
-    status: ModelStatus = ModelStatus.DRAFT
-    owner: str = ""
-    tags: list[str] = field(default_factory=list)
-    validation_results: dict[str, Any] = field(default_factory=dict)
-    approval_chain: list[dict[str, Any]] = field(default_factory=list)
-    lineage: dict[str, Any] = field(default_factory=dict)
-    monitoring_config: dict[str, Any] = field(default_factory=dict)
-    created_at: int = 0
-    approved_at: int = 0
-    retired_at: int = 0
-    last_monitored_at: int = 0
-
-    def __post_init__(self) -> None:
-        if self.created_at == 0:
-            self.created_at = time.time_ns()
-
-    @property
-    def is_active(self) -> bool:
-        """模型是否处于活跃状态（approved 或 live）"""
-        return self.status in (ModelStatus.APPROVED, ModelStatus.LIVE)
-
-    @property
-    def approval_count(self) -> int:
-        """通过审批次数"""
-        return len(
-            [a for a in self.approval_chain if a.get("action") == ApprovalAction.APPROVE.value]
-        )
-
-    @property
-    def rejection_count(self) -> int:
-        """被拒绝次数"""
-        return len(
-            [a for a in self.approval_chain if a.get("action") == ApprovalAction.REJECT.value]
-        )
-
-
-@dataclass
-class LineageRecord:
-    """血缘记录 — 追踪模型的上下游依赖。
-
-    记录模型从哪里来（训练数据、特征工程）和到哪里去（被谁使用）。
-    """
-
-    model_id: str
-    upstream_datasets: list[str] = field(default_factory=list)  # 训练数据集
-    upstream_features: list[str] = field(default_factory=list)  # 使用的特征
-    upstream_models: list[str] = field(default_factory=list)  # 上游模型（如基座模型）
-    downstream_consumers: list[str] = field(default_factory=list)  # 下游消费者
-    training_config: dict[str, Any] = field(default_factory=dict)  # 训练配置
-    training_metrics: dict[str, float] = field(default_factory=dict)  # 训练指标
-    created_at: int = 0
-
-    def __post_init__(self) -> None:
-        if self.created_at == 0:
-            self.created_at = time.time_ns()
-
-
-@dataclass
-class ValidationReport:
-    """验证报告 — 独立验证的结果记录。"""
-
-    model_id: str
-    validator: str  # 验证人/系统
-    passed: bool  # 是否通过
-    metrics: dict[str, float] = field(default_factory=dict)  # 验证指标
-    backtest_results: dict[str, Any] = field(default_factory=dict)  # 回测结果
-    risk_assessment: dict[str, Any] = field(default_factory=dict)  # 风险评估
-    notes: str = ""
-    timestamp_ns: int = 0
-
-    def __post_init__(self) -> None:
-        if self.timestamp_ns == 0:
-            self.timestamp_ns = time.time_ns()
-
-
-@dataclass
-class DriftAlert:
-    """漂移告警 — 检测到模型漂移时触发。"""
-
-    model_id: str
-    drift_type: DriftType
-    severity: AlertSeverity
-    metric_name: str
-    current_value: float
-    baseline_value: float
-    threshold: float
-    message: str
-    timestamp_ns: int = 0
-
-    def __post_init__(self) -> None:
-        if self.timestamp_ns == 0:
-            self.timestamp_ns = time.time_ns()
-
-    @property
-    def deviation_pct(self) -> float:
-        """偏差百分比"""
-        if self.baseline_value == 0:
-            return 0.0
-        return abs(self.current_value - self.baseline_value) / abs(self.baseline_value) * 100
-
-
-@dataclass
-class MonitoringSnapshot:
-    """监控快照 — 模型运行时的指标快照。"""
-
-    model_id: str
-    metrics: dict[str, float]
-    prediction_count: int = 0
-    error_count: int = 0
-    avg_latency_ms: float = 0.0
-    timestamp_ns: int = 0
-
-    def __post_init__(self) -> None:
-        if self.timestamp_ns == 0:
-            self.timestamp_ns = time.time_ns()
-
-    @property
-    def error_rate(self) -> float:
-        """错误率"""
-        if self.prediction_count == 0:
-            return 0.0
-        return self.error_count / self.prediction_count
-
-
-# ──────────────────────────── 模型风险管理器 ────────────────────────────
 
 
 class ModelRiskManager:
@@ -894,186 +721,3 @@ class ModelRiskManager:
             },
             "timestamp_ns": now,
         }
-
-
-# ──────────────────────────── AI 数据投毒防护 ────────────────────────────
-
-
-class AIDataPoisoning防护:
-    """AI 数据投毒防护。
-
-    完整功能：
-    1. 新闻源可信度加权
-    2. 多源交叉验证
-    3. 低置信度拒绝行动
-    4. 异常数据源检测
-    5. 历史可信度追踪
-
-    使用示例::
-
-        guard = AIDataPoisoning防护(min_confidence=0.6)
-        guard.set_trust("bloomberg", 0.9)
-        guard.set_trust("twitter_rumors", 0.2)
-
-        claims = [
-            {"source": "bloomberg", "claim": "BTC上涨", "confidence": 0.8},
-            {"source": "twitter_rumors", "claim": "BTC上涨", "confidence": 0.9},
-        ]
-        credible, score = guard.cross_validate(claims)
-    """
-
-    def __init__(self, min_confidence: float = 0.6) -> None:
-        """初始化防护器。
-
-        Args:
-            min_confidence: 最低可信度阈值
-        """
-        self._min_confidence = min_confidence
-        self._source_trust: dict[str, float] = {}
-        self._source_history: dict[str, list[dict[str, Any]]] = {}  # 验证历史
-        self._flagged_sources: set[str] = set()  # 被标记的异常源
-
-    def set_trust(self, source: str, trust_score: float) -> None:
-        """设置数据源可信度。
-
-        Args:
-            source: 数据源名称
-            trust_score: 可信度分数 [0.0, 1.0]
-        """
-        self._source_trust[source] = max(0.0, min(1.0, trust_score))
-        logger.debug("数据源可信度更新: %s = %.3f", source, trust_score)
-
-    def get_trust(self, source: str) -> float:
-        """获取数据源可信度。
-
-        Args:
-            source: 数据源名称
-
-        Returns:
-            可信度分数
-        """
-        return self._source_trust.get(source, 0.5)
-
-    def flag_source(self, source: str, reason: str) -> None:
-        """标记异常数据源。
-
-        Args:
-            source: 数据源名称
-            reason: 标记原因
-        """
-        self._flagged_sources.add(source)
-        self.set_trust(source, 0.0)
-        logger.warning("数据源已标记异常: %s (原因: %s)", source, reason)
-
-    def is_flagged(self, source: str) -> bool:
-        """检查数据源是否被标记异常。"""
-        return source in self._flagged_sources
-
-    def cross_validate(self, claims: list[dict[str, Any]]) -> tuple[bool, float]:
-        """多源交叉验证。
-
-        对同一事件的多个来源进行加权验证：
-        1. 过滤掉被标记的异常源
-        2. 按可信度加权计算综合置信度
-        3. 检查来源一致性（多数投票）
-
-        Args:
-            claims: [{source, claim, confidence}]
-
-        Returns:
-            (是否可信, 综合置信度)
-        """
-        if not claims:
-            return False, 0.0
-
-        # 过滤被标记的源
-        valid_claims = [c for c in claims if not self.is_flagged(c.get("source", ""))]
-        if not valid_claims:
-            logger.warning("所有数据源均被标记异常，拒绝所有声明")
-            return False, 0.0
-
-        # 加权计算
-        weighted_sum = 0.0
-        weight_total = 0.0
-        for c in valid_claims:
-            trust = self.get_trust(c.get("source", ""))
-            conf = c.get("confidence", 0.0)
-            weighted_sum += trust * conf
-            weight_total += trust
-
-        avg_confidence = weighted_sum / weight_total if weight_total > 0 else 0.0
-
-        # 记录历史
-        for c in valid_claims:
-            source = c.get("source", "")
-            if source not in self._source_history:
-                self._source_history[source] = []
-            self._source_history[source].append(
-                {
-                    "claim": c.get("claim", ""),
-                    "confidence": c.get("confidence", 0.0),
-                    "timestamp_ns": time.time_ns(),
-                }
-            )
-
-        credible = avg_confidence >= self._min_confidence
-
-        if not credible:
-            logger.warning(
-                "数据投毒检测: 置信度 %.3f < 阈值 %.3f (来源: %s)",
-                avg_confidence,
-                self._min_confidence,
-                [c.get("source") for c in valid_claims],
-            )
-
-        return credible, avg_confidence
-
-    def detect_anomaly(self, source: str, claim_confidence: float) -> bool:
-        """检测单条数据是否异常。
-
-        通过与该来源的历史表现对比，判断是否异常偏离。
-
-        Args:
-            source: 数据源
-            claim_confidence: 本次声明置信度
-
-        Returns:
-            是否异常
-        """
-        history = self._source_history.get(source, [])
-        if len(history) < 5:
-            return False  # 历史不足，不做判断
-
-        historical_confidences = [h["confidence"] for h in history[-20:]]
-        mean_conf = statistics.mean(historical_confidences)
-        stdev_conf = (
-            statistics.stdev(historical_confidences) if len(historical_confidences) > 1 else 0.0
-        )
-
-        # 超过 3 个标准差视为异常
-        if stdev_conf > 0 and abs(claim_confidence - mean_conf) > 3 * stdev_conf:
-            logger.warning(
-                "数据源 %s 异常检测: 当前置信度 %.3f 偏离历史均值 %.3f ± %.3f",
-                source,
-                claim_confidence,
-                mean_conf,
-                stdev_conf,
-            )
-            return True
-
-        return False
-
-    def get_source_stats(self) -> dict[str, Any]:
-        """获取数据源统计。"""
-        stats: dict[str, Any] = {}
-        for source, trust in self._source_trust.items():
-            history = self._source_history.get(source, [])
-            stats[source] = {
-                "trust": trust,
-                "is_flagged": source in self._flagged_sources,
-                "history_count": len(history),
-                "avg_confidence": (
-                    statistics.mean([h["confidence"] for h in history]) if history else 0.0
-                ),
-            }
-        return stats
