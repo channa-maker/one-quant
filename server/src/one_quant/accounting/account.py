@@ -500,7 +500,7 @@ class AccountLedger:
         Returns:
             总持仓数量。
         """
-        return sum(lot.quantity for lot in self._positions.get(symbol, deque()))
+        return sum(lot.quantity for lot in self._positions.get(symbol, deque())) or Decimal("0")
 
     def get_position_cost(self, symbol: str) -> Decimal:
         """获取指定标的的总持仓成本。
@@ -514,7 +514,7 @@ class AccountLedger:
         lots = self._positions.get(symbol, deque())
         if not lots:
             return Decimal("0")
-        return sum(lot.notional for lot in lots)
+        return sum(lot.notional for lot in lots) or Decimal("0")
 
     def get_avg_entry_price(self, symbol: str) -> Decimal:
         """获取指定标的的加权平均开仓价。
@@ -535,7 +535,7 @@ class AccountLedger:
         if total_qty <= 0:
             return Decimal("0")
 
-        return (total_notional / total_qty).quantize(Decimal("0.00000001"), rounding=ROUND_HALF_UP)
+        return (total_notional / total_qty).quantize(Decimal("0.00000001"), rounding=ROUND_HALF_UP)  # type: ignore[union-attr]
 
     def get_realized_pnl(self, symbol: str) -> Decimal:
         """获取指定标的的累计已实现盈亏。
@@ -587,7 +587,7 @@ class AccountLedger:
         Returns:
             持仓字典。
         """
-        result = {}
+        result: dict[str, Decimal] = {}
         for symbol, lots in self._positions.items():
             total_qty = sum(lot.quantity for lot in lots)
             if total_qty > 0:
@@ -604,7 +604,7 @@ class AccountLedger:
             账户权益。
         """
         # 余额部分
-        equity = sum(b.total for b in self._balances.values())
+        equity: Decimal = sum(b.total for b in self._balances.values())
 
         # 未实现盈亏部分
         if prices:

@@ -448,7 +448,7 @@ class TaxLotAccounting:
         Returns:
             总数量
         """
-        return sum(lot.quantity for lot in self._lots.get(symbol, []))
+        return sum((lot.quantity for lot in self._lots.get(symbol, [])), Decimal("0"))
 
 
 # ──────────────────────────── 税务报表 ────────────────────────────
@@ -599,22 +599,23 @@ class TaxReportGenerator:
                 }
             )
 
-        report = {
+        summary: dict[str, Any] = {
+            "total_disposals": len(year_disposals),
+            "short_term_transactions": len(short_term),
+            "long_term_transactions": len(long_term),
+            "short_term_gain": str(short_term_gain.quantize(Decimal("0.01"))),
+            "short_term_loss": str(short_term_loss.quantize(Decimal("0.01"))),
+            "net_short_term": str(net_short.quantize(Decimal("0.01"))),
+            "long_term_gain": str(long_term_gain.quantize(Decimal("0.01"))),
+            "long_term_loss": str(long_term_loss.quantize(Decimal("0.01"))),
+            "net_long_term": str(net_long.quantize(Decimal("0.01"))),
+            "net_total": str(net_total.quantize(Decimal("0.01"))),
+            "wash_sale_disallowed_loss": str(total_wash_sale_loss.quantize(Decimal("0.01"))),
+        }
+        report: dict[str, Any] = {
             "year": year,
             "generated_at": str(date.today()),
-            "summary": {
-                "total_disposals": len(year_disposals),
-                "short_term_transactions": len(short_term),
-                "long_term_transactions": len(long_term),
-                "short_term_gain": str(short_term_gain.quantize(Decimal("0.01"))),
-                "short_term_loss": str(short_term_loss.quantize(Decimal("0.01"))),
-                "net_short_term": str(net_short.quantize(Decimal("0.01"))),
-                "long_term_gain": str(long_term_gain.quantize(Decimal("0.01"))),
-                "long_term_loss": str(long_term_loss.quantize(Decimal("0.01"))),
-                "net_long_term": str(net_long.quantize(Decimal("0.01"))),
-                "net_total": str(net_total.quantize(Decimal("0.01"))),
-                "wash_sale_disallowed_loss": str(total_wash_sale_loss.quantize(Decimal("0.01"))),
-            },
+            "summary": summary,
             "schedule_d": {
                 "part_i_short_term": {
                     "total_proceeds": str(
@@ -667,6 +668,6 @@ class TaxReportGenerator:
             "税务报表生成完成: %d 年, %d 笔处置, 净盈亏 $%s",
             year,
             len(year_disposals),
-            report["summary"]["net_total"],
+            summary["net_total"],
         )
         return report

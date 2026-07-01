@@ -69,7 +69,8 @@ class RSIFactor:
 
     def update(self, price: float) -> FactorResult:
         """更新因子。"""
-        self._prices.append(price)
+        price_float = float(price)
+        self._prices.append(price_float)
 
         if len(self._prices) < self.window + 1:
             return FactorResult(
@@ -87,8 +88,8 @@ class RSIFactor:
         gains = [c for c in changes if c > 0]
         losses = [-c for c in changes if c < 0]
 
-        avg_gain = sum(gains) / self.window if gains else Decimal("0")
-        avg_loss = sum(losses) / self.window if losses else Decimal("0")
+        avg_gain = sum(gains) / self.window if gains else 0.0
+        avg_loss = sum(losses) / self.window if losses else 0.0
 
         if avg_loss == 0:
             rsi = 100.0
@@ -132,23 +133,23 @@ class MomentumRSIFactor:
         if len(prices) < self.period + 1:
             return None
 
-        changes: list[Decimal] = []
+        changes: list[float] = []
         for i in range(len(prices) - self.period, len(prices)):
-            diff = prices[i] - prices[i - 1]
+            diff = float(prices[i]) - float(prices[i - 1])
             changes.append(diff)
 
         gains = [c for c in changes if c > 0]
         losses = [-c for c in changes if c < 0]
 
-        avg_gain = sum(gains) / self.period if gains else Decimal("0")
-        avg_loss = sum(losses) / self.period if losses else Decimal("0")
+        avg_gain = sum(gains) / self.period if gains else 0.0
+        avg_loss = sum(losses) / self.period if losses else 0.0
 
         if avg_loss == 0:
             return 100.0
 
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
-        return _safe_float(rsi)
+        return float(rsi)
 
 
 class MomentumMACDFactor:

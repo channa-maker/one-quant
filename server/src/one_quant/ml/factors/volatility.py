@@ -93,10 +93,10 @@ class VolatilityRealizedFactor:
         n = len(recent)
 
         # 计算均值
-        mean = sum(recent) / n
+        mean: Decimal = sum(recent) / Decimal(str(n))
 
         # 计算样本标准差
-        variance = sum((r - mean) ** 2 for r in recent) / (n - 1)
+        variance: Decimal = sum((r - mean) ** 2 for r in recent) / Decimal(str(n - 1))
         std = variance.sqrt() if variance > 0 else Decimal("0")
 
         # 年化（假设日频数据，365 天）

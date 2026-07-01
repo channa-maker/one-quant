@@ -1232,13 +1232,15 @@ class TestSelfHealStrategy:
 
     @pytest.mark.asyncio
     async def test_retry_with_backoff_exception(self, heal):
-        # The source code has a bug where HealRecord requires 'result' but
-        # _retry_with_backoff creates it without one. Test that it raises.
+        # After fix: _retry_with_backoff now passes result to HealRecord,
+        # so exceptions in the action are caught and recorded as FAILED.
         async def failing_fn():
             raise RuntimeError("boom")
 
-        with pytest.raises(TypeError):
-            await heal._retry_with_backoff("test", failing_fn, max_retries=2)
+        result = await heal._retry_with_backoff("test", failing_fn, max_retries=2)
+        assert result == HealResult.FAILED
+        assert len(heal._history) == 1
+        assert heal._history[0].result == HealResult.FAILED
 
     def test_stats(self, heal):
         s = heal.stats

@@ -32,7 +32,7 @@ class HealRecord:
     """自愈记录"""
 
     strategy: str
-    result: HealResult
+    result: HealResult = HealResult.SKIPPED
     started_at: int = 0
     finished_at: int = 0
     attempts: int = 0
@@ -115,7 +115,7 @@ class SelfHealStrategy:
         backoff = base_backoff or self._base_backoff
         max_bo = max_backoff or self._max_backoff
 
-        record = HealRecord(strategy=name, started_at=time.time_ns())
+        record = HealRecord(strategy=name, result=HealResult.FAILED, started_at=time.time_ns())
 
         for attempt in range(1, retries + 1):
             record.attempts = attempt

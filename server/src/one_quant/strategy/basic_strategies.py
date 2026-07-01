@@ -42,8 +42,12 @@ class EMACrossStrategy(Strategy):
             return
 
         if not self._initialized:
-            self._fast_ema = sum(list(self._closes)[-self._fast_period :]) / self._fast_period
-            self._slow_ema = sum(list(self._closes)[-self._slow_period :]) / self._slow_period
+            self._fast_ema = sum(list(self._closes)[-self._fast_period :], Decimal("0")) / Decimal(
+                str(self._fast_period)
+            )
+            self._slow_ema = sum(list(self._closes)[-self._slow_period :], Decimal("0")) / Decimal(
+                str(self._slow_period)
+            )
             self._initialized = True
         else:
             k_fast = Decimal(2) / (self._fast_period + 1)
@@ -150,7 +154,7 @@ class RSIReversalStrategy(Strategy):
         if avg_loss == 0:
             return Decimal("100")
         rs = avg_gain / avg_loss
-        return 100 - 100 / (1 + rs)
+        return Decimal("100") - Decimal("100") / (Decimal("1") + rs)
 
     def on_ticker(self, ticker: Ticker) -> list[Signal]:
         if ticker.symbol != self._symbol:

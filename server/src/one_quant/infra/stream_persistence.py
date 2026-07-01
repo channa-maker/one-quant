@@ -89,7 +89,7 @@ class StreamPersistence:
                 approximate=True,
             )
         except Exception:
-            logger.exception("Redis Stream 写入失败", channel=channel)
+            logger.exception("Redis Stream 写入失败 channel=%s", channel)
 
     async def replay(
         self,
@@ -123,7 +123,7 @@ class StreamPersistence:
                 results.append(data)
             return results
         except Exception:
-            logger.exception("Redis Stream 回放失败", channel=channel)
+            logger.exception("Redis Stream 回放失败 channel=%s", channel)
             return []
 
     async def get_stream_info(self, channel: str) -> dict[str, Any]:

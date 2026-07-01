@@ -107,8 +107,10 @@ class PositionRecoveryManager:
             "discrepancy_details": self._discrepancies,
         }
         logger.info(
-            "持仓恢复完成",
-            **{k: v for k, v in report.items() if k != "discrepancy_details"},
+            "持仓恢复完成 recovered=%s discrepancies=%s total_positions=%s",
+            recovered,
+            discrepancies,
+            len(self._recovered_positions),
         )
         return report
 

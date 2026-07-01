@@ -149,8 +149,8 @@ class TCAnalyzer:
         """
         if decision_price <= 0:
             return 0.0
-        side_sign = 1.0 if side == "buy" else -1.0
-        return float((exec_price - decision_price) / decision_price) * 10000 * side_sign
+        side_sign = Decimal("1") if side == "buy" else Decimal("-1")
+        return float((exec_price - decision_price) / decision_price * Decimal("10000") * side_sign)
 
     def vwap_benchmark(self, fills: list[Fill], market_vwap: Decimal) -> float:
         """VWAP 基准对比。
@@ -174,8 +174,8 @@ class TCAnalyzer:
 
         avg_price = sum(f.price * f.quantity for f in fills) / total_qty
         # 买入：低于 VWAP 为好（负值）；卖出：高于 VWAP 为好（负值）
-        side_sign = 1.0 if fills[0].side == "buy" else -1.0
-        return float((avg_price - market_vwap) / market_vwap) * 10000 * side_sign
+        side_sign = Decimal("1") if fills[0].side == "buy" else Decimal("-1")
+        return float((avg_price - market_vwap) / market_vwap * Decimal("10000") * side_sign)
 
     def arrival_price_benchmark(self, fills: list[Fill], arrival_price: Decimal) -> float:
         """到达价基准。
@@ -198,8 +198,8 @@ class TCAnalyzer:
             return 0.0
 
         avg_price = sum(f.price * f.quantity for f in fills) / total_qty
-        side_sign = 1.0 if fills[0].side == "buy" else -1.0
-        return float((avg_price - arrival_price) / arrival_price) * 10000 * side_sign
+        side_sign = Decimal("1") if fills[0].side == "buy" else Decimal("-1")
+        return float((avg_price - arrival_price) / arrival_price * Decimal("10000") * side_sign)
 
     def slippage_attribution(self, fills: list[Fill]) -> dict[str, Any]:
         """滑点归因：将总滑点拆解为市场冲击、时机成本、价差成本。
@@ -250,8 +250,8 @@ class TCAnalyzer:
         total_qty = sum(f.quantity for f in sorted_fills)
         avg_price = sum(f.price * f.quantity for f in sorted_fills) / total_qty
 
-        side_sign = 1.0 if sorted_fills[0].side == "buy" else -1.0
-        ref_price = sorted_fills[0].price  # 到达价近似
+        side_sign = Decimal("1") if sorted_fills[0].side == "buy" else Decimal("-1")
+        ref_price: Decimal = sorted_fills[0].price  # 到达价近似
 
         # ── 市场冲击：前 20% vs 后 20% 成交均价 ──
         n = len(sorted_fills)
@@ -274,14 +274,18 @@ class TCAnalyzer:
 
         # 买入时后成交价高于前成交价 = 正冲击
         if head_avg > 0:
-            market_impact_bps = float((tail_avg - head_avg) / head_avg) * 10000 * side_sign
+            market_impact_bps = float(
+                (tail_avg - head_avg) / head_avg * Decimal("10000") * side_sign
+            )
         else:
             market_impact_bps = 0.0
 
         # ── 时机成本：首笔 vs 全局均价 ──
         first_price = sorted_fills[0].price
         if ref_price > 0:
-            timing_cost_bps = float((first_price - ref_price) / ref_price) * 10000 * side_sign
+            timing_cost_bps = float(
+                (first_price - ref_price) / ref_price * Decimal("10000") * side_sign
+            )
         else:
             timing_cost_bps = 0.0
 
@@ -297,7 +301,9 @@ class TCAnalyzer:
 
         # ── 总滑点 ──
         if ref_price > 0:
-            total_slippage_bps = float((avg_price - ref_price) / ref_price) * 10000 * side_sign
+            total_slippage_bps = float(
+                (avg_price - ref_price) / ref_price * Decimal("10000") * side_sign
+            )
         else:
             total_slippage_bps = 0.0
 
@@ -379,7 +385,7 @@ class TCAnalyzer:
 
         # 各维度指标
         shortfall = self.implementation_shortfall(decision_price, avg_price, total_qty, side)
-        shortfall_bps = self.implementation_shortfall_bps(decision_price, avg_price, side)
+        shortfall_bps: float = self.implementation_shortfall_bps(decision_price, avg_price, side)
         vwap_bps = self.vwap_benchmark(fills, market_vwap)
         arrival_bps = self.arrival_price_benchmark(fills, arrival_price)
 
@@ -622,11 +628,12 @@ class StrategyCapacityAnalyzer:
         # 最优容量 = 滑点 < 10bps 的最大金额
         optimal = Decimal("0")
         max_cap = Decimal("0")
-        for bucket, avg_slip in sorted_buckets:
+        for bucket, bucket_slippages in sorted_buckets:
+            bucket_avg = sum(bucket_slippages) / len(bucket_slippages) if bucket_slippages else 0.0
             amt = Decimal(bucket)
-            if avg_slip < 10.0:
+            if bucket_avg < 10.0:
                 optimal = amt
-            if avg_slip < 25.0:
+            if bucket_avg < 25.0:
                 max_cap = amt
 
         return CapacityEstimate(
