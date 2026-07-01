@@ -12,23 +12,23 @@ from decimal import Decimal
 from typing import Any
 
 from one_quant.ai.evolution.auditor import EvolutionAuditor
+from one_quant.ai.evolution.factor_mining import FactorMiningMixin
 from one_quant.ai.evolution.models import (
     BacktestResult,
     EvolutionAuditRecord,
     Factor,
-    FactorSource,
-    ShadowResult,
     Strategy,
     StrategyLifecycle,
 )
 from one_quant.ai.evolution.overfit import OverfitValidator
+from one_quant.ai.evolution.shadow_runner import ShadowRunnerMixin
 from one_quant.infra.logging import get_logger
 from one_quant.strategy.backtest import BacktestEngine
 
 logger = get_logger(__name__)
 
 
-class EvolutionPlatform:
+class EvolutionPlatform(FactorMiningMixin, ShadowRunnerMixin):
     """自进化平台 — 策略全生命周期闭环"""
 
     def __init__(
@@ -51,212 +51,6 @@ class EvolutionPlatform:
     @property
     def auditor(self) -> EvolutionAuditor:
         return self._auditor
-
-    # ──── ①因子发现 ────
-
-    async def discover_factors(self, market_data: dict[str, Any] | None = None) -> list[Factor]:
-        """①因子发现：LLM+遗传 自动生成候选因子"""
-        candidates: list[Factor] = []
-
-        llm_factors = await self._llm_generate_factors(market_data)
-        candidates.extend(llm_factors)
-
-        genetic_factors = self._genetic_mutate_factors(list(self._strategies.values()))
-        candidates.extend(genetic_factors)
-
-        valid_factors = [f for f in candidates if abs(f.ic) >= 0.02]
-
-        self._auditor.record(
-            EvolutionAuditRecord(
-                event="discover_factors",
-                strategy_id="",
-                stage="factor_discovery",
-                data_used={"market_data_keys": list((market_data or {}).keys())},
-                decision=f"发现 {len(valid_factors)}/{len(candidates)} 个有效因子",
-                reason="LLM+遗传生成，IC 筛选",
-            )
-        )
-
-        logger.info("因子发现: %d/%d 个因子通过初筛", len(valid_factors), len(candidates))
-        return valid_factors
-
-    async def _llm_generate_factors(self, market_data: dict[str, Any] | None) -> list[Factor]:
-        """LLM 生成候选因子"""
-        if self._llm_router is None:
-            logger.warning("LLM Router 未配置，跳过 LLM 因子生成")
-            return []
-
-        context_parts: list[str] = []
-        if market_data:
-            if "symbol" in market_data:
-                context_parts.append(f"标的: {market_data['symbol']}")
-            if "prices" in market_data:
-                prices = market_data["prices"]
-                if len(prices) >= 2:
-                    change = (prices[-1] - prices[0]) / prices[0] * 100 if prices[0] != 0 else 0
-                    context_parts.append(
-                        f"近期价格区间: {min(prices):.2f} ~ {max(prices):.2f}, 变动: {change:.1f}%"
-                    )
-            if "volume" in market_data:
-                context_parts.append("成交量数据可用")
-            if "funding_rate" in market_data:
-                context_parts.append(f"资金费率: {market_data['funding_rate']}")
-        context_text = "\n".join(context_parts) if context_parts else "无特定市场上下文"
-
-        system_prompt = (
-            "你是一位资深量化研究员，擅长设计 alpha 因子。"
-            "请基于给定的市场数据特征，提出 3-5 个候选因子假设。\n"
-            "每个因子输出格式为 JSON 数组，每个元素包含：\n"
-            "- name: 因子名称（英文，snake_case）\n"
-            "- expression: 因子数学表达式（使用 close/open/high/low/volume/returns 等变量）\n"
-            "- description: 中文描述（一句话说明因子逻辑）\n"
-            '- expected_direction: 预期方向（"positive" 或 "negative"）\n'
-            '示例表达式: "close / shift(close, 5) - 1", "'
-            '(high - low) / close", "volume / mean(volume, 20)"\n'
-            "只输出 JSON 数组，不要其他内容。"
-        )
-
-        user_text = f"当前市场数据特征:\n{context_text}\n\n请提出候选因子。"
-
-        factors: list[Factor] = []
-        try:
-            from one_quant.ai.llm_provider import sanitize_user_text, wrap_user_content
-
-            safe_text = sanitize_user_text(user_text)
-            wrapped = wrap_user_content(safe_text)
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": wrapped},
-            ]
-            response = await self._llm_router.route(
-                task_complexity="medium",
-                messages=messages,
-                max_tokens=2048,
-                temperature=0.7,
-            )
-
-            import json as _json
-
-            content = response.content.strip()
-            if "```" in content:
-                for block in content.split("```"):
-                    block = block.strip()
-                    if block.startswith("json"):
-                        block = block[4:].strip()
-                    if block.startswith("["):
-                        content = block
-                        break
-
-            factor_dicts = _json.loads(content)
-            if not isinstance(factor_dicts, list):
-                factor_dicts = [factor_dicts]
-
-            for fd in factor_dicts:
-                name = fd.get("name", "")
-                expr = fd.get("expression", "")
-                desc = fd.get("description", "")
-                if not name or not expr:
-                    continue
-                factor_id = self._make_id("llm_factor", f"{name}_{expr}")
-                factors.append(
-                    Factor(
-                        factor_id=factor_id,
-                        name=name,
-                        expression=expr,
-                        source=FactorSource.LLM,
-                        metadata={
-                            "description": desc,
-                            "expected_direction": fd.get("expected_direction", ""),
-                        },
-                    )
-                )
-            logger.info("LLM 生成 %d 个候选因子", len(factors))
-
-        except Exception:
-            logger.exception("LLM 因子生成异常")
-
-        return factors
-
-    def _genetic_mutate_factors(self, strategies: list[Strategy]) -> list[Factor]:
-        """遗传算法变异已有因子"""
-        import random
-
-        factors: list[Factor] = []
-
-        existing_factor_names: list[str] = []
-        for s in strategies:
-            existing_factor_names.extend(s.factors)
-        existing_factor_names = list(set(existing_factor_names))
-
-        if not existing_factor_names:
-            logger.debug("无已有因子，跳过遗传变异")
-            return []
-
-        mutation_templates = [
-            {
-                "base": "momentum_rsi",
-                "param_range": [6, 8, 10, 14, 18, 21, 28],
-                "expr_fmt": "rsi(close, {p})",
-            },
-            {
-                "base": "trend_ema_cross",
-                "param_range": [(5, 20), (8, 21), (10, 30), (12, 26), (20, 50)],
-                "expr_fmt": "ema(close, {p0}) / ema(close, {p1}) - 1",
-            },
-            {
-                "base": "volatility_bb",
-                "param_range": [(14, 1.5), (20, 2.0), (20, 2.5), (30, 2.0)],
-                "expr_fmt": "(upper_bb(close, {p0}, {p1}) - lower_bb(close, {p0}, {p1})) / close",
-            },
-            {
-                "base": "momentum_roc",
-                "param_range": [3, 5, 10, 15, 20],
-                "expr_fmt": "close / shift(close, {p}) - 1",
-            },
-            {
-                "base": "volatility_atr",
-                "param_range": [7, 14, 21, 28],
-                "expr_fmt": "atr(high, low, close, {p}) / close",
-            },
-        ]
-
-        for _ in range(min(10, len(existing_factor_names) * 2)):
-            template = random.choice(mutation_templates)
-            params = random.choice(template["param_range"])
-
-            if isinstance(params, tuple):
-                expr = template["expr_fmt"].format(p0=params[0], p1=params[1])
-                name = f"{template['base']}_{params[0]}_{params[1]}"
-            else:
-                expr = template["expr_fmt"].format(p=params)
-                name = f"{template['base']}_{params}"
-
-            if len(existing_factor_names) >= 2 and random.random() < 0.3:
-                f1, f2 = random.sample(existing_factor_names, 2)
-                cross_ops = [
-                    f"({f1}) + ({f2})",
-                    f"({f1}) - ({f2})",
-                    f"({f1}) * ({f2})",
-                    f"({f1}) / max(abs({f2}), 1e-8)",
-                ]
-                expr = random.choice(cross_ops)
-                name = f"cross_{f1}_{f2}_{random.randint(100, 999)}"
-
-            factor_id = self._make_id("genetic_factor", f"{name}_{expr}")
-            factors.append(
-                Factor(
-                    factor_id=factor_id,
-                    name=name,
-                    expression=expr,
-                    source=FactorSource.GENETIC,
-                    metadata={
-                        "mutation_type": "param_tweak" if "cross" not in name else "crossover"
-                    },
-                )
-            )
-
-        logger.info("遗传变异生成 %d 个候选因子", len(factors))
-        return factors
 
     # ──── ②策略生成 ────
 
@@ -416,74 +210,6 @@ class EvolutionPlatform:
         )
 
         return assessment
-
-    # ──── ⑤影子运行 ────
-
-    async def shadow_run(self, strategy: Strategy, days: int = 30) -> ShadowResult:
-        """⑤影子运行：只读跟单对比预测"""
-        strategy.lifecycle = StrategyLifecycle.SHADOW
-
-        correct_count = 0
-        total_count = 0
-        simulated_pnl = 0.0
-
-        shadow_data = await self._fetch_shadow_data(strategy, days)
-
-        if shadow_data and len(shadow_data) >= 10:
-            prices = [d.get("close", 0) for d in shadow_data if "close" in d]
-            for i in range(len(prices) - 1):
-                if i < 5:
-                    continue
-                window = prices[max(0, i - 20) : i + 1]
-                predicted_direction = 1 if window[-1] > sum(window) / len(window) else -1
-
-                actual_direction = 1 if prices[i + 1] > prices[i] else -1
-                total_count += 1
-                if predicted_direction == actual_direction:
-                    correct_count += 1
-
-                ret = (prices[i + 1] - prices[i]) / prices[i] if prices[i] != 0 else 0
-                simulated_pnl += ret * predicted_direction
-
-        signal_accuracy = correct_count / total_count if total_count > 0 else 0.0
-
-        champion_return = 0.0
-        if strategy.slot in self._champions:
-            champion = self._champions[strategy.slot]
-            champion_return = float(champion.metrics.get("live_return", 0))
-
-        result = ShadowResult(
-            strategy_id=strategy.strategy_id,
-            shadow_days=days,
-            total_signals=total_count,
-            correct_signals=correct_count,
-            signal_accuracy=signal_accuracy,
-            simulated_return=simulated_pnl,
-            champion_return=champion_return,
-            outperformance=simulated_pnl - champion_return,
-            sharpe_ratio=self._compute_quick_sharpe(shadow_data) if shadow_data else 0.0,
-            max_drawdown=0.0,
-        )
-
-        result.passed = result.signal_accuracy > 0.55 and result.outperformance > 0
-
-        self._auditor.record(
-            EvolutionAuditRecord(
-                event="shadow_run",
-                strategy_id=strategy.strategy_id,
-                stage="shadow",
-                data_used={"shadow_days": days},
-                comparison={
-                    "signal_accuracy": result.signal_accuracy,
-                    "simulated_return": result.simulated_return,
-                    "champion_return": result.champion_return,
-                },
-                decision="通过" if result.passed else "未通过",
-                reason=f"信号准确率 {result.signal_accuracy:.1%}, 超额 {result.outperformance:.2%}",
-            )
-        )
-
-        return result
 
     # ──── ⑥灰度小资金 ────
 
@@ -747,12 +473,6 @@ class EvolutionPlatform:
         correlation = cov / (std_a * std_b)
         return max(-1.0, min(1.0, correlation))
 
-    async def _fetch_shadow_data(self, strategy: Strategy, days: int) -> list[dict[str, Any]]:
-        """获取影子运行数据"""
-        if self._recent_market_data:
-            return self._recent_market_data.get("klines", [])
-        return strategy.config.get("historical_data", [])
-
     async def _fetch_live_market_data(self, strategy: Strategy) -> dict[str, Any]:
         """从 EventBus 获取实盘市场数据"""
         snapshot: dict[str, Any] = {}
@@ -778,26 +498,3 @@ class EvolutionPlatform:
         """更新市场数据缓存"""
         self._recent_market_data.update(data)
         logger.debug("市场缓存更新: channel=%s, keys=%s", channel, list(data.keys()))
-
-    @staticmethod
-    def _compute_quick_sharpe(data: list[dict[str, Any]]) -> float:
-        """快速计算夏普比率"""
-        prices = [d.get("close", 0) for d in data if "close" in d]
-        if len(prices) < 10:
-            return 0.0
-
-        returns = []
-        for i in range(1, len(prices)):
-            if prices[i - 1] != 0:
-                returns.append((prices[i] - prices[i - 1]) / prices[i - 1])
-
-        if not returns:
-            return 0.0
-
-        mean_ret = sum(returns) / len(returns)
-        std_ret = (sum((r - mean_ret) ** 2 for r in returns) / len(returns)) ** 0.5
-
-        if std_ret == 0:
-            return 0.0
-
-        return (mean_ret / std_ret) * (252**0.5)

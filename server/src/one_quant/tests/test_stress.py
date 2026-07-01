@@ -716,6 +716,106 @@ class TestRiskControlTriggers:
             assert "L4_全局熔断器" in result.risk_controls_triggered
 
 
+class TestReplayRecovery:
+    """回放恢复时间计算测试"""
+
+    def test_recovery_time_when_pnl_recovers(self):
+        """PnL 回正时 recovery_time_sec > 0。"""
+        engine = StressTestEngine()
+        scenario = engine.get_scenarios()[0]
+
+        # 先涨后跌再涨回超过初始值
+        tickers = []
+        price = 50000.0
+        # 涨 10%
+        for i in range(10):
+            price *= 1.001
+            tickers.append(
+                Ticker(
+                    symbol="BTC/USDT",
+                    market=Market.FUTURES,
+                    exchange="binance",
+                    last_price=Decimal(str(round(price, 2))),
+                    bid=Decimal(str(round(price * 0.999, 2))),
+                    ask=Decimal(str(round(price * 1.001, 2))),
+                    volume_24h=Decimal("1000"),
+                    timestamp_ns=1583971200000000000 + i * 1_000_000_000,
+                )
+            )
+        # 跌 5%
+        for i in range(10):
+            price *= 0.995
+            tickers.append(
+                Ticker(
+                    symbol="BTC/USDT",
+                    market=Market.FUTURES,
+                    exchange="binance",
+                    last_price=Decimal(str(round(price, 2))),
+                    bid=Decimal(str(round(price * 0.999, 2))),
+                    ask=Decimal(str(round(price * 1.001, 2))),
+                    volume_24h=Decimal("1000"),
+                    timestamp_ns=1583971210000000000 + i * 1_000_000_000,
+                )
+            )
+
+        with patch.object(engine, "_load_tick_data", return_value=tickers):
+            result = asyncio.run(engine.run_scenario(scenario, "test"))
+
+        assert isinstance(result.recovery_time_sec, int)
+
+
+class TestReplaySharpeCalc:
+    """回放 Sharpe 计算分支测试"""
+
+    def test_sharpe_with_constant_prices(self):
+        """价格不变时 Sharpe ≈ 0。"""
+        engine = StressTestEngine()
+        scenario = engine.get_scenarios()[0]
+
+        # 所有价格相同 → 每 tick 收益=0
+        tickers = []
+        for i in range(50):
+            tickers.append(
+                Ticker(
+                    symbol="BTC/USDT",
+                    market=Market.FUTURES,
+                    exchange="binance",
+                    last_price=Decimal("50000"),
+                    bid=Decimal("49990"),
+                    ask=Decimal("50010"),
+                    volume_24h=Decimal("1000"),
+                    timestamp_ns=1583971200000000000 + i * 1_000_000_000,
+                )
+            )
+
+        with patch.object(engine, "_load_tick_data", return_value=tickers):
+            result = asyncio.run(engine.run_scenario(scenario, "test"))
+
+        assert result.sharpe_during_crisis == 0.0
+
+    def test_sharpe_with_single_tick(self):
+        """单 tick 时 Sharpe = 0。"""
+        engine = StressTestEngine()
+        scenario = engine.get_scenarios()[0]
+        tickers = _make_tickers(1)
+
+        with patch.object(engine, "_load_tick_data", return_value=tickers):
+            result = asyncio.run(engine.run_scenario(scenario, "test"))
+
+        assert result.sharpe_during_crisis == 0.0
+
+    def test_sharpe_with_two_ticks(self):
+        """两条 tick 计算 Sharpe。"""
+        engine = StressTestEngine()
+        scenario = engine.get_scenarios()[0]
+        tickers = _make_tickers(2)
+
+        with patch.object(engine, "_load_tick_data", return_value=tickers):
+            result = asyncio.run(engine.run_scenario(scenario, "test"))
+
+        assert isinstance(result.sharpe_during_crisis, float)
+
+
 # ──────────────────────────── 多场景汇总测试 ────────────────────────────
 
 

@@ -249,3 +249,138 @@ class TestRiskEngine:
         assert stats["checks"] == 1
         assert stats["rejects"] == 1
         assert stats["flattens"] >= 1
+
+    def test_engine_l2_rejection(self) -> None:
+        """L2 频率超限触发拒绝"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("1000000"))
+        # L2 频率限制: 同标的 10 秒内 >= 10 次
+        from one_quant.risk.rules.l2_realtime import MAX_ORDER_FREQ
+
+        for _ in range(MAX_ORDER_FREQ):
+            engine.check(
+                _make_order(),
+                [],
+                total_equity=Decimal("1000000"),
+                latest_price=Decimal("50000"),
+            )
+        # 再来一次应被 L2 拒绝
+        result = engine.check(
+            _make_order(),
+            [],
+            total_equity=Decimal("1000000"),
+            latest_price=Decimal("50000"),
+        )
+        assert result.decision == RiskDecision.REJECT
+        assert "频率" in result.reason
+
+    def test_engine_l1_rejection_unknown_symbol(self) -> None:
+        """L1: 非白名单标的通过引擎拒绝"""
+        engine = RiskEngine()
+        result = engine.check(_make_order(symbol="UNKNOWN/USDT"), [])
+        assert result.decision == RiskDecision.REJECT
+        assert engine.stats["rejects"] == 1
+
+    def test_engine_l1_rejection_suspended_symbol(self) -> None:
+        """L1: 停牌标的通过引擎拒绝"""
+        engine = RiskEngine()
+        result = engine.check(_make_order(symbol="LUNA/USDT"), [])
+        assert result.decision == RiskDecision.REJECT
+        assert engine.stats["rejects"] == 1
+
+    def test_engine_l1_rejection_zero_quantity(self) -> None:
+        """L1: 零数量通过引擎拒绝"""
+        engine = RiskEngine()
+        result = engine.check(_make_order(quantity="0"), [])
+        assert result.decision == RiskDecision.REJECT
+
+    def test_engine_l4_rejection(self) -> None:
+        """L4 熔断器触发拒绝"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        # 触发 L4 熔断
+        from one_quant.risk.rules.l4_circuit_breaker import FAILURE_THRESHOLD
+
+        for _ in range(FAILURE_THRESHOLD):
+            engine.l4.record_failure()
+        order = _make_order()
+        result = engine.check(order, [])
+        assert result.decision == RiskDecision.FLATTEN
+        assert "熔断器" in result.reason
+
+    def test_engine_l4_flatten_count(self) -> None:
+        """L4 熔断器 FLATTEN 计数"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        from one_quant.risk.rules.l4_circuit_breaker import FAILURE_THRESHOLD
+
+        for _ in range(FAILURE_THRESHOLD):
+            engine.l4.record_failure()
+        engine.check(_make_order(), [])
+        stats = engine.stats
+        assert stats["flattens"] >= 1
+
+    def test_engine_halt_all_method(self) -> None:
+        """halt_all 方法触发全局熔断"""
+        engine = RiskEngine()
+        result = engine.halt_all()
+        assert result.decision == RiskDecision.FLATTEN
+        assert "全局熔断" in result.reason
+
+    def test_engine_halt_all_then_check(self) -> None:
+        """halt_all 后 check 返回 FLATTEN"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        engine.halt_all()
+        # L3 requires peak_equity and daily_pnl to be checked
+        result = engine.check(
+            _make_order(),
+            [],
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("0"),
+        )
+        assert result.decision == RiskDecision.FLATTEN
+
+    def test_engine_l3_with_initial_equity_and_margin(self) -> None:
+        """L3 带 initial_equity 和保证金参数"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        order = _make_order()
+        # 保证金超限
+        result = engine.check(
+            order,
+            [],
+            total_equity=Decimal("100000"),
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("0"),
+            initial_equity=Decimal("100000"),
+            used_margin=Decimal("90000"),
+            total_margin=Decimal("100000"),
+        )
+        assert result.decision == RiskDecision.REDUCE
+
+    def test_engine_reset(self) -> None:
+        """reset 重置所有状态"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("100000"))
+        engine.check(_make_order(), [])
+        assert engine.stats["checks"] == 1
+        engine.reset()
+        assert engine.stats["checks"] == 0
+        assert engine.stats["rejects"] == 0
+        assert engine.stats["flattens"] == 0
+
+    def test_engine_l3_uses_stored_equity(self) -> None:
+        """L3 使用引擎存储的权益"""
+        engine = RiskEngine()
+        engine.update_equity(Decimal("85000"))
+        order = _make_order()
+        # 不传 total_equity, 让 L3 使用 stored equity
+        result = engine.check(
+            order,
+            [],
+            peak_equity=Decimal("100000"),
+            daily_pnl=Decimal("0"),
+        )
+        # 回撤 = (100000-85000)/100000 = 15% → FLATTEN
+        assert result.decision != RiskDecision.APPROVE
