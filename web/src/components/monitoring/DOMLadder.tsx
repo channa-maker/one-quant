@@ -3,8 +3,8 @@
  * 实时买卖挂单量 | 撤补单闪烁 | 点价下单 | Canvas 60fps 渲染
  */
 import { useRef, useEffect, useCallback, useState, memo } from 'react'
-import { Switch, Select, Typography, Space, Button, Tooltip } from 'antd'
-import { ThunderboltOutlined, AimOutlined } from '@ant-design/icons'
+import { Switch, Typography, Space, Tooltip } from 'antd'
+import { AimOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -85,7 +85,6 @@ const DOMLadder = memo(function DOMLadder({
   const prevLevelsRef = useRef<Map<number, { bid: number; ask: number }>>(new Map())
   const [clickOrderEnabled, setClickOrderEnabled] = useState(true)
   const [hoverRow, setHoverRow] = useState<number>(-1)
-  const [scrollTop, setScrollTop] = useState(0)
 
   const canvasWidth = 400
   const canvasHeight = visibleRows * rowHeight
@@ -143,7 +142,6 @@ const DOMLadder = memo(function DOMLadder({
     const barAreaW = (canvasWidth - priceColW - 80) / 2
     const askBarX = priceColW
     const bidBarX = askBarX + barAreaW
-    const sizeColX = bidBarX + barAreaW
 
     // 找到 lastPrice 所在行
     const sortedLevels = [...levels].sort((a, b) => b.price - a.price) // 价格降序

@@ -3,8 +3,8 @@
  * 异动扫描滚动榜 | 放量/突破/插针/资金流 | 实时更新
  */
 import { useRef, useEffect, useCallback, useState, memo, useMemo } from 'react'
-import { Typography, Space, Tag, Badge, Select, Tooltip } from 'antd'
-import { RadarChartOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { Typography, Space, Tag, Badge, Select } from 'antd'
+import { RadarChartOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -60,7 +60,6 @@ const SIGNAL_CONFIG: Record<RadarSignalType, { label: string; icon: string; colo
 const MultiSymbolRadar = memo(function MultiSymbolRadar({
   symbols,
   maxDisplay = 30,
-  signalFilter,
   onSymbolClick,
   width = 400,
   height = 600,
@@ -265,7 +264,7 @@ const MultiSymbolRadar = memo(function MultiSymbolRadar({
     setHoverIdx(Math.floor(y / rowHeight))
   }, [rowHeight])
 
-  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleClick = useCallback((_e: React.MouseEvent<HTMLCanvasElement>) => {
     if (hoverIdx >= 0 && hoverIdx < sorted.length) {
       onSymbolClick?.(sorted[hoverIdx].symbol)
     }

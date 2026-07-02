@@ -2,7 +2,7 @@
  * ONE量化 · 总览大盘
  * 总资产、盈亏、净值曲线、持仓分布、风控状态、AI研报、实时告警
  */
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Card,
   Row,
@@ -17,22 +17,18 @@ import {
   Badge,
   Tooltip,
   Table,
-  Button,
 } from 'antd'
 import {
   FundOutlined,
   SafetyOutlined,
   FileTextOutlined,
   AlertOutlined,
-  PieChartOutlined,
-  ReloadOutlined,
   RiseOutlined,
   FallOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '@/store'
 import {
   mockPositions,
-  mockOrders,
   mockSignals,
   generatePnlCurve,
   mockStrategies,
@@ -41,8 +37,6 @@ import {
   formatMoney,
   formatPercent,
   pnlColor,
-  orderStatusText,
-  orderStatusColor,
 } from '@/utils/mockData'
 
 const { Text, Paragraph } = Typography
@@ -57,12 +51,6 @@ const positionDistribution = [
 ]
 
 /** 风控层级 */
-const riskLevels = [
-  { level: 'L1', name: '日内限额', status: '正常', color: '#52c41a' },
-  { level: 'L2', name: '策略限额', status: '正常', color: '#52c41a' },
-  { level: 'L3', name: '账户限额', status: '预警', color: '#faad14' },
-  { level: 'L4', name: '熔断机制', status: '正常', color: '#52c41a' },
-]
 
 /** AI 研报 */
 const aiReportSummary = {
@@ -97,8 +85,6 @@ const gradeColor: Record<string, string> = {
 
 export default function Dashboard() {
   const tickers = useAppStore((s) => s.tickers)
-  const positions = useAppStore((s) => s.positions)
-  const signals = useAppStore((s) => s.signals)
   const wsConnected = useAppStore((s) => s.wsConnected)
 
   const [loading, setLoading] = useState(true)
@@ -124,7 +110,6 @@ export default function Dashboard() {
   const todayPnlPercent = mockTradingStats.todayPnlPercent
 
   /** 最新净值 */
-  const latestNav = netValueData[netValueData.length - 1]?.value || 1000000
 
   if (loading) {
     return (

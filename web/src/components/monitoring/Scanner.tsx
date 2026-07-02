@@ -2,15 +2,13 @@
  * Scanner - 异动扫描器组件
  * 可视化配置规则 | 命中进榜 | 推送
  */
-import { useRef, useCallback, useState, memo, useMemo, useEffect } from 'react'
+import { useCallback, useState, memo, useMemo, useEffect } from 'react'
 import {
-  Typography, Space, Tag, Table, Switch, Button, Modal, Form,
-  InputNumber, Select, Badge, Tooltip, Divider, message, notification,
+  Typography, Space, Tag, Switch, Button, Modal, Form,
+  InputNumber, Select, Badge, Tooltip, notification,
 } from 'antd'
 import {
   SearchOutlined, SettingOutlined, BellOutlined,
-  ThunderboltOutlined, ArrowUpOutlined, ArrowDownOutlined,
-  AlertOutlined, DollarOutlined, FireOutlined, ExperimentOutlined,
 } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -161,18 +159,15 @@ function RuleConfigForm({
 /* ---------- 组件 ---------- */
 const Scanner = memo(function Scanner({
   hits,
-  symbols = [],
   onRulesChange,
   onHitClick,
   maxRows = 100,
 }: ScannerProps) {
   const [rules, setRules] = useState<ScannerRule[]>(DEFAULT_RULES)
   const [configVisible, setConfigVisible] = useState(false)
-  const [editingRule, setEditingRule] = useState<ScannerRule | null>(null)
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // 规则变更
   const handleRuleChange = useCallback((updated: ScannerRule) => {

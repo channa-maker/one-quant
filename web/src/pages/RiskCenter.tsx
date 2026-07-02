@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, {  } from 'react'
 import {
   Card,
   Row,
@@ -17,15 +17,12 @@ import {
 } from 'antd'
 import {
   SafetyOutlined,
-  AlertOutlined,
-  FireOutlined,
   LockOutlined,
   AuditOutlined,
   ThunderboltOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
-  ClockCircleOutlined,
   HeatMapOutlined,
 } from '@ant-design/icons'
 
@@ -130,11 +127,6 @@ const logLevelIcon: Record<string, React.ReactNode> = {
   success: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
 }
 
-const statusColor: Record<string, string> = {
-  '正常': '#52c41a',
-  '预警': '#faad14',
-  '触发': '#ff4d4f',
-}
 
 export default function RiskCenter() {
   return (
@@ -209,7 +201,7 @@ export default function RiskCenter() {
                       title: '状态',
                       dataIndex: 'status',
                       width: 100,
-                      render: (v: string, r: any) => (
+                      render: (_v: string, r: any) => (
                         <Badge
                           status={r.triggered ? 'error' : 'success'}
                           text={r.triggered ? '已触发' : '正常'}

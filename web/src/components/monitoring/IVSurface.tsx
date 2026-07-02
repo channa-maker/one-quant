@@ -3,8 +3,8 @@
  * 到期×行权价×IV 实时旋转 | Three.js / WebGL | 颜色映射 IV 高低
  */
 import { useRef, useEffect, useCallback, useState, memo, useMemo } from 'react'
-import { Typography, Space, Select, Switch, Slider, Tooltip } from 'antd'
-import { DotChartOutlined, RotateRightOutlined } from '@ant-design/icons'
+import { Typography, Space, Select, Switch, Tooltip } from 'antd'
+import { DotChartOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -82,7 +82,6 @@ function projectPoint(p: Vec3, m: Mat4, w: number, h: number, fov: number): { x:
   const x = m[0] * p.x + m[1] * p.y + m[2] * p.z + m[3]
   const y = m[4] * p.x + m[5] * p.y + m[6] * p.z + m[7]
   const z = m[8] * p.x + m[9] * p.y + m[10] * p.z + m[11]
-  const w2 = m[12] * p.x + m[13] * p.y + m[14] * p.z + m[15]
 
   const scale = fov / (fov + z)
   return {

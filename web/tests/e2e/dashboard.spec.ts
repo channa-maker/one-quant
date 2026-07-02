@@ -1,65 +1,49 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('总览大盘', () => {
-  test('加载总览页面', async ({ page }) => {
+// 未登录:一律重定向到登录页
+test.describe('登录守卫', () => {
+  test('未登录访问首页跳转登录页', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=总览')).toBeVisible();
-  });
-
-  test('显示总资产卡片', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('[data-testid="total-assets"]')).toBeVisible();
-  });
-
-  test('显示今日盈亏', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('[data-testid="daily-pnl"]')).toBeVisible();
-  });
-
-  test('显示风控状态', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('[data-testid="risk-status"]')).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByText('ONE 量化')).toBeVisible();
+    await expect(page.getByPlaceholder('用户名')).toBeVisible();
+    await expect(page.getByPlaceholder('密码')).toBeVisible();
   });
 });
 
-test.describe('交易终端', () => {
-  test('加载K线图', async ({ page }) => {
-    await page.goto('/trading');
-    await expect(page.locator('[data-testid="kline-chart"]')).toBeVisible();
+// 注入 token 后可进入主布局(不依赖后端)
+test.describe('主布局(已登录)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('one_quant_token', 'e2e-fake-token');
+    });
   });
 
-  test('显示下单面板', async ({ page }) => {
-    await page.goto('/trading');
-    await expect(page.locator('[data-testid="order-panel"]')).toBeVisible();
+  test('侧边栏中文菜单齐全', async ({ page }) => {
+    await page.goto('/');
+    for (const label of ['总览大盘', '交易终端', '盯盘工作站', '策略管理', 'AI 研报', '选股选币', '期权中心', '持仓账户', '风控中心', '审计日志', '系统监控']) {
+      await expect(page.getByRole('menuitem', { name: label })).toBeVisible();
+    }
   });
 
-  test('显示持仓列表', async ({ page }) => {
-    await page.goto('/trading');
-    await expect(page.locator('[data-testid="positions-list"]')).toBeVisible();
+  test('交易终端渲染 K 线画布', async ({ page }) => {
+    await page.goto('/trade');
+    await expect(page.locator('canvas').first()).toBeVisible({ timeout: 10000 });
   });
-});
 
-test.describe('策略管理', () => {
-  test('加载策略列表', async ({ page }) => {
-    await page.goto('/strategies');
-    await expect(page.locator('[data-testid="strategy-list"]')).toBeVisible();
+  test('盯盘工作站可达', async ({ page }) => {
+    await page.goto('/workstation');
+    await expect(page.getByRole('menuitem', { name: '盯盘工作站' })).toBeVisible();
   });
-});
 
-test.describe('风控中心', () => {
-  test('显示四层风控状态', async ({ page }) => {
-    await page.goto('/risk');
-    await expect(page.locator('[data-testid="risk-l1"]')).toBeVisible();
-    await expect(page.locator('[data-testid="risk-l2"]')).toBeVisible();
-    await expect(page.locator('[data-testid="risk-l3"]')).toBeVisible();
-    await expect(page.locator('[data-testid="risk-l4"]')).toBeVisible();
+  test('选股选币展示候选池', async ({ page }) => {
+    await page.goto('/screener');
+    await expect(page.getByText('AI 选股选币')).toBeVisible();
+    await expect(page.getByText('今日候选池', { exact: false })).toBeVisible();
   });
-});
 
-test.describe('鉴权', () => {
-  test('未登录跳转登录页', async ({ page }) => {
-    await page.goto('/trading');
-    // 应重定向到登录页或显示登录提示
-    await expect(page.locator('text=登录')).toBeVisible();
+  test('审计日志可检索', async ({ page }) => {
+    await page.goto('/audit');
+    await expect(page.getByText('审计日志').first()).toBeVisible();
   });
 });

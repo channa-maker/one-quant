@@ -3,8 +3,8 @@
  * Bookmap 风格 | 盘口挂单热力 | 流动性墙/冰山可视 | Canvas 渲染
  */
 import { useRef, useEffect, useCallback, useState, memo, useMemo } from 'react'
-import { Typography, Space, Switch, Slider, Select } from 'antd'
-import { HeatMapOutlined, EyeOutlined } from '@ant-design/icons'
+import { Typography, Space, Switch } from 'antd'
+import { HeatMapOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -74,7 +74,7 @@ interface IcebergCandidate {
 
 function detectIcebergs(
   snapshots: BookSnapshot[],
-  tickSize: number,
+  _tickSize: number,
   sensitivity: number
 ): IcebergCandidate[] {
   const candidates = new Map<number, IcebergCandidate>()
@@ -142,7 +142,6 @@ const Heatmap = memo(function Heatmap({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
-  const [colorScheme, setColorScheme] = useState<'green' | 'blue' | 'purple'>('green')
 
   // 计算价格范围
   const priceRange = useMemo(() => {

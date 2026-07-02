@@ -3,7 +3,7 @@
  * CVD 曲线 | 背离标记 | 与K线图联动 | Canvas 渲染
  */
 import { useRef, useEffect, useCallback, useState, memo, useMemo } from 'react'
-import { Typography, Space, Switch, Select, Tooltip } from 'antd'
+import { Typography, Space, Switch, Tooltip } from 'antd'
 import { LineChartOutlined, AlertOutlined } from '@ant-design/icons'
 
 const { Text } = Typography

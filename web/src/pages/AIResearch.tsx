@@ -1,4 +1,4 @@
-import React from 'react'
+
 import {
   Card,
   Row,
@@ -250,7 +250,7 @@ export default function AIResearch() {
                   size="small"
                   pagination={false}
                   columns={[
-                    { title: '标的', dataIndex: 'symbol', width: 100, render: (v: string, r: any) => <Text strong>{v}</Text> },
+                    { title: '标的', dataIndex: 'symbol', width: 100, render: (v: string) => <Text strong>{v}</Text> },
                     { title: '名称', dataIndex: 'name', width: 80 },
                     {
                       title: '方向',

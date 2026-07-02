@@ -2,9 +2,9 @@
  * Tape - 成交瀑布组件
  * 逐笔成交流 | 大单高亮 | 扫单识别 | 主动买卖染色
  */
-import { useRef, useEffect, useCallback, useState, memo, useMemo } from 'react'
-import { Typography, Space, Switch, Select, Tag, Badge } from 'antd'
-import { ThunderboltOutlined, AlertOutlined } from '@ant-design/icons'
+import { useRef, useEffect, useState, memo, useMemo } from 'react'
+import { Typography, Space, Select, Tag, Badge } from 'antd'
+import { ThunderboltOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -72,7 +72,6 @@ function formatTime(ts: number): string {
 /** 检测扫单 */
 function detectSweeps(trades: TapeTrade[], windowMs: number, minCount: number): Set<string> {
   const sweepIds = new Set<string>()
-  const grouped = new Map<string, TapeTrade[]>()
 
   // 按时间窗口分组
   const sorted = [...trades].sort((a, b) => a.timestamp - b.timestamp)

@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import {
   Card,
   Row,
   Col,
   Table,
   Button,
-  Input,
   Select,
   Space,
   Tag,
@@ -15,7 +14,6 @@ import {
   Modal,
   Tabs,
   Badge,
-  Tooltip,
   message,
   Popconfirm,
   Divider,
@@ -27,11 +25,10 @@ import {
   HistoryOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '@/store'
-import type { Order, Position } from '@/types'
-import { submitOrder, cancelOrder } from '@/utils/api'
+import KLineChart from '@/components/KLineChart'
+import type { Order } from '@/types'
 
 const { Text } = Typography
-const { TabPane } = Tabs
 const { Option } = Select
 
 /** 模拟盘口数据 */
@@ -227,25 +224,11 @@ export default function TradingTerminal() {
             size="small"
             style={{ marginBottom: 12 }}
           >
-            <div
-              style={{
-                height: 360,
-                background: '#0d1117',
-                borderRadius: 4,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                color: '#8c8c8c',
-                flexDirection: 'column',
-                gap: 8,
-              }}
-            >
-              <LineChartOutlined style={{ fontSize: 48, color: '#303030' }} />
-              <Text type="secondary">K 线图（TradingView Lightweight Charts）</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                接入 lightweight-charts 后即可展示实时 K 线
-              </Text>
-            </div>
+            <KLineChart
+              symbol={symbol}
+              lastPrice={ticker ? parseFloat(ticker.last_price) : undefined}
+              height={360}
+            />
           </Card>
 
           {/* 盘口 */}

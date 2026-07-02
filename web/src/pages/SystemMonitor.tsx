@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import {
+import { fetchHealthDetail } from '@/utils/api'
+import { Alert,
   Card,
   Row,
   Col,
@@ -85,13 +86,14 @@ const statusIcon: Record<string, React.ReactNode> = {
   stopped: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
 }
 
-const statusText: Record<string, { color: string; text: string }> = {
-  running: { color: 'green', text: '运行中' },
-  warning: { color: 'orange', text: '告警' },
-  stopped: { color: 'red', text: '已停止' },
-}
 
 export default function SystemMonitor() {
+  const [live, setLive] = useState(false)
+  // 挂载时探测后端健康详情;可达则显示实时标记
+  useEffect(() => {
+    fetchHealthDetail().then(() => setLive(true)).catch(() => {/* 后端未连接 */})
+  }, [])
+
   const [resources, setResources] = useState(generateResourceData())
 
   useEffect(() => {
@@ -103,6 +105,14 @@ export default function SystemMonitor() {
 
   return (
     <div style={{ padding: 24 }}>
+      {!live && (
+        <Alert
+          type="warning"
+          showIcon
+          message="当前为演示数据 · 后端连接后自动切换为实时监控"
+          style={{ marginBottom: 16 }}
+        />
+      )}
       {/* 资源使用概览 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={8} lg={4}>

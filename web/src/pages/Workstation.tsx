@@ -2,14 +2,14 @@
  * Workstation - 盯盘工作站页面
  * 多屏/多工作区 | 可拖拽面板网格 | 预设布局 | 布局持久化/导入导出 | 多图表十字光标时间轴联动
  */
-import { useRef, useEffect, useCallback, useState, memo, useMemo } from 'react'
+import { useEffect, useCallback, useState, memo, useMemo } from 'react'
 import {
   Layout, Typography, Space, Button, Tooltip, Dropdown, Modal, Input,
-  message, Tabs, Tag, Switch, Select,
+  message, Tag, Select,
 } from 'antd'
 import {
-  AppstoreOutlined, SaveOutlined, ExportOutlined, ImportOutlined,
-  PlusOutlined, DeleteOutlined, CopyOutlined, CompressOutlined,
+  AppstoreOutlined, ExportOutlined, ImportOutlined,
+  PlusOutlined, DeleteOutlined, CompressOutlined,
   ExpandOutlined, SettingOutlined, LockOutlined, UnlockOutlined,
   DesktopOutlined, LineChartOutlined, FundOutlined, SafetyOutlined,
   ThunderboltOutlined, DotChartOutlined,
@@ -306,7 +306,6 @@ const PanelContainer = memo(function PanelContainer({
 
 /* ---------- 组件 ---------- */
 const Workstation = memo(function Workstation({
-  workspaces: initialWorkspaces,
   symbol: initialSymbol = 'BTCUSDT',
   symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'DOGEUSDT'],
   period: initialPeriod = '15m',
@@ -328,7 +327,6 @@ const Workstation = memo(function Workstation({
   const [isEditing, setIsEditing] = useState(false)
   const [importModalVisible, setImportModalVisible] = useState(false)
   const [importText, setImportText] = useState('')
-  const [crosshairTime, setCrosshairTime] = useState<number | null>(null)
 
   // 保存到本地
   useEffect(() => {

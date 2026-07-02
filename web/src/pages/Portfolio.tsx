@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import {
+import { useEffect, useState } from 'react'
+import { fetchPositions } from '@/utils/api'
+import { Alert,
   Card,
   Row,
   Col,
@@ -23,7 +24,6 @@ import {
   ReloadOutlined,
   ExportOutlined,
 } from '@ant-design/icons'
-import { useAppStore } from '@/store'
 
 const { Text } = Typography
 
@@ -66,18 +66,46 @@ const greeks = [
 ]
 
 export default function Portfolio() {
-  const positions = useAppStore((s) => s.positions)
+  const [positions, setPositions] = useState(allPositions)
+  const [live, setLive] = useState(false)
+
+  // 挂载时尝试拉取后端真实持仓;不可达则保留演示数据
+  useEffect(() => {
+    fetchPositions()
+      .then((res) => {
+        const list = (res as { data?: unknown })?.data
+        if (Array.isArray(list) && list.length > 0) {
+          setPositions(
+            list.map((it: Record<string, any>) => ({
+              symbol: String(it.symbol ?? ''),
+              market: String(it.market ?? ''),
+              account: String(it.exchange ?? '默认账户'),
+              side: it.side === 'short' ? 'short' : 'long',
+              qty: Number(it.quantity ?? 0),
+              entryPrice: Number(it.entry_price ?? 0),
+              currentPrice: Number(it.current_price ?? it.entry_price ?? 0),
+              unrealizedPnl: Number(it.unrealized_pnl ?? 0),
+              realizedPnl: Number(it.realized_pnl ?? 0),
+              margin: Number(it.margin ?? 0),
+            }))
+          )
+          setLive(true)
+        }
+      })
+      .catch(() => {/* 后端未连接:保留演示数据 */})
+  }, [])
+
   const [selectedAccount, setSelectedAccount] = useState<string>('all')
 
   const filteredPositions = selectedAccount === 'all'
-    ? allPositions
-    : allPositions.filter((p) => p.account === accounts.find((a) => a.key === selectedAccount)?.name)
+    ? positions
+    : positions.filter((p) => p.account === accounts.find((a) => a.key === selectedAccount)?.name)
 
   /** 总资产 */
   const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0)
   const totalAvailable = accounts.reduce((sum, a) => sum + a.available, 0)
   const totalMargin = accounts.reduce((sum, a) => sum + a.margin, 0)
-  const totalUnrealizedPnl = allPositions.reduce((sum, p) => sum + p.unrealizedPnl, 0)
+  const totalUnrealizedPnl = positions.reduce((sum, p) => sum + p.unrealizedPnl, 0)
 
   const positionColumns = [
     { title: '标的', dataIndex: 'symbol', width: 160, render: (v: string) => <Text strong>{v}</Text> },
@@ -137,6 +165,14 @@ export default function Portfolio() {
 
   return (
     <div style={{ padding: 24 }}>
+      {!live && (
+        <Alert
+          type="warning"
+          showIcon
+          message="当前为演示数据 · 后端连接后自动切换为实时持仓"
+          style={{ marginBottom: 16 }}
+        />
+      )}
       {/* 账户总览 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} lg={6}>

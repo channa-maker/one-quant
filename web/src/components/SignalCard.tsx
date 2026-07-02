@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { Card, Tag, Descriptions, Progress, Button, Modal, Typography, Space, Tooltip } from 'antd'
 import {
-  ThunderboltOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
   ExclamationCircleOutlined,

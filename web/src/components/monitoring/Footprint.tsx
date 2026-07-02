@@ -105,7 +105,6 @@ const Footprint = memo(function Footprint({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
   const [hoverBar, setHoverBar] = useState<number>(-1)
-  const [hoverCell, setHoverCell] = useState<number>(-1)
 
   // 计算全局最大值用于颜色映射
   const globalMax = useMemo(() => {
@@ -164,7 +163,6 @@ const Footprint = memo(function Footprint({
     }
     const priceRange = globalHigh - globalLow || 1
     const priceToY = (p: number) => 20 + ((globalHigh - p) / priceRange) * (height - 60)
-    const yToPrice = (y: number) => globalHigh - ((y - 20) / (height - 60)) * priceRange
 
     // 价格刻度
     ctx.fillStyle = COLORS.textDim
@@ -199,7 +197,7 @@ const Footprint = memo(function Footprint({
       const maxCellHeight = 14
       const cellHeight = Math.min(maxCellHeight, (barBottom - barTop) / Math.max(1, bar.cells.length))
 
-      bar.cells.forEach((cell, cellIdx) => {
+      bar.cells.forEach((cell) => {
         const cy = priceToY(cell.price) - cellHeight / 2
         if (cy < 10 || cy > height - 40) return
 

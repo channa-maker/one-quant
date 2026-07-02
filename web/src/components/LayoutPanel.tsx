@@ -1,13 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { Card, Button, Space, Tooltip, Dropdown, Modal, message, Typography } from 'antd'
+import { Card, Button, Space, Tooltip, Dropdown, message, Typography } from 'antd'
 import {
   DragOutlined,
   FullscreenOutlined,
   ExportOutlined,
   ImportOutlined,
   CloseOutlined,
-  CompressOutlined,
-  PlusOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
 
@@ -40,9 +38,6 @@ interface LayoutPanelProps {
   onLayoutChange?: (panels: PanelConfig[]) => void
   onPanelClose?: (id: string) => void
   onPanelFloat?: (id: string) => void
-  gridCols?: number
-  gridRows?: number
-  gap?: number
 }
 
 /** 拖拽状态 */
@@ -70,9 +65,6 @@ export const LayoutPanel: React.FC<LayoutPanelProps> = ({
   onLayoutChange,
   onPanelClose,
   onPanelFloat,
-  gridCols = 24,
-  gridRows = 12,
-  gap = 8,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)

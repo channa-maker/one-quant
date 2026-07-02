@@ -30,6 +30,10 @@ interface AppState {
   // 主题设置
   colorMode: 'red-up' | 'green-up'
   setColorMode: (mode: 'red-up' | 'green-up') => void
+
+  // 认证
+  auth: { username: string; role: string } | null
+  setAuth: (auth: { username: string; role: string } | null) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -62,4 +66,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   colorMode: 'red-up',
   setColorMode: (mode) => set({ colorMode: mode }),
+
+  auth: null,
+  setAuth: (auth) => set({ auth }),
 }))

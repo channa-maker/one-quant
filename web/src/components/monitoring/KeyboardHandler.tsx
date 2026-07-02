@@ -3,10 +3,10 @@
  * 全键盘快捷键 | 切标的/切周期/下单撤单/一键平仓/一键熔断 | Cmd+K 命令面板 | 危险操作组合键+二次确认
  */
 import { useRef, useEffect, useCallback, useState, memo, useMemo } from 'react'
-import { Modal, Input, Typography, Space, Tag, List, message, Alert } from 'antd'
+import { Modal, Input, Typography, Space, Tag, message, Alert, type InputRef } from 'antd'
 import {
-  CommandOutlined, ThunderboltOutlined, WarningOutlined,
-  SearchOutlined, SwapOutlined,
+  MacCommandOutlined, WarningOutlined,
+  SearchOutlined, 
 } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -56,7 +56,6 @@ export interface KeyboardHandlerProps {
 }
 
 /* ---------- 默认周期列表 ---------- */
-const PERIODS = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1d', '1w']
 
 /* ---------- 按键解析 ---------- */
 function parseKeyCombo(e: KeyboardEvent): string[] {
@@ -116,7 +115,7 @@ const KeyboardHandler = memo(function KeyboardHandler({
     onConfirm: () => void
   }>({ visible: false, title: '', message: '', onConfirm: () => {} })
   const [pressedKeys, setPressedKeys] = useState<string[]>([])
-  const searchRef = useRef<Input>(null)
+  const searchRef = useRef<InputRef>(null)
 
   // 默认快捷键绑定
   const defaultBindings: KeyBinding[] = useMemo(() => [
@@ -483,7 +482,7 @@ const KeyboardHandler = memo(function KeyboardHandler({
             <Text type="secondary" style={{ fontSize: 11 }}>关闭</Text>
           </Space>
           <Text type="secondary" style={{ fontSize: 11 }}>
-            <CommandOutlined /> {filteredCommands.length} 命令
+            <MacCommandOutlined /> {filteredCommands.length} 命令
           </Text>
         </div>
       </Modal>

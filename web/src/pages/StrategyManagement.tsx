@@ -1,4 +1,6 @@
 import React, { useState, useCallback } from 'react'
+import { useEffect } from 'react'
+import { toggleStrategy as apiToggleStrategy, fetchStrategies } from '@/utils/api'
 import {
   Card,
   Table,
@@ -13,13 +15,11 @@ import {
   InputNumber,
   Popconfirm,
   message,
-  Tabs,
   Progress,
   Tooltip,
   Badge,
   Row,
   Col,
-  Statistic,
 } from 'antd'
 import {
   PlayCircleOutlined,
@@ -145,6 +145,26 @@ const statusMap: Record<string, { color: string; text: string; icon: React.React
 
 export default function StrategyManagement() {
   const [strategies, setStrategies] = useState<Strategy[]>(initialStrategies)
+
+  // 挂载时尝试拉取后端真实策略列表;不可达则保留演示数据
+  useEffect(() => {
+    fetchStrategies()
+      .then((res) => {
+        const list = (res as { data?: unknown })?.data
+        if (Array.isArray(list) && list.length > 0) {
+          setStrategies(
+            list.map((it: Record<string, unknown>, i: number) => ({
+              ...initialStrategies[0],
+              key: String(it.name ?? i),
+              name: String(it.name ?? `策略${i}`),
+              status: it.enabled ? 'running' : 'paused',
+              description: String(it.description ?? ''),
+            })) as Strategy[]
+          )
+        }
+      })
+      .catch(() => {/* 后端未连接:保留演示数据 */})
+  }, [])
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null)
   const [form] = Form.useForm()
@@ -152,6 +172,13 @@ export default function StrategyManagement() {
   /** 切换策略启停 */
   const toggleStrategy = useCallback(
     (key: string) => {
+      // 优先走后端真实启停;后端不可达时回退本地演示切换
+      const target = strategies.find((s) => s.key === key)
+      if (target) {
+        apiToggleStrategy(target.name).catch(() => {
+          /* 后端未连接:仅本地演示切换 */
+        })
+      }
       setStrategies((prev) =>
         prev.map((s) => {
           if (s.key !== key) return s
