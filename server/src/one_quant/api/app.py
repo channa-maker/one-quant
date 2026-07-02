@@ -39,7 +39,11 @@ async def auth_middleware(request: Request, call_next: Any) -> Any:
     """
     # 白名单路径，无需鉴权
     whitelist = {"/docs", "/openapi.json", "/redoc"}
-    if request.url.path in whitelist or request.url.path.startswith("/api/v1/health"):
+    if (
+        request.url.path in whitelist
+        or request.url.path.startswith("/api/v1/health")
+        or request.url.path == "/api/v1/auth/login"
+    ):
         return await call_next(request)
 
     # 提取 Authorization 头

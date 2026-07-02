@@ -114,6 +114,8 @@ class Settings(BaseSettings):
     ENV: str = "dev"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str | None = None  # 未配置则拒绝登录,禁止默认口令上线
     JWT_SECRET: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 24
