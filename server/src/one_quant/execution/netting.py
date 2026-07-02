@@ -14,7 +14,7 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from one_quant.core.types import Order, Signal
 from one_quant.infra.logging import get_logger
@@ -94,7 +94,7 @@ class MultiStrategyNetting:
                     )
 
             # 生成净信号
-            side = "buy" if net_strength > 0 else "sell"
+            side: Literal["buy", "sell"] = "buy" if net_strength > 0 else "sell"
             strength = min(abs(net_strength), 1.0)
             reason_parts = []
             if buys:
@@ -106,7 +106,7 @@ class MultiStrategyNetting:
                 Signal(
                     symbol=symbol,
                     market=group[0].market,
-                    side=side if side in ("buy", "sell") else "buy",  # type: ignore[arg-type]
+                    side=side,
                     strength=strength,
                     strategy_name="multi_strategy_netting",
                     reason=f"净额轧差: {' vs '.join(reason_parts)}, 净方向={side}",
@@ -434,7 +434,9 @@ class NettingEngine:
                 score += float(o.quantity) * 50000  # 默认价格估算
         return score / 1000
 
-    def _merge_orders(self, orders: list[Order], side: str, symbol: str, exchange: str) -> Order:
+    def _merge_orders(
+        self, orders: list[Order], side: Literal["buy", "sell"], symbol: str, exchange: str
+    ) -> Order:
         """合并同方向订单为一个净额订单。
 
         Args:
@@ -445,7 +447,12 @@ class NettingEngine:
 
         Returns:
             合并后的订单
+
+        Raises:
+            ValueError: side 非法时显式拒绝(绝不默认方向,防止脏数据下反向单)。
         """
+        if side not in ("buy", "sell"):  # 运行时兜底:非法方向必须拒绝
+            raise ValueError(f"非法订单方向: {side!r},拒绝合并")
         total_qty = sum((o.quantity for o in orders), Decimal("0"))
         # 加权平均价格
         total_notional = sum((o.quantity * (o.price or Decimal("0")) for o in orders), Decimal("0"))
@@ -460,7 +467,7 @@ class NettingEngine:
             client_order_id=primary.client_order_id,
             symbol=symbol,
             market=primary.market,
-            side=side if side in ("buy", "sell") else "buy",  # type: ignore[arg-type]
+            side=side,
             order_type=primary.order_type,
             quantity=Decimal(str(total_qty)),
             price=avg_price,

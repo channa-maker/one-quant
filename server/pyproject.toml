@@ -46,6 +46,9 @@ dev = [
     "mypy>=1.13.0",
     "pyjwt>=2.9.0",
     "pyyaml>=6.0",
+    "types-PyYAML>=6.0",
+    "pandas-stubs>=2.0",
+    "types-python-dateutil>=2.9",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -109,3 +112,17 @@ warn_return_any = false
 no_implicit_reexport = false
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+
+# 第三方库无类型桩:仅忽略缺失导入(不放宽任何代码检查)
+[[tool.mypy.overrides]]
+module = [
+    "pyarrow.*",
+    "opentelemetry.*",
+    "matplotlib.*",
+    "scipy.*",
+    "xgboost.*",
+    "lightgbm.*",
+    "shap.*",
+    "ib_insync.*",
+]
+ignore_missing_imports = true
